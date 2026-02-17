@@ -305,6 +305,18 @@ impl Tableau {
             }
         }
 
+        // Debug: Starting RCD
+        #[cfg(target_arch = "wasm32")]
+        {
+            use wasm_bindgen::prelude::*;
+            #[wasm_bindgen]
+            extern "C" {
+                #[wasm_bindgen(js_namespace = console)]
+                fn log(s: &str);
+            }
+            log(&format!("Starting RCD with {} pairs", informative_pairs.len()));
+        }
+
         // RCD main loop
         loop {
             current_stratum += 1;
@@ -341,8 +353,54 @@ impl Tableau {
                 }
             }
 
-            // If no constraints added, algorithm failed
+            // Debug logging (after removing pairs)
+            #[cfg(target_arch = "wasm32")]
+            {
+                use wasm_bindgen::prelude::*;
+                #[wasm_bindgen]
+                extern "C" {
+                    #[wasm_bindgen(js_namespace = console)]
+                    fn log(s: &str);
+                }
+                log(&format!("After stratum {}: {} pairs remaining",
+                    current_stratum, informative_pairs.len()));
+            }
+
+            // Check if all constraints are ranked
+            let all_ranked = constraint_strata.iter().all(|&s| s != 0);
+
+            // If all constraints ranked, we're done (success even if pairs remain - those are ties)
+            if all_ranked {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use wasm_bindgen::prelude::*;
+                    #[wasm_bindgen]
+                    extern "C" {
+                        #[wasm_bindgen(js_namespace = console)]
+                        fn log(s: &str);
+                    }
+                    log(&format!("RCD SUCCEEDED: all constraints ranked in {} strata ({} pairs unresolved - ties)",
+                        current_stratum, informative_pairs.len()));
+                }
+                return RCDResult {
+                    constraint_strata,
+                    num_strata: current_stratum,
+                    success: true,
+                };
+            }
+
+            // If no constraints added but some still unranked, algorithm failed
             if !added_any {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use wasm_bindgen::prelude::*;
+                    #[wasm_bindgen]
+                    extern "C" {
+                        #[wasm_bindgen(js_namespace = console)]
+                        fn log(s: &str);
+                    }
+                    log(&format!("RCD FAILED: no constraints added to stratum {}", current_stratum));
+                }
                 return RCDResult {
                     constraint_strata,
                     num_strata: current_stratum - 1,
@@ -383,6 +441,17 @@ impl Tableau {
                         }
                     }
                     current_stratum += 1;
+                }
+
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use wasm_bindgen::prelude::*;
+                    #[wasm_bindgen]
+                    extern "C" {
+                        #[wasm_bindgen(js_namespace = console)]
+                        fn log(s: &str);
+                    }
+                    log(&format!("RCD SUCCEEDED with {} strata", current_stratum));
                 }
 
                 return RCDResult {
