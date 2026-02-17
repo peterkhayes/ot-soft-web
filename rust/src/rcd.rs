@@ -1082,9 +1082,6 @@ mod tests {
         // Generate formatted output
         let generated = result.format_output(&tableau, "TinyIllustrativeFile.txt");
 
-        // Write to file for inspection
-        std::fs::write("../test_output.txt", &generated).ok();
-
         // Verify Section 3 is present
         assert!(generated.contains("3. Status of Proposed Constraints"), "Should have Section 3 header");
         assert!(generated.contains("Necessary") || generated.contains("Not necessary"),
