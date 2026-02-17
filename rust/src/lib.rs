@@ -37,3 +37,11 @@ pub fn run_rcd(text: &str) -> Result<RCDResult, String> {
     let tableau = Tableau::parse(text)?;
     Ok(tableau.run_rcd())
 }
+
+/// Format RCD results as text for download
+#[wasm_bindgen]
+pub fn format_rcd_output(text: &str, filename: &str) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let result = tableau.run_rcd();
+    Ok(result.format_output(&tableau, filename))
+}

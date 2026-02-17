@@ -1,5 +1,5 @@
 // Import the WASM module
-import init, { parse_tableau, run_rcd } from './pkg/ot_soft.js';
+import init, { parse_tableau, run_rcd, format_rcd_output } from './pkg/ot_soft.js';
 
 // Tiny example tableau data (exact copy of examples/tiny/input.txt)
 const TINY_EXAMPLE = `			*No Onset	*Coda	Max(t)	Dep(?)
@@ -17,6 +17,7 @@ at	?a	1			1	1
 // Store current tableau and text globally
 let currentTableau = null;
 let currentTableauText = null;
+let currentInputFilename = null;
 
 async function run() {
     try {
@@ -32,18 +33,25 @@ async function run() {
             const file = event.target.files[0];
             if (file) {
                 const text = await file.text();
+                currentInputFilename = file.name;
                 parseAndDisplay(text);
             }
         });
 
         // Set up "Load Tiny Example" button
         document.getElementById('loadTinyButton').addEventListener('click', () => {
+            currentInputFilename = 'TinyIllustrativeFile.txt';
             parseAndDisplay(TINY_EXAMPLE);
         });
 
         // Set up "Run RCD" button
         document.getElementById('runRcdButton').addEventListener('click', () => {
             runRcdAnalysis();
+        });
+
+        // Set up "Download Results" button
+        document.getElementById('downloadRcdButton').addEventListener('click', () => {
+            downloadRcdResults();
         });
 
         console.log('OT-Soft WebAssembly module loaded successfully');
@@ -69,6 +77,7 @@ function parseAndDisplay(text) {
         document.getElementById('rcdSection').style.display = 'block';
         document.getElementById('rcdOutput').style.display = 'none';
         document.getElementById('rcdOutput').innerHTML = '';
+        document.getElementById('downloadRcdButton').style.display = 'none';
     } catch (err) {
         document.getElementById('tableauSection').style.display = 'block';
         document.getElementById('tableauOutput').textContent = 'Error parsing tableau:\n\n' + err;
@@ -179,6 +188,9 @@ function displayRcdResults(result) {
     const outputDiv = document.getElementById('rcdOutput');
     outputDiv.style.display = 'block';
 
+    // Show download button
+    document.getElementById('downloadRcdButton').style.display = 'inline-block';
+
     let html = '<div class="rcd-results">';
 
     // Status
@@ -227,6 +239,55 @@ function displayRcdResults(result) {
 
     html += '</div>';
     outputDiv.innerHTML = html;
+}
+
+function downloadRcdResults() {
+    if (!currentTableauText) {
+        alert('No tableau loaded');
+        return;
+    }
+
+    try {
+        // Generate output filename: insert "Output" before extension
+        // Example: MyFile.txt → MyFileOutput.txt
+        let outputFilename;
+        if (currentInputFilename) {
+            const lastDotIndex = currentInputFilename.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                const baseName = currentInputFilename.substring(0, lastDotIndex);
+                const extension = currentInputFilename.substring(lastDotIndex);
+                outputFilename = baseName + 'Output' + extension;
+            } else {
+                outputFilename = currentInputFilename + 'Output.txt';
+            }
+        } else {
+            outputFilename = 'TableauOutput.txt';
+        }
+
+        // Generate formatted text output (use input filename for header)
+        const inputFilenameForHeader = currentInputFilename || 'tableau.txt';
+        const formattedOutput = format_rcd_output(currentTableauText, inputFilenameForHeader);
+
+        // Create a blob and download link
+        const blob = new Blob([formattedOutput], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        // Create temporary download link
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = outputFilename;
+
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+
+        // Cleanup
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error('Download error:', err);
+        alert('Error generating download: ' + err);
+    }
 }
 
 run();

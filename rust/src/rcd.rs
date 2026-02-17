@@ -34,6 +34,167 @@ impl RCDResult {
     }
 }
 
+impl RCDResult {
+    /// Generate formatted text output for the RCD analysis
+    pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
+        let mut output = String::new();
+
+        // Header
+        output.push_str(&format!("Results of Applying Recursive Constraint Demotion to {}\n", filename));
+        output.push_str("\n\n");
+
+        // Date and version (current date/time and version)
+        let now = chrono::Local::now();
+        output.push_str(&format!("{}\n\n", now.format("%-m-%-d-%Y, %-I:%M %p").to_string().to_lowercase()));
+        output.push_str("OTSoft 2.7, release date 2/1/2026\n");
+        output.push_str("\n\n");
+
+        // Section 1: Result
+        output.push_str("1. Result\n\n");
+
+        if self.success {
+            output.push_str("A ranking was found that generates the correct outputs.\n\n");
+        } else {
+            output.push_str("No ranking was found.\n\n");
+        }
+
+        // List strata
+        for stratum in 1..=self.num_strata {
+            output.push_str(&format!("   Stratum #{}\n", stratum));
+
+            for (c_idx, &c_stratum) in self.constraint_strata.iter().enumerate() {
+                if c_stratum == stratum {
+                    if let Some(constraint) = tableau.get_constraint(c_idx) {
+                        let full_name = constraint.full_name();
+                        let abbrev = constraint.abbrev();
+                        // Format: left-align full name in ~42 chars, then abbreviation
+                        output.push_str(&format!("      {:<42}{}\n", full_name, abbrev));
+                    }
+                }
+            }
+        }
+        output.push_str("\n");
+
+        // Section 2: Tableaux
+        output.push_str("2. Tableaux\n\n");
+
+        for form in &tableau.forms {
+            output.push_str("\n");
+            output.push_str(&format!("/{}/: \n", form.input));
+
+            // Build constraint header with stratum separators
+            // Use broken bar character (U+00A6) for within-stratum, | for between-strata
+            let sep_char = '\u{00A6}'; // Broken bar (¦)
+
+            let mut header = String::new();
+
+            // Calculate max candidate width for alignment
+            let max_cand_width = form.candidates.iter()
+                .map(|c| c.form.len())
+                .max()
+                .unwrap_or(0)
+                .max(2); // At least 2 chars for marker + space
+
+            // Add initial spacing
+            for _ in 0..max_cand_width + 2 {
+                header.push(' ');
+            }
+
+            for (c_idx, constraint) in tableau.constraints.iter().enumerate() {
+                let c_stratum = self.constraint_strata[c_idx];
+
+                // Add separator before this constraint
+                if c_idx > 0 {
+                    let prev_stratum = self.constraint_strata[c_idx - 1];
+                    if c_stratum != prev_stratum {
+                        header.push('|');
+                    } else {
+                        header.push(sep_char);
+                    }
+                }
+
+                header.push_str(&constraint.abbrev());
+            }
+            output.push_str(&header);
+            output.push_str("\n");
+
+            // Find winner
+            let winner_idx = form.candidates.iter()
+                .position(|c| c.frequency > 0);
+
+            // Output each candidate
+            for (cand_idx, candidate) in form.candidates.iter().enumerate() {
+                let is_winner = Some(cand_idx) == winner_idx;
+                let marker = if is_winner { ">" } else { " " };
+
+                // Find the first fatal violation (if any) for this loser
+                let first_fatal_idx = if !is_winner && winner_idx.is_some() {
+                    let winner = &form.candidates[winner_idx.unwrap()];
+                    candidate.violations.iter().enumerate()
+                        .position(|(idx, &viols)| viols > winner.violations[idx])
+                } else {
+                    None
+                };
+
+                // Candidate surface form (right-aligned to match expected output)
+                output.push_str(&format!("{}{:<width$} ", marker, candidate.form, width = max_cand_width));
+
+                // Violations with stratum separators
+                for (c_idx, &viols) in candidate.violations.iter().enumerate() {
+                    let c_stratum = self.constraint_strata[c_idx];
+                    let constraint_abbrev = &tableau.constraints[c_idx].abbrev();
+                    let col_width = constraint_abbrev.len();
+
+                    // Add separator
+                    if c_idx > 0 {
+                        let prev_stratum = self.constraint_strata[c_idx - 1];
+                        if c_stratum != prev_stratum {
+                            output.push('|');
+                        } else {
+                            output.push(sep_char);
+                        }
+                    }
+
+                    // Mark violation as fatal only if it's the FIRST fatal violation
+                    let is_fatal = first_fatal_idx == Some(c_idx);
+
+                    if viols == 0 {
+                        // Empty cell with proper width
+                        for _ in 0..col_width {
+                            output.push(' ');
+                        }
+                    } else {
+                        let viol_str = if is_fatal {
+                            format!("{}!", viols)
+                        } else {
+                            format!("{}", viols)
+                        };
+                        // Place violation - left-aligned with trailing spaces, except narrow columns
+                        if col_width <= 3 {
+                            // Narrow columns: no leading space
+                            output.push_str(&viol_str);
+                            for _ in viol_str.len()..col_width {
+                                output.push(' ');
+                            }
+                        } else {
+                            // Wider columns: add leading space
+                            output.push(' ');
+                            output.push_str(&viol_str);
+                            for _ in (1 + viol_str.len())..col_width {
+                                output.push(' ');
+                            }
+                        }
+                    }
+                }
+                output.push_str("\n");
+            }
+            output.push_str("\n");
+        }
+
+        output
+    }
+}
+
 impl Tableau {
     /// Run Recursive Constraint Demotion to find a ranking
     pub fn run_rcd(&self) -> RCDResult {
@@ -269,5 +430,101 @@ mod tests {
         // Max and Dep should be in stratum 2
         assert_eq!(result.get_stratum(2).unwrap(), 2, "Max should be in stratum 2");
         assert_eq!(result.get_stratum(3).unwrap(), 2, "Dep should be in stratum 2");
+    }
+
+    fn extract_sections(text: &str, sections: &[usize]) -> String {
+        let mut result = String::new();
+        let lines: Vec<&str> = text.lines().collect();
+        let mut current_section = 0;
+        let mut in_section = false;
+
+        for line in lines {
+            // Check if this is a section header
+            if let Some(section_num) = line.strip_prefix(char::is_numeric) {
+                if let Some(num_str) = section_num.chars().next() {
+                    if let Some(num) = num_str.to_digit(10) {
+                        current_section = num as usize;
+                        in_section = sections.contains(&current_section);
+                    }
+                }
+            }
+
+            // Check for next section starting
+            if line.starts_with(char::is_numeric) && line.contains(". ") {
+                if let Some(dot_pos) = line.find(". ") {
+                    if let Ok(num) = line[..dot_pos].parse::<usize>() {
+                        current_section = num;
+                        in_section = sections.contains(&current_section);
+                    }
+                }
+            }
+
+            if in_section {
+                result.push_str(line);
+                result.push('\n');
+            }
+
+            // Stop after last requested section
+            if !sections.is_empty() && current_section > *sections.iter().max().unwrap() {
+                break;
+            }
+        }
+
+        result
+    }
+
+    #[test]
+    fn test_rcd_output_format() {
+        let tiny_example = load_tiny_example();
+        let tableau = Tableau::parse(&tiny_example).expect("Failed to parse tiny example");
+        let result = tableau.run_rcd();
+
+        // Generate formatted output
+        let generated = result.format_output(&tableau, "TinyIllustrativeFile.txt");
+
+        // Load expected output (file is ISO-8859 encoded)
+        let expected_bytes = std::fs::read("../examples/tiny/full_output.txt")
+            .expect("Failed to load examples/tiny/full_output.txt");
+        let expected = String::from_utf8_lossy(&expected_bytes).to_string();
+
+        // Extract header (first line)
+        let gen_lines: Vec<&str> = generated.lines().collect();
+        let exp_lines: Vec<&str> = expected.lines().collect();
+
+        assert_eq!(gen_lines[0], exp_lines[0], "Header should match");
+
+        // Extract and compare Section 1 (Result)
+        let gen_section1 = extract_sections(&generated, &[1]);
+        let exp_section1 = extract_sections(&expected, &[1]);
+
+        assert_eq!(
+            gen_section1.trim(),
+            exp_section1.trim(),
+            "Section 1 (Result) should match"
+        );
+
+        // For Section 2, verify it contains the key elements rather than exact formatting
+        let gen_section2 = extract_sections(&generated, &[2]);
+
+        // Verify section 2 header
+        assert!(gen_section2.contains("2. Tableaux"), "Should have Section 2 header");
+
+        // Verify all input forms are present
+        assert!(gen_section2.contains("/a/:"), "Should contain /a/ form");
+        assert!(gen_section2.contains("/tat/:"), "Should contain /tat/ form");
+        assert!(gen_section2.contains("/at/:"), "Should contain /at/ form");
+
+        // Verify constraint names appear
+        assert!(gen_section2.contains("*NoOns"), "Should contain *NoOns constraint");
+        assert!(gen_section2.contains("*Coda"), "Should contain *Coda constraint");
+        assert!(gen_section2.contains("Max"), "Should contain Max constraint");
+        assert!(gen_section2.contains("Dep"), "Should contain Dep constraint");
+
+        // Verify winners are marked
+        assert!(gen_section2.contains(">?a"), "Should mark >?a as winner");
+        assert!(gen_section2.contains(">ta"), "Should mark >ta as winner");
+
+        // Verify fatal violations are marked
+        assert!(gen_section2.contains("1!"), "Should contain fatal violation markers");
     }
 }

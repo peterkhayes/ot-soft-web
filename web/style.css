@@ -122,8 +122,22 @@ input[type="file"]::-webkit-file-upload-button:hover {
     margin-bottom: 15px;
 }
 
-.rcd-section button {
+.button-group {
+    display: flex;
+    gap: 10px;
     margin-bottom: 20px;
+}
+
+.button-group button {
+    margin: 0;
+}
+
+#downloadRcdButton {
+    background: #27ae60;
+}
+
+#downloadRcdButton:hover {
+    background: #229954;
 }
 
 #output {
