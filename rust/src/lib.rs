@@ -259,21 +259,15 @@ pub fn parse_tableau(text: &str) -> Result<Tableau, String> {
 mod tests {
     use super::*;
 
-    const TINY_EXAMPLE: &str = "\t\t\t*No Onset\t*Coda\tMax(t)\tDep(?)
-\t\t\t*NoOns\t*Coda\tMax\tDep
-a\t?a\t1\t\t\t\t1
-\ta\t0\t1\t\t\t
-tat\tta\t1\t\t\t1\t
-\ttat\t0\t\t1\t\t
-at\t?a\t1\t\t\t1\t1
-\t?at\t0\t\t1\t\t1
-\ta\t0\t1\t\t1\t
-\tat\t0\t1\t1\t\t
-";
+    fn load_tiny_example() -> String {
+        std::fs::read_to_string("../examples/tiny/input.txt")
+            .expect("Failed to load examples/tiny/input.txt")
+    }
 
     #[test]
     fn test_parse_tiny_example() {
-        let tableau = Tableau::parse(TINY_EXAMPLE).expect("Failed to parse tiny example");
+        let tiny_example = load_tiny_example();
+        let tableau = Tableau::parse(&tiny_example).expect("Failed to parse tiny example");
 
         // Test constraint count
         assert_eq!(tableau.constraint_count(), 4, "Should have 4 constraints");
@@ -316,7 +310,8 @@ at\t?a\t1\t\t\t1\t1
 
     #[test]
     fn test_parse_second_input_form() {
-        let tableau = Tableau::parse(TINY_EXAMPLE).expect("Failed to parse tiny example");
+        let tiny_example = load_tiny_example();
+        let tableau = Tableau::parse(&tiny_example).expect("Failed to parse tiny example");
 
         // Test second input form "tat"
         let form_1 = tableau.get_form(1).unwrap();
@@ -344,7 +339,8 @@ at\t?a\t1\t\t\t1\t1
 
     #[test]
     fn test_parse_third_input_form() {
-        let tableau = Tableau::parse(TINY_EXAMPLE).expect("Failed to parse tiny example");
+        let tiny_example = load_tiny_example();
+        let tableau = Tableau::parse(&tiny_example).expect("Failed to parse tiny example");
 
         // Test third input form "at"
         let form_2 = tableau.get_form(2).unwrap();
