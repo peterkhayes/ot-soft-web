@@ -20,25 +20,44 @@ The Rust code should NOT contain:
 
 **All presentation logic belongs in the Web codebase.**
 
-## Current Implementation
+## Module Structure
 
-### Data Structures
+### `src/lib.rs` (40 lines)
+Main entry point and public API:
+- `init()` - WASM initialization
+- `parse_tableau(text)` - Parse tableau from text
+- `run_rcd(text)` - Run RCD algorithm on text
+- Re-exports public types from modules
 
-- `Constraint` - Stores constraint name and abbreviation
-- `Candidate` - Output form with violation profile
+### `src/tableau.rs` (350+ lines)
+Data structures and parsing:
+- `Constraint` - Constraint name and abbreviation
+- `Candidate` - Output form with frequency and violation profile
 - `InputForm` - Groups candidates by underlying input
-- `Tableau` - Complete OT tableau with constraints and forms
+- `Tableau` - Complete OT tableau
+- `Tableau::parse()` - Tab-delimited file parser
+  - Row 1: Constraint full names
+  - Row 2: Constraint abbreviations
+  - Row 3+: Input, Output, Frequency, Violations
+- Tests for all parsing functionality (7 tests)
 
-### Parsing
+### `src/rcd.rs` (270+ lines)
+Recursive Constraint Demotion algorithm:
+- `RCDResult` - Constraint strata and success flag
+- `Tableau::run_rcd()` - Main RCD algorithm
+  - Identifies winner-loser pairs
+  - Iteratively ranks constraints into strata
+  - Non-demotable constraints rank high
+  - Handles ties (unresolved pairs)
+- Console logging for WASM debugging
+- Tests for RCD algorithm (1 test)
 
-- `Tableau::parse()` - Parses tab-delimited OT tableau files
-  - Handles variable whitespace
-  - Filters empty columns
-  - Validates structure
+## Design Principles
 
-### Exports to JavaScript
-
-- `parse_tableau(text)` - Returns a Tableau object for JavaScript to format and display
+- **Separation of concerns**: Parsing, algorithm, and API are separate modules
+- **Tests live with code**: Each module has its own test section
+- **WASM-first**: Debug logging only for WASM builds (not test builds)
+- **Public fields**: Internal fields are `pub(crate)` for module access
 
 ## Testing
 
