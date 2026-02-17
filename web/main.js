@@ -1,5 +1,5 @@
 // Import the WASM module
-import init, { parse_tableau } from './pkg/ot_soft.js';
+import init, { parse_tableau, run_rcd } from './pkg/ot_soft.js';
 
 // Tiny example tableau data (loaded from examples/tiny/input.txt)
 const TINY_EXAMPLE = `			*No Onset	*Coda	Max(t)	Dep(?)
@@ -13,6 +13,10 @@ at	?a	1			1	1
 	a	0	1		1
 	at	0	1	1
 `;
+
+// Store current tableau and text globally
+let currentTableau = null;
+let currentTableauText = null;
 
 async function run() {
     try {
@@ -37,6 +41,11 @@ async function run() {
             parseAndDisplay(TINY_EXAMPLE);
         });
 
+        // Set up "Run RCD" button
+        document.getElementById('runRcdButton').addEventListener('click', () => {
+            runRcdAnalysis();
+        });
+
         console.log('OT-Soft WebAssembly module loaded successfully');
     } catch (err) {
         console.error('Failed to load WASM module:', err);
@@ -49,12 +58,21 @@ async function run() {
 function parseAndDisplay(text) {
     try {
         const tableau = parse_tableau(text);
+        currentTableau = tableau;
+        currentTableauText = text;
+
         const html = formatTableauAsHTML(tableau);
-        document.getElementById('outputSection').style.display = 'block';
-        document.getElementById('output').innerHTML = html;
+        document.getElementById('tableauSection').style.display = 'block';
+        document.getElementById('tableauOutput').innerHTML = html;
+
+        // Show RCD section and hide previous results
+        document.getElementById('rcdSection').style.display = 'block';
+        document.getElementById('rcdOutput').style.display = 'none';
+        document.getElementById('rcdOutput').innerHTML = '';
     } catch (err) {
-        document.getElementById('outputSection').style.display = 'block';
-        document.getElementById('output').textContent = 'Error parsing tableau:\n\n' + err;
+        document.getElementById('tableauSection').style.display = 'block';
+        document.getElementById('tableauOutput').textContent = 'Error parsing tableau:\n\n' + err;
+        document.getElementById('rcdSection').style.display = 'none';
         console.error('Parse error:', err);
     }
 }
@@ -130,6 +148,80 @@ function formatTableauAsHTML(tableau) {
 
     html += "</table>\n";
     return html;
+}
+
+function runRcdAnalysis() {
+    if (!currentTableauText) {
+        alert('Please load a tableau file first');
+        return;
+    }
+
+    try {
+        const result = run_rcd(currentTableauText);
+        displayRcdResults(result);
+    } catch (err) {
+        console.error('RCD error:', err);
+        document.getElementById('rcdOutput').style.display = 'block';
+        document.getElementById('rcdOutput').innerHTML = `
+            <div class="rcd-status failure">
+                Error running RCD: ${err}
+            </div>
+        `;
+    }
+}
+
+function displayRcdResults(result) {
+    const outputDiv = document.getElementById('rcdOutput');
+    outputDiv.style.display = 'block';
+
+    let html = '<div class="rcd-results">';
+
+    // Status
+    if (result.success()) {
+        html += '<div class="rcd-status success">✓ A ranking was found that generates the correct outputs</div>';
+    } else {
+        html += '<div class="rcd-status failure">✗ Failed to find a valid ranking</div>';
+    }
+
+    // Group constraints by stratum
+    const numStrata = result.num_strata();
+    const constraintCount = currentTableau.constraint_count();
+
+    const strata = [];
+    for (let s = 1; s <= numStrata; s++) {
+        strata.push([]);
+    }
+
+    for (let i = 0; i < constraintCount; i++) {
+        const stratum = result.get_stratum(i);
+        if (stratum && stratum >= 1 && stratum <= numStrata) {
+            const constraint = currentTableau.get_constraint(i);
+            strata[stratum - 1].push({
+                abbrev: constraint.abbrev,
+                fullName: constraint.full_name
+            });
+        }
+    }
+
+    // Display strata
+    for (let s = 0; s < numStrata; s++) {
+        html += '<div class="stratum">';
+        html += `<div class="stratum-header">Stratum ${s + 1}</div>`;
+        html += '<div class="constraint-list">';
+
+        for (const constraint of strata[s]) {
+            html += '<div class="constraint-item">';
+            html += `<span class="abbrev">${escapeHtml(constraint.abbrev)}</span>`;
+            html += `<span class="full-name">${escapeHtml(constraint.fullName)}</span>`;
+            html += '</div>';
+        }
+
+        html += '</div>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    outputDiv.innerHTML = html;
 }
 
 run();

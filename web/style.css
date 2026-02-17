@@ -108,14 +108,22 @@ input[type="file"]::-webkit-file-upload-button:hover {
     background: #2980b9;
 }
 
-.output-section {
+.output-section,
+.rcd-section {
     margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
 }
 
-.output-section h2 {
+.output-section h2,
+.rcd-section h2 {
     color: #2c3e50;
     font-size: 20px;
     margin-bottom: 15px;
+}
+
+.rcd-section button {
+    margin-bottom: 20px;
 }
 
 #output {
@@ -195,4 +203,67 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 .data-row:hover .input-cell {
     background: #f0f5fa !important;
+}
+
+/* RCD Results */
+.rcd-results {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 15px;
+}
+
+.rcd-status {
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.rcd-status.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.rcd-status.failure {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.stratum {
+    margin-bottom: 20px;
+}
+
+.stratum-header {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.constraint-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.constraint-item {
+    background: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+}
+
+.constraint-item .abbrev {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.constraint-item .full-name {
+    color: #7f8c8d;
+    margin-left: 8px;
 }
