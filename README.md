@@ -14,27 +14,34 @@ A modern web-based linguistic analysis tool, ported from VB6 to Rust/WebAssembly
 
 - [Rust](https://rustup.rs/) (latest stable)
 - [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
+- Python 3 (for development server)
 
 Install wasm-pack if you haven't already:
 ```bash
 curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
-### Building
+### Quick Start
 
-1. Build the Rust code to WebAssembly:
+Build and run the development server:
 ```bash
-cd rust
-wasm-pack build --target web --out-dir ../web/pkg
+make dev
 ```
 
-2. Serve the web interface:
-```bash
-cd ../web
-python3 -m http.server 8000
-```
+Then open http://localhost:8000 in your browser
 
-3. Open http://localhost:8000 in your browser
+### Available Commands
+
+```bash
+make help     # Show all available commands
+make build    # Build Rust to WebAssembly
+make test     # Run Rust tests
+make serve    # Start development server
+make dev      # Build and serve (one command)
+make clean    # Clean build artifacts
+make check    # Check Rust code without building
+make fmt      # Format Rust code
+```
 
 ## Current Status
 
@@ -67,20 +74,30 @@ Row 3+: Input form, candidate form, violation counts...
 
 Test the Rust parsing logic:
 ```bash
-cd rust
-cargo test
+make test
 ```
 
 All tests should pass before committing changes.
 
-### Rebuilding
+### Development Workflow
 
-After making changes to the Rust code, rebuild with:
+1. Make changes to Rust code in `rust/src/`
+2. Rebuild: `make build`
+3. Refresh browser to see changes
+
+Or use one command:
 ```bash
-cd rust && PATH="$HOME/.cargo/bin:$PATH" wasm-pack build --target web --out-dir ../web/pkg
+make dev
 ```
 
-The web interface will automatically pick up the changes on refresh.
+This builds and starts the server in one step.
+
+### Code Quality
+
+```bash
+make check   # Quick syntax check without building
+make fmt     # Auto-format Rust code
+```
 
 ## Principles
 
