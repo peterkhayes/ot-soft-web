@@ -1,0 +1,766 @@
+[Root]
+Most Recent Package=SetupOTSoft2.3.3
+
+
+[Package|SetupMaxEntOTSoft|Root]
+SubWizProgID=PDWizard.SetupPkgSubWiz
+BuildFolder=C:\AO\OTSoft\Source\2Point3\Distribute
+
+[Package|SetupMaxEntOTSoft|Configure DAO ISAMs]
+Applicable=No
+
+[Package|SetupMaxEntOTSoft|Configure DAO ODBC]
+JetWorkspace=
+ODBCDirect=
+
+[Package|SetupMaxEntOTSoft|Files Found]
+OTSoftManual.pdf=C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf
+
+[Package|SetupMaxEntOTSoft|Files Released]
+
+[Package|SetupMaxEntOTSoft|Missing Dependency Information]
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=
+
+[Package|SetupMaxEntOTSoft|Out-of-Date Dependency Information]
+C:\WINDOWS\system32\COMDLG32.OCX=
+
+[Package|SetupMaxEntOTSoft|Files Added]
+c:\ao\otsoft\source\2point3\otsoftmanual.pdf=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.xls=
+c:\ao\otsoft\source\2point3\softwarelocations.ini=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.txt=
+c:\ao\otsoft\source\2point3\recentlyopenedfiles.txt=
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=
+
+[Package|SetupMaxEntOTSoft|Files Removed]
+
+[Package|SetupMaxEntOTSoft|Files In Project]
+C:\WINDOWS\system32\MSVBVM60.DLL=Yes
+C:\WINDOWS\system32\oleaut32.dll=Yes
+C:\WINDOWS\system32\olepro32.dll=Yes
+C:\WINDOWS\system32\asycfilt.dll=Yes
+C:\WINDOWS\system32\stdole2.tlb=Yes
+C:\Program Files\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=Yes
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=Yes
+C:\WINDOWS\system32\COMDLG32.OCX=Yes
+C:\Program Files\VB98\Wizards\PDWizard\SETUP.EXE=Yes
+C:\Program Files\VB98\Wizards\PDWizard\SETUP1.EXE=Yes
+C:\WINDOWS\system32\VB6STKIT.DLL=Yes
+C:\Program Files\VB98\Wizards\PDWizard\ST6UNST.EXE=Yes
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=Yes
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=Yes
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=Yes
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=Yes
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=Yes
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=Yes
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=Yes
+
+[Package|SetupMaxEntOTSoft|Configure Registry Files]
+Applicable=No
+
+[Package|SetupMaxEntOTSoft|Configure Remote Servers]
+Applicable=No
+
+[Package|SetupMaxEntOTSoft|Install Locations]
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=$(AppPath)
+C:\WINDOWS\system32\MSVBVM60.DLL=$(WinSysPathSysFile)
+C:\WINDOWS\system32\oleaut32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\olepro32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\asycfilt.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\stdole2.tlb=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=$(WinSysPath)
+C:\WINDOWS\system32\COMDLG32.OCX=$(WinSysPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\WINDOWS\system32\VB6STKIT.DLL=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=$(AppPath)
+
+[Package|SetupMaxEntOTSoft|Configure Shared Files]
+Applicable=Yes
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=No
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=No
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=No
+
+[Package|SetupMaxEntOTSoft|Distribution]
+Type=single
+Size=
+Title=OTSoft
+
+[Package|SetupMaxEntOTSoft|IconGroups]
+Group0=OTSoft
+PrivateGroup0=True
+Parent0=$(Programs)
+
+[Package|SetupMaxEntOTSoft|OTSoft]
+Icon1=MaxentOTtsoft.exe
+Title1=OTSoft
+StartIn1=$(AppPath)
+Key1=Icon1
+Icon2=OTtsoft2.3.exe
+Title2=OTSoft2.3
+StartIn2=$(AppPath)
+Key2=Icon2
+
+[Package|SetupMaxEntOTSoft|Package]
+PackageFolder=C:\AO\OTSoft\Source\2Point3\Distribute
+ProjectFolder=C:\AO\OTSoft\Source\2Point3
+ServerSideCab=
+File1=C:\AO\OTSoft\Source\2Point3\Distribute\setup.exe
+File2=C:\AO\OTSoft\Source\2Point3\Distribute\Setup.Lst
+File3=C:\AO\OTSoft\Source\2Point3\Distribute\OTtsoft2.3.CAB
+Handler1=PDWizard.FolderDplySubWiz
+Handler2=PDWizard.WebPostDplySubWiz
+
+
+[Package|SetupOTSoft2.3.1|Root]
+SubWizProgID=PDWizard.SetupPkgSubWiz
+BuildFolder=C:\AO\OTSoft\Source\2Point3Point1\Distribute
+
+[Package|SetupOTSoft2.3.1|Configure DAO ISAMs]
+Applicable=No
+
+[Package|SetupOTSoft2.3.1|Configure DAO ODBC]
+JetWorkspace=
+ODBCDirect=
+
+[Package|SetupOTSoft2.3.1|Files Found]
+OTSoftManual.pdf=C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf
+AboutIcon.ico=C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico
+
+[Package|SetupOTSoft2.3.1|Files Released]
+
+[Package|SetupOTSoft2.3.1|Missing Dependency Information]
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=
+
+[Package|SetupOTSoft2.3.1|Out-of-Date Dependency Information]
+C:\WINDOWS\system32\COMDLG32.OCX=
+
+[Package|SetupOTSoft2.3.1|Files Added]
+c:\ao\otsoft\source\2point3\otsoftmanual.pdf=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.xls=
+c:\ao\otsoft\source\2point3\softwarelocations.ini=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.txt=
+c:\ao\otsoft\source\2point3\recentlyopenedfiles.txt=
+c:\ao\otsoft\source\2point3\rankingprobabilities.txt=
+abouticon.ico=
+otsoftauxiliarysoftwarelocations.txt=
+otsoftrememberuserchoices.txt=
+otsoftmanual_2.3.1.pdf=
+otsoftfileconversionforword6.dot=
+otsoftfileconversionforword97.dot=
+otsoftfileconversionforword2000.dot=
+
+[Package|SetupOTSoft2.3.1|Files Removed]
+c:\ao\otsoft\source\2point3\rankingprobabilities.txt=
+c:\ao\otsoft\source\2point3\softwarelocations.ini=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.txt=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.xls=
+
+[Package|SetupOTSoft2.3.1|Files In Project]
+C:\WINDOWS\system32\MSVBVM60.DLL=Yes
+C:\WINDOWS\system32\oleaut32.dll=Yes
+C:\WINDOWS\system32\olepro32.dll=Yes
+C:\WINDOWS\system32\asycfilt.dll=Yes
+C:\WINDOWS\system32\stdole2.tlb=Yes
+C:\Program Files\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=Yes
+C:\WINDOWS\system32\COMDLG32.OCX=Yes
+C:\Program Files\VB98\Wizards\PDWizard\SETUP.EXE=Yes
+C:\Program Files\VB98\Wizards\PDWizard\SETUP1.EXE=Yes
+C:\WINDOWS\system32\VB6STKIT.DLL=Yes
+C:\Program Files\VB98\Wizards\PDWizard\ST6UNST.EXE=Yes
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=Yes
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=Yes
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=No
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTtsoft2.3.1.exe=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftRememberUserChoices.txt=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftManual_2.3.1.pdf=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord6.dot=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord97.dot=Yes
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord2000.dot=Yes
+
+[Package|SetupOTSoft2.3.1|Configure Registry Files]
+Applicable=No
+
+[Package|SetupOTSoft2.3.1|Configure Remote Servers]
+Applicable=No
+
+[Package|SetupOTSoft2.3.1|Install Locations]
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=$(AppPath)
+C:\WINDOWS\system32\MSVBVM60.DLL=$(WinSysPathSysFile)
+C:\WINDOWS\system32\oleaut32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\olepro32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\asycfilt.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\stdole2.tlb=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=$(WinSysPath)
+C:\WINDOWS\system32\COMDLG32.OCX=$(WinSysPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\WINDOWS\system32\VB6STKIT.DLL=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTtsoft2.3.1.exe=$(AppPath)
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=$(WinSysPath)
+C:\AO\OTSoft\Source\2Point3Point1\AboutIcon.ico=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftManual_2.3.1.pdf=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTtsoft2.3.1.exe=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftManual_2.3.1.pdf=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord2000.dot=$(AppPath)
+
+[Package|SetupOTSoft2.3.1|Configure Shared Files]
+Applicable=Yes
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=No
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=No
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTtsoft2.3.1.exe=No
+C:\AO\OTSoft\Source\2Point3Point1\AboutIcon.ico=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftRememberUserChoices.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftManual_2.3.1.pdf=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord6.dot=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord97.dot=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord2000.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTtsoft2.3.1.exe=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftRememberUserChoices.txt=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftManual_2.3.1.pdf=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord6.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord97.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord2000.dot=No
+
+[Package|SetupOTSoft2.3.1|Distribution]
+Type=single
+Size=
+Title=OTSoft 2.3.1
+
+[Package|SetupOTSoft2.3.1|IconGroups]
+Group0=OTSoft
+PrivateGroup0=True
+Parent0=$(Programs)
+
+[Package|SetupOTSoft2.3.1|OTSoft]
+Icon1=MaxentOTtsoft.exe
+Title1=OTSoft
+StartIn1=$(AppPath)
+Key1=Icon1
+Icon2=OTtsoft2.3.exe
+Title2=OTSoft2.3
+StartIn2=$(AppPath)
+Key2=Icon2
+
+[Package|SetupOTSoft2.3.1|Package]
+PackageFolder=C:\AO\OTSoft\Source\2Point3Point1\Distribute
+ProjectFolder=C:\AO\Dropbox\My Dropbox\2Point3Point1
+ServerSideCab=
+File1=C:\AO\OTSoft\Source\2Point3Point1\Distribute\setup.exe
+File2=C:\AO\OTSoft\Source\2Point3Point1\Distribute\Setup.Lst
+File3=C:\AO\OTSoft\Source\2Point3Point1\Distribute\OTtsoft2.3.1.CAB
+Handler1=PDWizard.FolderDplySubWiz
+Handler2=PDWizard.WebPostDplySubWiz
+
+
+[Package|SetupOTSoft2.3.2|Root]
+SubWizProgID=PDWizard.SetupPkgSubWiz
+BuildFolder=C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\Distribute
+
+[Package|SetupOTSoft2.3.2|Configure DAO ISAMs]
+Applicable=No
+
+[Package|SetupOTSoft2.3.2|Configure DAO ODBC]
+JetWorkspace=
+ODBCDirect=
+
+[Package|SetupOTSoft2.3.2|Files Found]
+AboutIcon.ico=C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico
+TinyIllustrativeFile.xls=C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.xls
+
+[Package|SetupOTSoft2.3.2|Files Released]
+otsoftmanual_2.3.1.pdf=
+rankingprobabilities.txt=
+recentlyopenedfiles.txt=
+OTSoftManual.pdf=
+
+[Package|SetupOTSoft2.3.2|Missing Dependency Information]
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=
+
+[Package|SetupOTSoft2.3.2|Out-of-Date Dependency Information]
+C:\WINDOWS\system32\COMDLG32.OCX=
+
+[Package|SetupOTSoft2.3.2|Files Added]
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\tinyillustrativefile.xls=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\softwarelocations.ini=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\tinyillustrativefile.txt=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\abouticon.ico=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\otsoftauxiliarysoftwarelocations.txt=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\otsoftrememberuserchoices.txt=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\otsoftfileconversionforword6.dot=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\otsoftfileconversionforword97.dot=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\otsoftfileconversionforword2000.dot=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\otsoftmanual_2.3.2.pdf=
+c:\ao\dropbox\my dropbox\ao\otsoft\source\2point3point2\otsoftrecentlyopenedfiles.txt=
+
+[Package|SetupOTSoft2.3.2|Files Removed]
+c:\ao\otsoft\source\2point3\rankingprobabilities.txt=
+c:\ao\otsoft\source\2point3\softwarelocations.ini=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.txt=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.xls=
+
+[Package|SetupOTSoft2.3.2|Files In Project]
+C:\WINDOWS\system32\MSVBVM60.DLL=Yes
+C:\WINDOWS\system32\oleaut32.dll=Yes
+C:\WINDOWS\system32\olepro32.dll=Yes
+C:\WINDOWS\system32\asycfilt.dll=Yes
+C:\WINDOWS\system32\stdole2.tlb=Yes
+C:\Program Files\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=Yes
+C:\WINDOWS\system32\COMDLG32.OCX=Yes
+C:\Program Files\VB98\Wizards\PDWizard\SETUP.EXE=Yes
+C:\Program Files\VB98\Wizards\PDWizard\SETUP1.EXE=Yes
+C:\WINDOWS\system32\VB6STKIT.DLL=Yes
+C:\Program Files\VB98\Wizards\PDWizard\ST6UNST.EXE=Yes
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTtsoft2.3.2.exe=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.xls=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\SoftwareLocations.ini=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.txt=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\AboutIcon.ico=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftAuxiliarySoftwareLocations.txt=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRememberUserChoices.txt=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord6.dot=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord97.dot=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord2000.dot=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftManual_2.3.2.pdf=Yes
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRecentlyOpenedFiles.txt=Yes
+
+[Package|SetupOTSoft2.3.2|Configure Registry Files]
+Applicable=No
+
+[Package|SetupOTSoft2.3.2|Configure Remote Servers]
+Applicable=No
+
+[Package|SetupOTSoft2.3.2|Install Locations]
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=$(AppPath)
+C:\WINDOWS\system32\MSVBVM60.DLL=$(WinSysPathSysFile)
+C:\WINDOWS\system32\oleaut32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\olepro32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\asycfilt.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\stdole2.tlb=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=$(WinSysPath)
+C:\WINDOWS\system32\COMDLG32.OCX=$(WinSysPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\WINDOWS\system32\VB6STKIT.DLL=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTtsoft2.3.1.exe=$(AppPath)
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=$(WinSysPath)
+C:\AO\OTSoft\Source\2Point3Point1\AboutIcon.ico=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftManual_2.3.1.pdf=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTtsoft2.3.1.exe=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftManual_2.3.1.pdf=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTtsoft2.3.2.exe=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\SoftwareLocations.ini=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\AboutIcon.ico=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftManual_2.3.2.pdf=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRecentlyOpenedFiles.txt=$(AppPath)
+
+[Package|SetupOTSoft2.3.2|Configure Shared Files]
+Applicable=Yes
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=No
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=No
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTtsoft2.3.1.exe=No
+C:\AO\OTSoft\Source\2Point3Point1\AboutIcon.ico=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftRememberUserChoices.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftManual_2.3.1.pdf=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord6.dot=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord97.dot=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord2000.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTtsoft2.3.1.exe=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftRememberUserChoices.txt=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftManual_2.3.1.pdf=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord6.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord97.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord2000.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTtsoft2.3.2.exe=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.xls=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\SoftwareLocations.ini=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.txt=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\AboutIcon.ico=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRememberUserChoices.txt=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord6.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord97.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord2000.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftManual_2.3.2.pdf=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRecentlyOpenedFiles.txt=No
+
+[Package|SetupOTSoft2.3.2|Distribution]
+Type=single
+Size=
+Title=OTSoft 2.3.2
+
+[Package|SetupOTSoft2.3.2|IconGroups]
+Group0=OTSoft
+PrivateGroup0=True
+Parent0=$(Programs)
+
+[Package|SetupOTSoft2.3.2|OTSoft]
+Icon1=MaxentOTtsoft.exe
+Title1=OTSoft
+StartIn1=$(AppPath)
+Key1=Icon1
+Icon2=OTtsoft2.3.exe
+Title2=OTSoft2.3
+StartIn2=$(AppPath)
+Key2=Icon2
+
+[Package|SetupOTSoft2.3.2|Package]
+PackageFolder=C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\Distribute
+ProjectFolder=C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2
+ServerSideCab=
+File1=C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\Distribute\setup.exe
+File2=C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\Distribute\Setup.Lst
+File3=C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\Distribute\OTtsoft2.3.2.CAB
+Handler1=PDWizard.FolderDplySubWiz
+Handler2=PDWizard.WebPostDplySubWiz
+
+
+[Package|SetupOTSoft2.3.3|Root]
+SubWizProgID=PDWizard.SetupPkgSubWiz
+BuildFolder=C:\Dropbox\AO\OTSoft\Source\2Point3Point3\Distribute
+
+[Package|SetupOTSoft2.3.3|Configure DAO ISAMs]
+Applicable=No
+
+[Package|SetupOTSoft2.3.3|Configure DAO ODBC]
+JetWorkspace=
+ODBCDirect=
+
+[Package|SetupOTSoft2.3.3|Files Found]
+OTSoftAuxiliarySoftwareLocations.txt=C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftAuxiliarySoftwareLocations.txt
+
+[Package|SetupOTSoft2.3.3|Files Released]
+otsoftmanual_2.3.1.pdf=
+rankingprobabilities.txt=
+recentlyopenedfiles.txt=
+OTSoftManual.pdf=
+AboutIcon.ico=
+softwarelocations.ini=
+
+[Package|SetupOTSoft2.3.3|Missing Dependency Information]
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=
+C:\Program Files (x86)\Microsoft Office\OFFICE11\XL5EN32.OLB=
+
+[Package|SetupOTSoft2.3.3|Out-of-Date Dependency Information]
+C:\WINDOWS\system32\COMDLG32.OCX=
+C:\Windows\SysWOW64\COMDLG32.OCX=
+
+[Package|SetupOTSoft2.3.3|Files Added]
+c:\dropbox\ao\otsoft\source\2point3point3\tinyillustrativefile.xls=
+c:\dropbox\ao\otsoft\source\2point3point3\tinyillustrativefile.txt=
+c:\dropbox\ao\otsoft\source\2point3point3\otsoftauxiliarysoftwarelocations.txt=
+c:\dropbox\ao\otsoft\source\2point3point3\otsoftrememberuserchoices.txt=
+c:\dropbox\ao\otsoft\source\2point3point3\otsoftfileconversionforword6.dot=
+c:\dropbox\ao\otsoft\source\2point3point3\otsoftfileconversionforword97.dot=
+c:\dropbox\ao\otsoft\source\2point3point3\otsoftfileconversionforword2000.dot=
+c:\dropbox\ao\otsoft\source\2point3point3\otsoftmanual_2.3.2.pdf=
+c:\dropbox\ao\otsoft\source\2point3point3\otsoftrecentlyopenedfiles.txt=
+
+[Package|SetupOTSoft2.3.3|Files Removed]
+c:\ao\otsoft\source\2point3\rankingprobabilities.txt=
+c:\ao\otsoft\source\2point3\softwarelocations.ini=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.txt=
+c:\ao\otsoft\source\2point3\tinyillustrativefile.xls=
+
+[Package|SetupOTSoft2.3.3|Files In Project]
+C:\WINDOWS\system32\MSVBVM60.DLL=Yes
+C:\WINDOWS\system32\oleaut32.dll=Yes
+C:\WINDOWS\system32\olepro32.dll=Yes
+C:\WINDOWS\system32\asycfilt.dll=Yes
+C:\WINDOWS\system32\stdole2.tlb=Yes
+C:\WINDOWS\system32\VB6STKIT.DLL=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTtsoft2.3.3.exe=Yes
+C:\Program Files (x86)\vb98\Wizards\PDWizard\Redist\COMCAT.DLL=Yes
+C:\Program Files (x86)\Microsoft Office\OFFICE11\XL5EN32.OLB=Yes
+C:\Windows\SysWOW64\COMDLG32.OCX=Yes
+C:\Program Files (x86)\vb98\Wizards\PDWizard\SETUP.EXE=Yes
+C:\Program Files (x86)\vb98\Wizards\PDWizard\SETUP1.EXE=Yes
+C:\Program Files (x86)\vb98\Wizards\PDWizard\ST6UNST.EXE=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\TinyIllustrativeFile.xls=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\TinyIllustrativeFile.txt=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftAuxiliarySoftwareLocations.txt=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftRememberUserChoices.txt=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord6.dot=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord97.dot=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord2000.dot=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftManual_2.3.2.pdf=Yes
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftRecentlyOpenedFiles.txt=Yes
+
+[Package|SetupOTSoft2.3.3|Configure Registry Files]
+Applicable=No
+
+[Package|SetupOTSoft2.3.3|Configure Remote Servers]
+Applicable=No
+
+[Package|SetupOTSoft2.3.3|Install Locations]
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=$(AppPath)
+C:\WINDOWS\system32\MSVBVM60.DLL=$(WinSysPathSysFile)
+C:\WINDOWS\system32\oleaut32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\olepro32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\asycfilt.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\stdole2.tlb=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Office\OFFICE11\XL5EN32.OLB=$(WinSysPath)
+C:\WINDOWS\system32\COMDLG32.OCX=$(WinSysPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Program Files\VB98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\WINDOWS\system32\VB6STKIT.DLL=$(WinSysPathSysFile)
+C:\Program Files\VB98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTtsoft2.3.1.exe=$(AppPath)
+C:\Program Files\Microsoft Office\Office12\XL5EN32.OLB=$(WinSysPath)
+C:\AO\OTSoft\Source\2Point3Point1\AboutIcon.ico=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftManual_2.3.1.pdf=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTtsoft2.3.1.exe=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftManual_2.3.1.pdf=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTtsoft2.3.2.exe=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.xls=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\SoftwareLocations.ini=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\AboutIcon.ico=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftManual_2.3.2.pdf=$(AppPath)
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRecentlyOpenedFiles.txt=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTtsoft2.3.3.exe=$(AppPath)
+C:\Program Files (x86)\vb98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\Program Files (x86)\Microsoft Office\OFFICE11\XL5EN32.OLB=$(WinSysPath)
+C:\Windows\SysWOW64\COMDLG32.OCX=$(WinSysPath)
+C:\Program Files (x86)\vb98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Program Files (x86)\vb98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\Program Files (x86)\vb98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\TinyIllustrativeFile.xls=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\TinyIllustrativeFile.txt=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftAuxiliarySoftwareLocations.txt=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftRememberUserChoices.txt=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord6.dot=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord97.dot=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord2000.dot=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftManual_2.3.2.pdf=$(AppPath)
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftRecentlyOpenedFiles.txt=$(AppPath)
+
+[Package|SetupOTSoft2.3.3|Configure Shared Files]
+Applicable=Yes
+C:\AO\OTSoft\Source\TryMaxEnt\MaxentOTtsoft.exe=No
+C:\AO\OTSoft\Source\TryMaxEnt\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\TryMaxEnt\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\TryMaxEnt\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\TryMaxEnt\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\OTtsoft2.3.exe=No
+C:\AO\OTSoft\Source\2Point3\OTSoftManual.pdf=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.xls=No
+C:\AO\OTSoft\Source\2Point3\SoftwareLocations.ini=No
+C:\AO\OTSoft\Source\2Point3\TinyIllustrativeFile.txt=No
+C:\AO\OTSoft\Source\2Point3\RecentlyOpenedFiles.txt=No
+C:\AO\OTSoft\Source\2Point3\RankingProbabilities.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTtsoft2.3.1.exe=No
+C:\AO\OTSoft\Source\2Point3Point1\AboutIcon.ico=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftRememberUserChoices.txt=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftManual_2.3.1.pdf=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord6.dot=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord97.dot=No
+C:\AO\OTSoft\Source\2Point3Point1\OTSoftFileConversionForWord2000.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTtsoft2.3.1.exe=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\AboutIcon.ico=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftRememberUserChoices.txt=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftManual_2.3.1.pdf=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord6.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord97.dot=No
+C:\AO\Dropbox\My Dropbox\2Point3Point1\OTSoftFileConversionForWord2000.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTtsoft2.3.2.exe=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.xls=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\SoftwareLocations.ini=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\TinyIllustrativeFile.txt=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\AboutIcon.ico=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRememberUserChoices.txt=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord6.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord97.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftFileConversionForWord2000.dot=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftManual_2.3.2.pdf=No
+C:\AO\Dropbox\My Dropbox\AO\OTSoft\Source\2Point3Point2\OTSoftRecentlyOpenedFiles.txt=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTtsoft2.3.3.exe=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\TinyIllustrativeFile.xls=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\TinyIllustrativeFile.txt=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftAuxiliarySoftwareLocations.txt=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftRememberUserChoices.txt=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord6.dot=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord97.dot=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftFileConversionForWord2000.dot=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftManual_2.3.2.pdf=No
+C:\Dropbox\AO\OTSoft\Source\2Point3Point3\OTSoftRecentlyOpenedFiles.txt=No
+
+[Package|SetupOTSoft2.3.3|Distribution]
+Type=single
+Size=
+Title=OTSoft 2.3.3
+
+[Package|SetupOTSoft2.3.3|IconGroups]
+Group0=OTSoft
+PrivateGroup0=True
+Parent0=$(Programs)
+
+[Package|SetupOTSoft2.3.3|OTSoft]
+Icon1=MaxentOTtsoft.exe
+Title1=OTSoft
+StartIn1=$(AppPath)
+Key1=Icon1
+Icon2=OTtsoft2.3.exe
+Title2=OTSoft2.3
+StartIn2=$(AppPath)
+Key2=Icon2
+
+[Package|SetupOTSoft2.3.3|Package]
+PackageFolder=C:\Dropbox\AO\OTSoft\Source\2Point3Point3\Distribute
+ProjectFolder=C:\Dropbox\AO\OTSoft\Source\2Point3Point3
+ServerSideCab=
+File1=C:\Dropbox\AO\OTSoft\Source\2Point3Point3\Distribute\setup.exe
+File2=C:\Dropbox\AO\OTSoft\Source\2Point3Point3\Distribute\Setup.Lst
+File3=C:\Dropbox\AO\OTSoft\Source\2Point3Point3\Distribute\OTtsoft2.3.3.CAB
+Handler1=PDWizard.FolderDplySubWiz
+Handler2=PDWizard.WebPostDplySubWiz

@@ -1,0 +1,70 @@
+Last file read:  Name  (e.g. French)
+AnttilaFinnishGenitivePlurals
+Last file read:  suffix (.txt/.in)
+.xlsx
+Last file read:  path (e.g. c:\program files\otsoft\)
+C:\Dropbox\AO\OTSoft\Input\aaaTestingSuite\FinnishGenitivePluralsAnttila\
+last ranking algorithm used (constraint demotion/low faith/gla):
+Maximum entropy
+Diagnostics if ranking fails (yes/no):
+no
+Ranking argumentation(yes/no):
+yes
+Use Most Informative Basis (yes/no):
+no
+Show details of argumentation (yes/no):
+no
+Include illustrative minitableaux (yes/no):
+yes
+Include rankings in factorial typology printout (yes/no):
+yes
+Include tableaux in factorial typology printout (yes/no):
+no
+Switch axes for all crowded tableaux (all/where needed/never):
+never
+sort candidates in tableaux by harmony
+yes
+Word processor for examining results (pcwrite/internal/custom):
+internal
+Font for printing candidates (normal/IPA):
+normal
+Delete .tmp files on exit (yes/no):
+no
+Include summary file for factorial typology (yes/no):
+no
+Compact file for factorial typology, collapsing neutralized outputs (yes/no):
+no
+Constraint names in small caps (yes/no):
+no
+Times to go through forms
+ 1000000 
+Initial plasticity
+ 0.0001 
+Final plasticity
+ 0.0001 
+Number of times to test grammar
+ 100000 
+Include Tableaux in GLA Output (yes/no)
+no
+Input forms to GLA in exact proportion to their frequency (yes/no)
+no
+Use the Magri update rule
+no
+For NHG, add noise to candidates
+no
+For NHG, negative weights ok
+no
+For NHG, apply noise to cells, not constraints
+no
+For NHG, apply noise to cells without violations
+no
+For NHG, apply noise after multiplication by violations
+no
+Exponential NHG
+no
+resolve ties by dropping the trial
+yes
+Frequency at which learning state should be reported
+ 200 
+shading color for html output (use normal html color codes, i.e. six-digit hexadecimal)
+

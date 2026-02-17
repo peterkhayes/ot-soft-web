@@ -1,0 +1,98 @@
+Results of Applying Recursive Constraint Demotion to TinyIllustrativeFile.txt
+
+
+2-16-2026, 8:39 p.m.
+
+OTSoft 2.7, release date 2/1/2026
+
+
+1. Result
+
+A ranking was found that generates the correct outputs.
+
+   Stratum #1
+      *No Onset                                 *NoOns
+      *Coda                                     *Coda
+   Stratum #2
+      Max(t)                                    Max
+      Dep(?)                                    Dep
+
+2. Tableaux
+
+
+/a/: 
+    *NoOns¦*Coda|Max¦Dep
+>?a       ¦     |   ¦1  
+ a    1!  ¦     |   ¦   
+
+
+/tat/: 
+     *NoOns¦*Coda|Max¦Dep
+>ta        ¦     |1  ¦   
+ tat       ¦ 1!  |   ¦   
+
+
+/at/: 
+     *NoOns¦*Coda|Max¦Dep
+>?a        ¦     |1  ¦1  
+ ?at       ¦ 1!  |   ¦1  
+ a     1!  ¦     |1  ¦   
+ at    1!  ¦ 1   |   ¦   
+
+
+3. Status of Proposed Constraints:  Necessary or Unnecessary
+
+   *NoOns  Necessary
+   *Coda   Necessary
+   Max     Not necessary (but included to show Faithfulness violations
+              of a winning candidate)
+   Dep     Not necessary (but included to show Faithfulness violations
+              of a winning candidate)
+
+A check has determined that the grammar will still work even if the 
+constraints marked above as unnecessary are removed en masse.
+
+
+4. Ranking Arguments, based on the Fusional Reduction Algorithm
+
+This run sought to obtain the Skeletal Basis, intended to keep each final ranking argument as pithy as possible.
+
+
+
+The final rankings obtained are as follows:
+
+      *Coda >> Max
+      *NoOns >> Dep
+
+
+5. Mini-Tableaux
+
+The following small tableaux may be useful in presenting ranking arguments. 
+They include all winner-rival comparisons in which there is just one 
+winner-preferring constraint and at least one loser-preferring constraint.  
+Constraints not violated by either candidate are omitted.
+
+
+/a/: 
+    *NoOns|Dep
+>?a       |1  
+ a    1   |   
+
+
+/tat/: 
+     *Coda|Max
+>ta       |1  
+ tat  1   |   
+
+
+/at/: 
+     *Coda|Max¦Dep
+>?a       |1  ¦1  
+ ?at  1   |   ¦1  
+
+
+/at/: 
+    *NoOns|Max¦Dep
+>?a       |1  ¦1  
+ a    1   |1  ¦   
+

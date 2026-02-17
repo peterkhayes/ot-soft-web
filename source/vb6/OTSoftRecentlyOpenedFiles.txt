@@ -1,0 +1,6 @@
+C:\Dropbox\AO\OTSoft\Input\aaaTestingSuite\FinnishGenitivePluralsAnttila\AnttilaFinnishGenitivePlurals.xlsx
+C:\Dropbox\AT\201A\Homeworks\IlokanoHiatusResolution\2023\IlokanoBHAnswer.xlsx
+C:\Dropbox\AO\OTSoft\Input\aaaTestingSuite\AxinincaCampaMcCarthyPrince1993\AxinincaCampaMcCarthyPrince1993.xlsx
+C:\Dropbox\AO\OTSoft\Input\aaaSimpleCasesForDiagnosisAndDebugging\ConstraintsWithIdenticalViolations\CandidatesWithIdenticalViolations.xlsx
+C:\Dropbox\AO\OTSoft\Input\aaaTestingSuite\PseudoKoreanPhonotacticsWithRichBase\PseudoKoreanPhonotacticsWithRichBase.xlsx
+C:\Dropbox\AO\OTSoft\Input\aaaTestingSuite\VerySimpleStochastic\VerySimpleStochastic.xlsx

@@ -1,0 +1,15 @@
+Type in the correct locations of the programs shown.
+
+You can download dot.exe free from http://www.graphviz.org/
+
+Location of your word processor: 
+C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE
+
+Location of Excel or other spreadsheet program:
+C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE
+
+Location of Paint or other graphics editing program:
+C:\Windows\System32\mspaint.exe
+
+Location of dot.exe, part of ATT GraphViz software:
+C:\Program Files\Graphviz\bin\dot.exe

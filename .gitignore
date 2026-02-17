@@ -1,0 +1,24 @@
+# Rust
+rust/target/
+rust/Cargo.lock
+
+# WebAssembly output
+web/pkg/
+
+# Node modules (if using npm for development)
+node_modules/
+
+# Build artifacts
+*.wasm
+*.wasm.map
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
