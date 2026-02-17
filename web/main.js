@@ -158,6 +158,11 @@ function runRcdAnalysis() {
 
     try {
         const result = run_rcd(currentTableauText);
+        console.log('RCD result:', {
+            success: result.success(),
+            num_strata: result.num_strata(),
+            strata: [...Array(currentTableau.constraint_count())].map((_, i) => result.get_stratum(i))
+        });
         displayRcdResults(result);
     } catch (err) {
         console.error('RCD error:', err);
@@ -212,7 +217,7 @@ function displayRcdResults(result) {
         for (const constraint of strata[s]) {
             html += '<div class="constraint-item">';
             html += `<span class="abbrev">${escapeHtml(constraint.abbrev)}</span>`;
-            html += `<span class="full-name">${escapeHtml(constraint.fullName)}</span>`;
+            html += `<span class="full-name">(${escapeHtml(constraint.fullName)})</span>`;
             html += '</div>';
         }
 
