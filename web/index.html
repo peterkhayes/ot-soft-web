@@ -3,42 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OT-Soft</title>
+    <title>OT-Soft — Optimality Theory Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="grain-overlay"></div>
+
     <div class="container">
-        <header>
-            <h1>OT-Soft</h1>
-            <p>Linguistic Analysis Tool</p>
+        <header class="masthead">
+            <div class="header-ornament"></div>
+            <h1 class="site-title">OT-Soft</h1>
+            <p class="site-subtitle">Optimality Theory Analysis</p>
+            <div class="header-divider"></div>
         </header>
 
         <main>
-            <div class="status" id="status">Loading WebAssembly module...</div>
+            <div class="status-message" id="status">
+                <div class="loading-indicator"></div>
+                <span>Initializing analysis environment...</span>
+            </div>
 
             <div class="content" id="content" style="display: none;">
-                <section class="file-input">
-                    <h2>Load Tableau File</h2>
-                    <p>Load a tab-delimited OT tableau file (.txt)</p>
-                    <input type="file" id="fileInput" accept=".txt">
-                    <button id="loadTinyButton">Load Tiny Example</button>
-                </section>
-
-                <section class="output-section" id="tableauSection" style="display: none;">
-                    <h2>Tableau</h2>
-                    <div id="tableauOutput"></div>
-                </section>
-
-                <section class="rcd-section" id="rcdSection" style="display: none;">
-                    <h2>Constraint Ranking</h2>
-                    <div class="button-group">
-                        <button id="runRcdButton">Run RCD Algorithm</button>
-                        <button id="downloadRcdButton" style="display: none;">Download Results</button>
+                <section class="input-panel">
+                    <div class="panel-header">
+                        <h2>Tableau Input</h2>
+                        <span class="panel-number">01</span>
                     </div>
+                    <p class="input-instruction">Load a tab-delimited OT tableau file or begin with an example</p>
+
+                    <div class="file-upload-area">
+                        <input type="file" id="fileInput" accept=".txt" class="file-input-hidden">
+                        <label for="fileInput" class="file-upload-label">
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span class="upload-text">Choose file</span>
+                            <span class="upload-hint">or drag and drop</span>
+                        </label>
+                    </div>
+
+                    <div class="divider-with-text">
+                        <span>or</span>
+                    </div>
+
+                    <button id="loadTinyButton" class="secondary-button">
+                        Load Example Tableau
+                    </button>
+                </section>
+
+                <section class="output-panel" id="tableauSection" style="display: none;">
+                    <div class="panel-header">
+                        <h2>Tableau Analysis</h2>
+                        <span class="panel-number">02</span>
+                    </div>
+                    <div class="tableau-container" id="tableauOutput"></div>
+                </section>
+
+                <section class="analysis-panel" id="rcdSection" style="display: none;">
+                    <div class="panel-header">
+                        <h2>Constraint Ranking</h2>
+                        <span class="panel-number">03</span>
+                    </div>
+
+                    <div class="action-bar">
+                        <button id="runRcdButton" class="primary-button">
+                            <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Run RCD Algorithm
+                        </button>
+                        <button id="downloadRcdButton" class="download-button" style="display: none;">
+                            <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Results
+                        </button>
+                    </div>
+
                     <div id="rcdOutput" style="display: none;"></div>
                 </section>
             </div>
         </main>
+
+        <footer class="site-footer">
+            <div class="footer-divider"></div>
+            <p>Recursive Constraint Demotion · Version 2.7</p>
+        </footer>
     </div>
 
     <script type="module" src="main.js"></script>

@@ -7,6 +7,30 @@
 use wasm_bindgen::prelude::*;
 use crate::tableau::Tableau;
 
+/// Classification of constraint necessity
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConstraintNecessity {
+    Necessary,
+    UnnecessaryButShownForFaithfulness,
+    CompletelyUnnecessary,
+}
+
+/// A ranking argument showing one constraint must rank above another
+#[derive(Debug, Clone)]
+pub struct RankingArgument {
+    pub higher_constraint: usize,
+    pub lower_constraint: usize,
+}
+
+/// A mini-tableau showing a simplified winner-loser comparison
+#[derive(Debug, Clone)]
+pub struct MiniTableau {
+    pub form_index: usize,
+    pub winner_index: usize,
+    pub loser_index: usize,
+    pub included_constraints: Vec<usize>,
+}
+
 /// Result of running RCD algorithm
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
@@ -17,6 +41,15 @@ pub struct RCDResult {
     num_strata: usize,
     /// Whether a valid ranking was found
     success: bool,
+    /// Necessity classification for each constraint (not exposed to WASM)
+    #[wasm_bindgen(skip)]
+    constraint_necessity: Vec<ConstraintNecessity>,
+    /// Ranking arguments derived from strata (not exposed to WASM)
+    #[wasm_bindgen(skip)]
+    ranking_arguments: Vec<RankingArgument>,
+    /// Mini-tableaux for ranking arguments (not exposed to WASM)
+    #[wasm_bindgen(skip)]
+    mini_tableaux: Vec<MiniTableau>,
 }
 
 #[wasm_bindgen]
@@ -35,6 +68,149 @@ impl RCDResult {
 }
 
 impl RCDResult {
+    /// Compute ranking arguments based on constraint strata
+    fn compute_ranking_arguments(&self, tableau: &Tableau) -> Vec<RankingArgument> {
+        let mut arguments = Vec::new();
+
+        // For each pair of constraints in different strata
+        for i in 0..self.constraint_strata.len() {
+            for j in 0..self.constraint_strata.len() {
+                if i != j && self.constraint_strata[i] < self.constraint_strata[j] {
+                    // Check if there's evidence for i >> j
+                    if self.has_ranking_evidence(tableau, i, j) {
+                        arguments.push(RankingArgument {
+                            higher_constraint: i,
+                            lower_constraint: j,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Apply transitive reduction to get minimal set
+        self.transitive_reduction(arguments)
+    }
+
+    /// Check if there's evidence for higher >> lower ranking
+    fn has_ranking_evidence(&self, tableau: &Tableau, higher: usize, lower: usize) -> bool {
+        // Check if any winner-loser pair shows higher >> lower
+        for form in &tableau.forms {
+            // Find the winner
+            if let Some(winner) = form.candidates.iter().find(|c| c.frequency > 0) {
+                // Check each loser
+                for loser in form.candidates.iter().filter(|c| c.frequency == 0) {
+                    // higher prefers winner (winner has fewer violations),
+                    // lower prefers loser (loser has fewer violations)?
+                    if winner.violations[higher] < loser.violations[higher]
+                        && loser.violations[lower] < winner.violations[lower] {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Remove transitive rankings to get minimal set
+    /// If we have A >> B and B >> C, we keep both (we don't remove A >> C unless it's truly transitive)
+    fn transitive_reduction(&self, arguments: Vec<RankingArgument>) -> Vec<RankingArgument> {
+        let mut result = Vec::new();
+
+        for arg in &arguments {
+            let mut is_transitive = false;
+
+            // Check if this ranking can be derived from other rankings
+            // Look for an intermediate constraint k where:
+            // - higher >> k exists in arguments
+            // - k >> lower exists in arguments
+            // - k is in a stratum between higher and lower
+            for intermediate_arg in &arguments {
+                // Check if intermediate_arg.lower_constraint is between higher and lower in strata
+                if intermediate_arg.higher_constraint == arg.higher_constraint {
+                    let intermediate = intermediate_arg.lower_constraint;
+                    let intermediate_stratum = self.constraint_strata[intermediate];
+                    let higher_stratum = self.constraint_strata[arg.higher_constraint];
+                    let lower_stratum = self.constraint_strata[arg.lower_constraint];
+
+                    // Is intermediate truly between them?
+                    if higher_stratum < intermediate_stratum && intermediate_stratum < lower_stratum {
+                        // Check if there's also intermediate >> lower
+                        if arguments.iter().any(|a|
+                            a.higher_constraint == intermediate &&
+                            a.lower_constraint == arg.lower_constraint
+                        ) {
+                            is_transitive = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if !is_transitive {
+                result.push(arg.clone());
+            }
+        }
+
+        result
+    }
+
+    /// Generate mini-tableaux showing simplified ranking arguments
+    fn generate_mini_tableaux(&self, tableau: &Tableau) -> Vec<MiniTableau> {
+        let mut mini_tableaux = Vec::new();
+
+        for (form_idx, form) in tableau.forms.iter().enumerate() {
+            // Find the winner
+            let winner_idx = match form.candidates.iter().position(|c| c.frequency > 0) {
+                Some(idx) => idx,
+                None => continue,
+            };
+
+            let winner = &form.candidates[winner_idx];
+
+            // Check each loser
+            for (loser_idx, loser) in form.candidates.iter().enumerate() {
+                if loser.frequency > 0 {
+                    continue; // Skip winners
+                }
+
+                // Count constraints preferring each candidate
+                let mut winner_preferring = Vec::new();
+                let mut loser_preferring = Vec::new();
+                let mut included_constraints = Vec::new();
+
+                for c_idx in 0..tableau.constraints.len() {
+                    let w_viol = winner.violations[c_idx];
+                    let l_viol = loser.violations[c_idx];
+
+                    // Skip if neither violates OR both violate equally
+                    if w_viol == l_viol {
+                        continue;
+                    }
+
+                    included_constraints.push(c_idx);
+
+                    if w_viol < l_viol {
+                        winner_preferring.push(c_idx);
+                    } else if l_viol < w_viol {
+                        loser_preferring.push(c_idx);
+                    }
+                }
+
+                // Include if exactly one winner-preferring and at least one loser-preferring
+                if winner_preferring.len() == 1 && !loser_preferring.is_empty() {
+                    mini_tableaux.push(MiniTableau {
+                        form_index: form_idx,
+                        winner_index: winner_idx,
+                        loser_index: loser_idx,
+                        included_constraints,
+                    });
+                }
+            }
+        }
+
+        mini_tableaux
+    }
+
     /// Generate formatted text output for the RCD analysis
     pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
         let mut output = String::new();
@@ -191,13 +367,228 @@ impl RCDResult {
             output.push_str("\n");
         }
 
+        // Section 3: Status of Proposed Constraints
+        if !self.constraint_necessity.is_empty() {
+            output.push_str("3. Status of Proposed Constraints:  Necessary or Unnecessary\n\n");
+
+            for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
+                let constraint = &tableau.constraints[c_idx];
+                let status = match necessity {
+                    ConstraintNecessity::Necessary => "Necessary",
+                    ConstraintNecessity::UnnecessaryButShownForFaithfulness =>
+                        "Not necessary (but included to show Faithfulness violations\n              of a winning candidate)",
+                    ConstraintNecessity::CompletelyUnnecessary => "Not necessary",
+                };
+                output.push_str(&format!("   {}  {}\n", constraint.abbrev(), status));
+            }
+
+            // Check if mass deletion is possible
+            let mass_deletion_possible = self.check_mass_deletion(tableau);
+            if mass_deletion_possible {
+                output.push_str("\nA check has determined that the grammar will still work even if the \n");
+                output.push_str("constraints marked above as unnecessary are removed en masse.\n\n\n");
+            } else {
+                output.push_str("\n\n");
+            }
+        }
+
+        // Section 4: Ranking Arguments
+        if !self.ranking_arguments.is_empty() {
+            output.push_str("4. Ranking Arguments, based on the Fusional Reduction Algorithm\n\n");
+            output.push_str("This run sought to obtain the Skeletal Basis, intended to keep each final ranking argument as pithy as possible.\n\n\n\n");
+            output.push_str("The final rankings obtained are as follows:\n\n");
+
+            for arg in &self.ranking_arguments {
+                let higher = &tableau.constraints[arg.higher_constraint];
+                let lower = &tableau.constraints[arg.lower_constraint];
+                output.push_str(&format!("      {} >> {}\n", higher.abbrev(), lower.abbrev()));
+            }
+            output.push_str("\n\n");
+        }
+
+        // Section 5: Mini-Tableaux
+        if !self.mini_tableaux.is_empty() {
+            output.push_str("5. Mini-Tableaux\n\n");
+            output.push_str("The following small tableaux may be useful in presenting ranking arguments. \n");
+            output.push_str("They include all winner-rival comparisons in which there is just one \n");
+            output.push_str("winner-preferring constraint and at least one loser-preferring constraint.  \n");
+            output.push_str("Constraints not violated by either candidate are omitted.\n\n");
+
+            for mini in &self.mini_tableaux {
+                self.format_mini_tableau(tableau, mini, &mut output);
+            }
+        }
+
         output
+    }
+
+    /// Check if mass deletion of unnecessary constraints still allows RCD to succeed
+    fn check_mass_deletion(&self, tableau: &Tableau) -> bool {
+        use crate::tableau::{InputForm, Candidate};
+
+        // Create a modified tableau with all unnecessary constraints removed
+        let forms = tableau.forms.iter().map(|form| {
+            let candidates = form.candidates.iter().map(|cand| {
+                let mut violations = cand.violations.clone();
+                for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
+                    if *necessity != ConstraintNecessity::Necessary {
+                        violations[c_idx] = 0;
+                    }
+                }
+                Candidate {
+                    form: cand.form.clone(),
+                    frequency: cand.frequency,
+                    violations,
+                }
+            }).collect();
+
+            InputForm {
+                input: form.input.clone(),
+                candidates,
+            }
+        }).collect();
+
+        let modified_tableau = Tableau {
+            constraints: tableau.constraints.clone(),
+            forms,
+        };
+
+        // Run RCD on modified tableau (without computing extra analyses to avoid recursion)
+        let test_result = modified_tableau.run_rcd_internal(false);
+        test_result.success
+    }
+
+    /// Format a mini-tableau
+    fn format_mini_tableau(&self, tableau: &Tableau, mini: &MiniTableau, output: &mut String) {
+        let form = &tableau.forms[mini.form_index];
+        let winner = &form.candidates[mini.winner_index];
+        let loser = &form.candidates[mini.loser_index];
+
+        output.push_str(&format!("\n/{}/: \n", form.input));
+
+        // Build header with only included constraints
+        let sep_char = '\u{00A6}'; // Broken bar (¦)
+        let max_cand_width = winner.form.len().max(loser.form.len()).max(2);
+
+        let mut header = String::new();
+        for _ in 0..max_cand_width + 2 {
+            header.push(' ');
+        }
+
+        for (i, &c_idx) in mini.included_constraints.iter().enumerate() {
+            let constraint = &tableau.constraints[c_idx];
+            let c_stratum = self.constraint_strata[c_idx];
+
+            // Add separator before this constraint
+            if i > 0 {
+                let prev_c_idx = mini.included_constraints[i - 1];
+                let prev_stratum = self.constraint_strata[prev_c_idx];
+                if c_stratum != prev_stratum {
+                    header.push('|');
+                } else {
+                    header.push(sep_char);
+                }
+            }
+
+            header.push_str(&constraint.abbrev());
+        }
+        output.push_str(&header);
+        output.push_str("\n");
+
+        // Output winner
+        output.push_str(&format!(">{:<width$} ", winner.form, width = max_cand_width));
+        for (i, &c_idx) in mini.included_constraints.iter().enumerate() {
+            let constraint = &tableau.constraints[c_idx];
+            let c_stratum = self.constraint_strata[c_idx];
+            let col_width = constraint.abbrev().len();
+
+            // Add separator
+            if i > 0 {
+                let prev_c_idx = mini.included_constraints[i - 1];
+                let prev_stratum = self.constraint_strata[prev_c_idx];
+                if c_stratum != prev_stratum {
+                    output.push('|');
+                } else {
+                    output.push(sep_char);
+                }
+            }
+
+            let viols = winner.violations[c_idx];
+            if viols == 0 {
+                for _ in 0..col_width {
+                    output.push(' ');
+                }
+            } else {
+                let viol_str = format!("{}", viols);
+                if col_width <= 3 {
+                    output.push_str(&viol_str);
+                    for _ in viol_str.len()..col_width {
+                        output.push(' ');
+                    }
+                } else {
+                    output.push(' ');
+                    output.push_str(&viol_str);
+                    for _ in (1 + viol_str.len())..col_width {
+                        output.push(' ');
+                    }
+                }
+            }
+        }
+        output.push_str("\n");
+
+        // Output loser (without fatal violation markers in mini-tableaux)
+        output.push_str(&format!(" {:<width$} ", loser.form, width = max_cand_width));
+
+        for (i, &c_idx) in mini.included_constraints.iter().enumerate() {
+            let constraint = &tableau.constraints[c_idx];
+            let c_stratum = self.constraint_strata[c_idx];
+            let col_width = constraint.abbrev().len();
+
+            // Add separator
+            if i > 0 {
+                let prev_c_idx = mini.included_constraints[i - 1];
+                let prev_stratum = self.constraint_strata[prev_c_idx];
+                if c_stratum != prev_stratum {
+                    output.push('|');
+                } else {
+                    output.push(sep_char);
+                }
+            }
+
+            let viols = loser.violations[c_idx];
+
+            if viols == 0 {
+                for _ in 0..col_width {
+                    output.push(' ');
+                }
+            } else {
+                let viol_str = format!("{}", viols);
+                if col_width <= 3 {
+                    output.push_str(&viol_str);
+                    for _ in viol_str.len()..col_width {
+                        output.push(' ');
+                    }
+                } else {
+                    output.push(' ');
+                    output.push_str(&viol_str);
+                    for _ in (1 + viol_str.len())..col_width {
+                        output.push(' ');
+                    }
+                }
+            }
+        }
+        output.push_str("\n\n");
     }
 }
 
 impl Tableau {
     /// Run Recursive Constraint Demotion to find a ranking
     pub fn run_rcd(&self) -> RCDResult {
+        self.run_rcd_internal(true)
+    }
+
+    /// Internal RCD implementation with flag to control additional analyses
+    fn run_rcd_internal(&self, compute_extra_analyses: bool) -> RCDResult {
         let num_constraints = self.constraints.len();
         let mut constraint_strata = vec![0; num_constraints];
         let mut current_stratum = 0;
@@ -295,11 +686,25 @@ impl Tableau {
                     log(&format!("RCD SUCCEEDED: all constraints ranked in {} strata ({} pairs unresolved - ties)",
                         current_stratum, informative_pairs.len()));
                 }
-                return RCDResult {
+
+                // Create initial result
+                let mut result = RCDResult {
                     constraint_strata,
                     num_strata: current_stratum,
                     success: true,
+                    constraint_necessity: Vec::new(),
+                    ranking_arguments: Vec::new(),
+                    mini_tableaux: Vec::new(),
                 };
+
+                // Compute additional analyses only if requested
+                if compute_extra_analyses {
+                    result.constraint_necessity = self.compute_constraint_necessity(&result);
+                    result.ranking_arguments = result.compute_ranking_arguments(self);
+                    result.mini_tableaux = result.generate_mini_tableaux(self);
+                }
+
+                return result;
             }
 
             // If no constraints added but some still unranked, algorithm failed
@@ -318,6 +723,9 @@ impl Tableau {
                     constraint_strata,
                     num_strata: current_stratum - 1,
                     success: false,
+                    constraint_necessity: Vec::new(),
+                    ranking_arguments: Vec::new(),
+                    mini_tableaux: Vec::new(),
                 };
             }
 
@@ -367,11 +775,24 @@ impl Tableau {
                     log(&format!("RCD SUCCEEDED with {} strata", current_stratum));
                 }
 
-                return RCDResult {
+                // Create initial result
+                let mut result = RCDResult {
                     constraint_strata,
                     num_strata: current_stratum,
                     success: true,
+                    constraint_necessity: Vec::new(),
+                    ranking_arguments: Vec::new(),
+                    mini_tableaux: Vec::new(),
                 };
+
+                // Compute additional analyses only if requested
+                if compute_extra_analyses {
+                    result.constraint_necessity = self.compute_constraint_necessity(&result);
+                    result.ranking_arguments = result.compute_ranking_arguments(self);
+                    result.mini_tableaux = result.generate_mini_tableaux(self);
+                }
+
+                return result;
             }
 
             // Safety check: avoid infinite loop
@@ -380,8 +801,87 @@ impl Tableau {
                     constraint_strata,
                     num_strata: current_stratum,
                     success: false,
+                    constraint_necessity: Vec::new(),
+                    ranking_arguments: Vec::new(),
+                    mini_tableaux: Vec::new(),
                 };
             }
+        }
+    }
+
+    /// Compute constraint necessity for each constraint
+    fn compute_constraint_necessity(&self, rcd_result: &RCDResult) -> Vec<ConstraintNecessity> {
+        let mut necessity = vec![ConstraintNecessity::Necessary; self.constraints.len()];
+
+        // Only analyze if RCD succeeded
+        if !rcd_result.success {
+            return necessity;
+        }
+
+        for c_idx in 0..self.constraints.len() {
+            // Test if constraint is necessary
+            if !self.is_constraint_necessary(c_idx) {
+                // Constraint is unnecessary - check if violated by any winner
+                if self.is_violated_by_winner(c_idx) {
+                    necessity[c_idx] = ConstraintNecessity::UnnecessaryButShownForFaithfulness;
+                } else {
+                    necessity[c_idx] = ConstraintNecessity::CompletelyUnnecessary;
+                }
+            }
+        }
+
+        necessity
+    }
+
+    /// Test if a constraint is necessary by running RCD without it
+    fn is_constraint_necessary(&self, constraint_idx: usize) -> bool {
+        // Create modified tableau with constraint violations zeroed
+        let modified_tableau = self.clone_with_constraint_removed(constraint_idx);
+
+        // Run RCD on modified tableau (without computing extra analyses to avoid recursion)
+        let test_result = modified_tableau.run_rcd_internal(false);
+
+        // Constraint is necessary if RCD fails without it
+        !test_result.success
+    }
+
+    /// Check if any winner violates this constraint
+    fn is_violated_by_winner(&self, constraint_idx: usize) -> bool {
+        for form in &self.forms {
+            // Find the winner (candidate with non-zero frequency)
+            if let Some(winner) = form.candidates.iter().find(|c| c.frequency > 0) {
+                if winner.violations[constraint_idx] > 0 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Clone the tableau with a constraint's violations set to zero
+    fn clone_with_constraint_removed(&self, constraint_idx: usize) -> Tableau {
+        use crate::tableau::{InputForm, Candidate};
+
+        let forms = self.forms.iter().map(|form| {
+            let candidates = form.candidates.iter().map(|cand| {
+                let mut violations = cand.violations.clone();
+                violations[constraint_idx] = 0;
+                Candidate {
+                    form: cand.form.clone(),
+                    frequency: cand.frequency,
+                    violations,
+                }
+            }).collect();
+
+            InputForm {
+                input: form.input.clone(),
+                candidates,
+            }
+        }).collect();
+
+        Tableau {
+            constraints: self.constraints.clone(),
+            forms,
         }
     }
 }
@@ -526,5 +1026,30 @@ mod tests {
 
         // Verify fatal violations are marked
         assert!(gen_section2.contains("1!"), "Should contain fatal violation markers");
+    }
+
+    #[test]
+    fn test_rcd_sections_3_4_5() {
+        let tiny_example = load_tiny_example();
+        let tableau = Tableau::parse(&tiny_example).expect("Failed to parse tiny example");
+        let result = tableau.run_rcd();
+
+        // Generate formatted output
+        let generated = result.format_output(&tableau, "TinyIllustrativeFile.txt");
+
+        // Write to file for inspection
+        std::fs::write("../test_output.txt", &generated).ok();
+
+        // Verify Section 3 is present
+        assert!(generated.contains("3. Status of Proposed Constraints"), "Should have Section 3 header");
+        assert!(generated.contains("Necessary") || generated.contains("Not necessary"),
+            "Should classify constraints as necessary or not");
+
+        // Verify Section 4 is present
+        assert!(generated.contains("4. Ranking Arguments"), "Should have Section 4 header");
+        assert!(generated.contains(">>"), "Should contain ranking arguments with >> symbol");
+
+        // Verify Section 5 is present
+        assert!(generated.contains("5. Mini-Tableaux"), "Should have Section 5 header");
     }
 }
