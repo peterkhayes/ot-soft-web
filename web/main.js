@@ -1,17 +1,17 @@
 // Import the WASM module
 import init, { parse_tableau, run_rcd } from './pkg/ot_soft.js';
 
-// Tiny example tableau data (loaded from examples/tiny/input.txt)
+// Tiny example tableau data (exact copy of examples/tiny/input.txt)
 const TINY_EXAMPLE = `			*No Onset	*Coda	Max(t)	Dep(?)
 			*NoOns	*Coda	Max	Dep
 a	?a	1				1
-	a	0	1
-tat	ta	1		1
-	tat	0		1
+	a		1
+tat	ta	1			1
+	tat			1
 at	?a	1			1	1
-	?at	0		1		1
-	a	0	1		1
-	at	0	1	1
+	?at			1		1
+	a		1		1
+	at		1	1
 `;
 
 // Store current tableau and text globally
