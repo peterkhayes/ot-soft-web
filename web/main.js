@@ -1,6 +1,19 @@
 // Import the WASM module
 import init, { parse_tableau } from './pkg/ot_soft.js';
 
+// Tiny example tableau data (loaded from examples/tiny/input.txt)
+const TINY_EXAMPLE = `			*No Onset	*Coda	Max(t)	Dep(?)
+			*NoOns	*Coda	Max	Dep
+a	?a	1				1
+	a	0	1
+tat	ta	1		1
+	tat	0		1
+at	?a	1			1	1
+	?at	0		1		1
+	a	0	1		1
+	at	0	1	1
+`;
+
 async function run() {
     try {
         // Initialize the WASM module
@@ -20,15 +33,8 @@ async function run() {
         });
 
         // Set up "Load Tiny Example" button
-        document.getElementById('loadTinyButton').addEventListener('click', async () => {
-            try {
-                const response = await fetch('../examples/tiny/input.txt');
-                const text = await response.text();
-                parseAndDisplay(text);
-            } catch (err) {
-                console.error('Failed to load tiny example:', err);
-                alert('Failed to load tiny example file. Make sure the server is running.');
-            }
+        document.getElementById('loadTinyButton').addEventListener('click', () => {
+            parseAndDisplay(TINY_EXAMPLE);
         });
 
         console.log('OT-Soft WebAssembly module loaded successfully');
