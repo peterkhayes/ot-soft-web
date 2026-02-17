@@ -15,6 +15,11 @@ pub struct Constraint {
 
 #[wasm_bindgen]
 impl Constraint {
+    #[wasm_bindgen(constructor)]
+    pub fn new(full_name: String, abbrev: String) -> Self {
+        Constraint { full_name, abbrev }
+    }
+
     #[wasm_bindgen(getter)]
     pub fn full_name(&self) -> String {
         self.full_name.clone()
@@ -23,6 +28,22 @@ impl Constraint {
     #[wasm_bindgen(getter)]
     pub fn abbrev(&self) -> String {
         self.abbrev.clone()
+    }
+
+    /// Detect whether this constraint is a Faithfulness constraint.
+    /// Reproduces VB6 logic from Main.frm:FaithfulnessConstraint.
+    pub fn is_faithfulness(&self) -> bool {
+        let lower = self.full_name.to_lowercase();
+        let lower3 = if lower.len() >= 3 { &lower[..3] } else { &lower };
+        match lower3 {
+            "ide" | "fai" | "id(" | "max" | "dep" | "map" | "*ma" => return true,
+            _ => {}
+        }
+        // Case-sensitive check for "F:" prefix
+        if self.full_name.starts_with("F:") {
+            return true;
+        }
+        false
     }
 }
 

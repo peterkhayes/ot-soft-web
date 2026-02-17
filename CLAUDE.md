@@ -35,3 +35,5 @@ Follow these steps when porting a new feature from the VB6 source:
    b. All business logic must remain in Rust — the web layer only handles presentation and calls into Wasm.
 
 5. **Update `TASKS.md`** — Mark completed items and add any new tasks discovered during implementation.
+
+6. **Commit** — Create a git commit with all changes once the task is complete.

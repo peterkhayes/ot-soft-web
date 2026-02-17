@@ -585,6 +585,27 @@ button:hover::before {
     font-weight: 700;
 }
 
+.rcd-status.warning {
+    border-left-color: #b8860b;
+    color: #8b6914;
+}
+
+.rcd-status.warning::before {
+    content: '⚠';
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.algorithm-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--stone-300);
+    background: var(--white);
+    color: var(--charcoal);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
 .stratum {
     margin-bottom: var(--space-lg);
     padding: var(--space-md);

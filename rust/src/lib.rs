@@ -1,17 +1,20 @@
 //! OT-Soft: Optimality Theory constraint ranking
 //!
-//! This library implements parsing of OT tableaux and the Recursive Constraint
-//! Demotion (RCD) algorithm for finding stratified constraint rankings.
+//! This library implements parsing of OT tableaux and constraint ranking
+//! algorithms: Recursive Constraint Demotion (RCD) and Biased Constraint
+//! Demotion (BCD).
 //!
 //! ## Modules
 //!
 //! - `tableau`: Data structures and parsing for OT tableaux
 //! - `rcd`: Recursive Constraint Demotion algorithm
+//! - `bcd`: Biased Constraint Demotion algorithm
 
 use wasm_bindgen::prelude::*;
 
 mod tableau;
 mod rcd;
+mod bcd;
 
 // Re-export public types
 pub use tableau::{Tableau, Constraint, Candidate, InputForm};
@@ -44,4 +47,24 @@ pub fn format_rcd_output(text: &str, filename: &str) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let result = tableau.run_rcd();
     Ok(result.format_output(&tableau, filename))
+}
+
+/// Run BCD on a parsed tableau
+#[wasm_bindgen]
+pub fn run_bcd(text: &str, specific: bool) -> Result<RCDResult, String> {
+    let tableau = Tableau::parse(text)?;
+    Ok(tableau.run_bcd(specific))
+}
+
+/// Format BCD results as text for download
+#[wasm_bindgen]
+pub fn format_bcd_output(text: &str, filename: &str, specific: bool) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let result = tableau.run_bcd(specific);
+    let algorithm_name = if specific {
+        "Biased Constraint Demotion (Specific)"
+    } else {
+        "Biased Constraint Demotion"
+    };
+    Ok(result.format_output_with_algorithm(&tableau, filename, algorithm_name))
 }

@@ -1,11 +1,10 @@
-.PHONY: build test serve dev clean help
+.PHONY: build test serve dev clean help web-build
 
 # Default target
 .DEFAULT_GOAL := help
 
-# Ensure cargo is in PATH
-CARGO := $(shell if [ -f ~/.cargo/bin/cargo ]; then echo "PATH=$$HOME/.cargo/bin:$$PATH"; fi)
-WASM_PACK := $(shell if [ -f ~/.cargo/bin/wasm-pack ]; then echo "PATH=$$HOME/.cargo/bin:$$PATH wasm-pack"; else echo "wasm-pack"; fi)
+# Ensure cargo and wasm-pack are in PATH
+export PATH := $(HOME)/.cargo/bin:$(PATH)
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -14,37 +13,38 @@ help: ## Show this help message
 
 build: ## Build Rust to WebAssembly
 	@echo "Building Rust to WebAssembly..."
-	@cd rust && $(WASM_PACK) build --target web --out-dir ../web/pkg
+	@cd rust && wasm-pack build --target web --out-dir ../web/pkg
 	@echo "✓ Build complete"
 
 test: ## Run Rust tests
 	@echo "Running Rust tests..."
-	@cd rust && $(CARGO) cargo test
+	@cd rust && cargo test
 	@echo "✓ Tests complete"
 
-serve: ## Start local web server on port 8000
-	@echo "Starting web server at http://localhost:8000"
-	@echo "Press Ctrl+C to stop"
-	@cd web && python3 -m http.server 8000
+serve: ## Start Vite dev server
+	@cd web && npm run dev
 
-dev: build serve ## Build and start development server
+dev: build serve ## Build WASM and start Vite dev server
+
+web-build: ## Build web frontend for production
+	@cd web && npm run build
 
 clean: ## Clean build artifacts
 	@echo "Cleaning build artifacts..."
-	@cd rust && $(CARGO) cargo clean
+	@cd rust && cargo clean
 	@rm -rf web/pkg
 	@echo "✓ Clean complete"
 
 check: ## Check Rust code without building
 	@echo "Checking Rust code..."
-	@cd rust && $(CARGO) cargo check
+	@cd rust && cargo check
 	@echo "✓ Check complete"
 
 fmt: ## Format Rust code
 	@echo "Formatting Rust code..."
-	@cd rust && $(CARGO) cargo fmt
+	@cd rust && cargo fmt
 	@echo "✓ Format complete"
 
 watch: ## Watch for changes and rebuild (requires cargo-watch)
 	@echo "Watching for changes..."
-	@cd rust && $(CARGO) cargo watch -s 'wasm-pack build --target web --out-dir ../web/pkg'
+	@cd rust && cargo watch -s 'wasm-pack build --target web --out-dir ../web/pkg'

@@ -50,6 +50,8 @@ pub struct RCDResult {
     /// Mini-tableaux for ranking arguments (not exposed to WASM)
     #[wasm_bindgen(skip)]
     mini_tableaux: Vec<MiniTableau>,
+    /// Whether BCD encountered tied faithfulness subsets (arbitrary choice made)
+    tie_warning: bool,
 }
 
 #[wasm_bindgen]
@@ -65,9 +67,37 @@ impl RCDResult {
     pub fn get_stratum(&self, constraint_index: usize) -> Option<usize> {
         self.constraint_strata.get(constraint_index).copied()
     }
+
+    pub fn tie_warning(&self) -> bool {
+        self.tie_warning
+    }
 }
 
 impl RCDResult {
+    /// Create a new RCDResult (used by BCD to construct results)
+    pub(crate) fn new(constraint_strata: Vec<usize>, num_strata: usize, success: bool) -> Self {
+        RCDResult {
+            constraint_strata,
+            num_strata,
+            success,
+            constraint_necessity: Vec::new(),
+            ranking_arguments: Vec::new(),
+            mini_tableaux: Vec::new(),
+            tie_warning: false,
+        }
+    }
+
+    /// Compute additional analyses (necessity, ranking arguments, mini-tableaux)
+    pub(crate) fn compute_extra_analyses(&mut self, tableau: &Tableau) {
+        self.constraint_necessity = tableau.compute_constraint_necessity(self);
+        self.ranking_arguments = self.compute_ranking_arguments(tableau);
+        self.mini_tableaux = self.generate_mini_tableaux(tableau);
+    }
+
+    pub(crate) fn set_tie_warning(&mut self, value: bool) {
+        self.tie_warning = value;
+    }
+
     /// Compute ranking arguments based on constraint strata
     fn compute_ranking_arguments(&self, tableau: &Tableau) -> Vec<RankingArgument> {
         let mut arguments = Vec::new();
@@ -213,10 +243,15 @@ impl RCDResult {
 
     /// Generate formatted text output for the RCD analysis
     pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
+        self.format_output_with_algorithm(tableau, filename, "Recursive Constraint Demotion")
+    }
+
+    /// Generate formatted text output with a configurable algorithm name
+    pub(crate) fn format_output_with_algorithm(&self, tableau: &Tableau, filename: &str, algorithm_name: &str) -> String {
         let mut output = String::new();
 
         // Header
-        output.push_str(&format!("Results of Applying Recursive Constraint Demotion to {}\n", filename));
+        output.push_str(&format!("Results of Applying {} to {}\n", algorithm_name, filename));
         output.push_str("\n\n");
 
         // Date and version (current date/time and version)
@@ -224,6 +259,12 @@ impl RCDResult {
         output.push_str(&format!("{}\n\n", now.format("%-m-%-d-%Y, %-I:%M %p").to_string().to_lowercase()));
         output.push_str("OTSoft 2.7, release date 2/1/2026\n");
         output.push_str("\n\n");
+
+        if self.tie_warning {
+            output.push_str("Caution: The BCD algorithm has selected arbitrarily among tied Faithfulness constraint subsets.\n");
+            output.push_str("You may wish to try changing the order of the Faithfulness constraints in the input file,\n");
+            output.push_str("to see whether this results in a different ranking.\n\n\n");
+        }
 
         // Section 1: Result
         output.push_str("1. Result\n\n");
@@ -695,6 +736,7 @@ impl Tableau {
                     constraint_necessity: Vec::new(),
                     ranking_arguments: Vec::new(),
                     mini_tableaux: Vec::new(),
+                    tie_warning: false,
                 };
 
                 // Compute additional analyses only if requested
@@ -726,6 +768,7 @@ impl Tableau {
                     constraint_necessity: Vec::new(),
                     ranking_arguments: Vec::new(),
                     mini_tableaux: Vec::new(),
+                    tie_warning: false,
                 };
             }
 
@@ -783,6 +826,7 @@ impl Tableau {
                     constraint_necessity: Vec::new(),
                     ranking_arguments: Vec::new(),
                     mini_tableaux: Vec::new(),
+                    tie_warning: false,
                 };
 
                 // Compute additional analyses only if requested
@@ -804,13 +848,14 @@ impl Tableau {
                     constraint_necessity: Vec::new(),
                     ranking_arguments: Vec::new(),
                     mini_tableaux: Vec::new(),
+                    tie_warning: false,
                 };
             }
         }
     }
 
     /// Compute constraint necessity for each constraint
-    fn compute_constraint_necessity(&self, rcd_result: &RCDResult) -> Vec<ConstraintNecessity> {
+    pub(crate) fn compute_constraint_necessity(&self, rcd_result: &RCDResult) -> Vec<ConstraintNecessity> {
         let mut necessity = vec![ConstraintNecessity::Necessary; self.constraints.len()];
 
         // Only analyze if RCD succeeded
