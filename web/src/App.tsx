@@ -52,6 +52,13 @@ function App() {
     setCurrentTableauText(null)
   }
 
+  function handleReset() {
+    setCurrentTableau(null)
+    setCurrentTableauText(null)
+    setCurrentInputFilename(null)
+    setParseError(null)
+  }
+
   if (wasmError) {
     return (
       <>
@@ -99,6 +106,7 @@ function App() {
             <InputPanel
               onTableauLoaded={handleTableauLoaded}
               onParseError={handleParseError}
+              onReset={handleReset}
               loadedFilename={currentInputFilename}
             />
 

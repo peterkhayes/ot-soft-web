@@ -6,10 +6,11 @@ import { TINY_EXAMPLE } from '../constants.ts'
 interface InputPanelProps {
   onTableauLoaded: (tableau: Tableau, text: string, filename: string) => void
   onParseError: (error: string) => void
+  onReset: () => void
   loadedFilename: string | null
 }
 
-function InputPanel({ onTableauLoaded, onParseError, loadedFilename }: InputPanelProps) {
+function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: InputPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -89,7 +90,7 @@ function InputPanel({ onTableauLoaded, onParseError, loadedFilename }: InputPane
               <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
             <span className="file-loaded-name">{loadedFilename}</span>
-            <label htmlFor="fileInput" className="file-loaded-change">Change file</label>
+            <button className="file-loaded-change" onClick={onReset}>Change file</button>
           </div>
         ) : (
           <label
