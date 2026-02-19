@@ -61,7 +61,6 @@ pub use gla::GlaResult;
 #[wasm_bindgen(start)]
 pub fn init() {
     // Set up panic hook for better error messages in the browser
-    #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 }
 
