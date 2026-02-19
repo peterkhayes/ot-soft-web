@@ -26,6 +26,8 @@ function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
     if (file) {
       file.text().then(text => {
         parseAndLoad(text, file.name)
+      }).catch(err => {
+        onParseError('Error reading file: ' + err)
       })
     }
   }

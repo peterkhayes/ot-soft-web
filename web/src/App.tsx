@@ -20,6 +20,8 @@ function App() {
   const [currentInputFilename, setCurrentInputFilename] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [framework, setFramework] = useState<Framework>('classical-ot')
+  // loadCountRef is used as a React key on algorithm panels to force a full remount
+  // (resetting their internal state) whenever a new tableau is loaded.
   const loadCountRef = useRef(0)
 
   useEffect(() => {

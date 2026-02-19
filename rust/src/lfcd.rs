@@ -72,8 +72,8 @@ impl Tableau {
             // Per-stratum arrays (reset each iteration)
             let mut demotable = vec![false; nc];
             let mut active = vec![false; nc];
-            // num_helpers initialized to 10000 (sentinel for "not yet assessed")
-            let mut num_helpers = vec![10000usize; nc];
+            // num_helpers initialized to usize::MAX as a sentinel for "not yet assessed"
+            let mut num_helpers = vec![usize::MAX; nc];
 
             // ===== AVOID PREFERENCE FOR LOSERS =====
             //
@@ -263,8 +263,9 @@ impl Tableau {
                         }
                     }
 
-                    // Find the overall lowest helper count among non-demotable Faithfulness
-                    let mut lowest_helpers = 9999usize;
+                    // Find the overall lowest helper count among non-demotable Faithfulness.
+                    // Unassessed constraints (num_helpers == usize::MAX) are excluded.
+                    let mut lowest_helpers = usize::MAX;
                     for c_idx in 0..nc {
                         if is_faithfulness[c_idx] && !demotable[c_idx] && strata[c_idx] == 0
                             && num_helpers[c_idx] < lowest_helpers

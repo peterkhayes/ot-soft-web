@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
+import { downloadTextFile, makeOutputFilename } from '../utils.ts'
 
 interface RcdPanelProps {
   tableau: Tableau
@@ -55,12 +56,12 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   function handleAprioriFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setAprioriText((ev.target?.result as string) ?? '')
+    file.text().then(text => {
+      setAprioriText(text)
       setAprioriFilename(file.name)
-    }
-    reader.readAsText(file)
+    }).catch(err => {
+      console.error('Error reading a priori file:', err)
+    })
   }
 
   function handleRun() {
@@ -104,40 +105,14 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
 
   function handleDownload() {
     try {
-      let outputFilename: string
-      if (inputFilename) {
-        const lastDotIndex = inputFilename.lastIndexOf('.')
-        if (lastDotIndex > 0) {
-          const baseName = inputFilename.substring(0, lastDotIndex)
-          const extension = inputFilename.substring(lastDotIndex)
-          outputFilename = baseName + 'Output' + extension
-        } else {
-          outputFilename = inputFilename + 'Output.txt'
-        }
-      } else {
-        outputFilename = 'TableauOutput.txt'
-      }
-
-      const inputFilenameForHeader = inputFilename || 'tableau.txt'
       const apriori = supportsApriori ? aprioriText : ''
       const formattedOutput = algorithm === 'rcd'
-        ? format_rcd_output(tableauText, inputFilenameForHeader, apriori)
+        ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori)
         : algorithm === 'lfcd'
-          ? format_lfcd_output(tableauText, inputFilenameForHeader, apriori)
-          : format_bcd_output(tableauText, inputFilenameForHeader, algorithm === 'bcd-specific')
+          ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori)
+          : format_bcd_output(tableauText, inputFilename || 'tableau.txt', algorithm === 'bcd-specific')
 
-      const blob = new Blob([formattedOutput], { type: 'text/plain;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-
-      const link = document.createElement('a')
-      link.href = url
-      link.download = outputFilename
-
-      document.body.appendChild(link)
-      link.click()
-
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'Output'))
     } catch (err) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)

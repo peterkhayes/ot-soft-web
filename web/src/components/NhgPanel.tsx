@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { run_nhg, format_nhg_output } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
+import { downloadTextFile, makeOutputFilename } from '../utils.ts'
 
 interface NhgPanelProps {
   tableau: Tableau
@@ -96,16 +97,6 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
 
   function handleDownload() {
     try {
-      let outputFilename: string
-      if (inputFilename) {
-        const lastDot = inputFilename.lastIndexOf('.')
-        outputFilename = lastDot > 0
-          ? inputFilename.substring(0, lastDot) + 'NHGOutput' + inputFilename.substring(lastDot)
-          : inputFilename + 'NHGOutput.txt'
-      } else {
-        outputFilename = 'NHGOutput.txt'
-      }
-
       const formattedOutput = format_nhg_output(
         tableauText,
         inputFilename || 'tableau.txt',
@@ -122,21 +113,14 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         negativeWeightsOk,
         resolveTiesBySkipping,
       )
-
-      const blob = new Blob([formattedOutput], { type: 'text/plain;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = outputFilename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'NHGOutput'))
     } catch (err) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)
     }
   }
+
+  const successResult: NhgResultState | null = result && !result.error ? result as NhgResultState : null
 
   return (
     <section className="analysis-panel">
@@ -256,73 +240,69 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         )}
       </div>
 
-      {result && (
-        result.error ? (
-          <div className="rcd-status failure">
-            Error running NHG: {result.error}
+      {result?.error && (
+        <div className="rcd-status failure">
+          Error running NHG: {result.error}
+        </div>
+      )}
+      {successResult && (
+        <div className="maxent-results">
+          <div className="maxent-weights">
+            <h3 className="results-subheader">Constraint Weights</h3>
+            <table className="weights-table">
+              <thead>
+                <tr>
+                  <th>Constraint</th>
+                  <th className="weight-col">Weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                {successResult.weights.map((w, i) => (
+                  <tr key={i}>
+                    <td>
+                      <span className="abbrev">{w.abbrev}</span>
+                      <span className="full-name"> ({w.fullName})</span>
+                    </td>
+                    <td className="weight-col weight-value">{w.weight.toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="log-prob">
+              Log likelihood of data: {successResult.logLikelihood.toFixed(4)}
+            </div>
           </div>
-        ) : (() => {
-          const r = result as NhgResultState
-          return (
-            <div className="maxent-results">
-              <div className="maxent-weights">
-                <h3 className="results-subheader">Constraint Weights</h3>
-                <table className="weights-table">
+
+          <div className="maxent-tableaux">
+            <h3 className="results-subheader">Matchup to Input Frequencies</h3>
+            {successResult.forms.map((form, fi) => (
+              <div className="maxent-form" key={fi}>
+                <div className="form-label">/{form.input}/</div>
+                <table className="predictions-table">
                   <thead>
                     <tr>
-                      <th>Constraint</th>
-                      <th className="weight-col">Weight</th>
+                      <th></th>
+                      <th className="pct-col">Obs%</th>
+                      <th className="pct-col">Gen%</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {r.weights.map((w, i) => (
-                      <tr key={i}>
-                        <td>
-                          <span className="abbrev">{w.abbrev}</span>
-                          <span className="full-name"> ({w.fullName})</span>
+                    {form.candidates.map((cand, ci) => (
+                      <tr key={ci} className={cand.obsPct > 0 ? 'winner-row' : ''}>
+                        <td className="cand-form">
+                          {cand.obsPct > 0 && <span className="winner-marker">▶</span>}
+                          {cand.form}
                         </td>
-                        <td className="weight-col weight-value">{w.weight.toFixed(3)}</td>
+                        <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
+                        <td className="pct-col">{cand.genPct.toFixed(1)}%</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <div className="log-prob">
-                  Log likelihood of data: {r.logLikelihood.toFixed(4)}
-                </div>
               </div>
-
-              <div className="maxent-tableaux">
-                <h3 className="results-subheader">Matchup to Input Frequencies</h3>
-                {r.forms.map((form, fi) => (
-                  <div className="maxent-form" key={fi}>
-                    <div className="form-label">/{form.input}/</div>
-                    <table className="predictions-table">
-                      <thead>
-                        <tr>
-                          <th></th>
-                          <th className="pct-col">Obs%</th>
-                          <th className="pct-col">Gen%</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {form.candidates.map((cand, ci) => (
-                          <tr key={ci} className={cand.obsPct > 0 ? 'winner-row' : ''}>
-                            <td className="cand-form">
-                              {cand.obsPct > 0 && <span className="winner-marker">▶</span>}
-                              {cand.form}
-                            </td>
-                            <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
-                            <td className="pct-col">{cand.genPct.toFixed(1)}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })()
+            ))}
+          </div>
+        </div>
       )}
     </section>
   )
