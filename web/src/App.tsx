@@ -99,6 +99,7 @@ function App() {
             <InputPanel
               onTableauLoaded={handleTableauLoaded}
               onParseError={handleParseError}
+              loadedFilename={currentInputFilename}
             />
 
             {(currentTableau || parseError) && (

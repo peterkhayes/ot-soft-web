@@ -308,6 +308,53 @@ body {
     color: var(--charcoal-soft);
 }
 
+/* Loaded file display */
+.file-loaded-display {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg);
+    border: 2px solid var(--burgundy);
+    background: var(--parchment);
+    border-radius: 2px;
+    transition: all var(--transition-smooth);
+}
+
+.file-loaded-display--dragging {
+    background: var(--parchment-dark);
+    transform: translateY(-2px);
+}
+
+.file-loaded-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    color: var(--burgundy);
+}
+
+.file-loaded-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--charcoal);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-loaded-change {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: var(--burgundy);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.file-loaded-change:hover {
+    opacity: 0.75;
+}
+
 /* Divider with text */
 .divider-with-text {
     display: flex;

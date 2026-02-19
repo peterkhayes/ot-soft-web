@@ -6,9 +6,10 @@ import { TINY_EXAMPLE } from '../constants.ts'
 interface InputPanelProps {
   onTableauLoaded: (tableau: Tableau, text: string, filename: string) => void
   onParseError: (error: string) => void
+  loadedFilename: string | null
 }
 
-function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
+function InputPanel({ onTableauLoaded, onParseError, loadedFilename }: InputPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -37,7 +38,7 @@ function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
     parseAndLoad(TINY_EXAMPLE, 'TinyIllustrativeFile.txt')
   }
 
-  function handleDragOver(event: React.DragEvent<HTMLLabelElement>) {
+  function handleDragOver(event: React.DragEvent<HTMLElement>) {
     event.preventDefault()
     setIsDragging(true)
   }
@@ -46,7 +47,7 @@ function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
     setIsDragging(false)
   }
 
-  function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
+  function handleDrop(event: React.DragEvent<HTMLElement>) {
     event.preventDefault()
     setIsDragging(false)
     const file = event.dataTransfer.files?.[0]
@@ -76,21 +77,37 @@ function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
           id="fileInput"
           onChange={handleFileChange}
         />
-        <label
-          htmlFor="fileInput"
-          className={`file-upload-label${isDragging ? ' file-upload-label--dragging' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          <span className="upload-text">Choose file</span>
-          <span className="upload-hint">or drag and drop</span>
-        </label>
+        {loadedFilename ? (
+          <div
+            className={`file-loaded-display${isDragging ? ' file-loaded-display--dragging' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <svg className="file-loaded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span className="file-loaded-name">{loadedFilename}</span>
+            <label htmlFor="fileInput" className="file-loaded-change">Change file</label>
+          </div>
+        ) : (
+          <label
+            htmlFor="fileInput"
+            className={`file-upload-label${isDragging ? ' file-upload-label--dragging' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span className="upload-text">Choose file</span>
+            <span className="upload-hint">or drag and drop</span>
+          </label>
+        )}
       </div>
 
       <div className="divider-with-text">
