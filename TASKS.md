@@ -43,7 +43,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [ ] Gradual Learning Algorithm (GLA) — Stochastic OT mode
 - [ ] Gradual Learning Algorithm (GLA) — online MaxEnt mode
 - [x] Batch Maximum Entropy (GIS optimizer)
-- [ ] Noisy Harmonic Grammar (NHG) — 8 noise variants
+- [x] Noisy Harmonic Grammar (NHG) — 8 noise variants
 - [ ] Learning schedule (multi-stage plasticity interpolation)
 - [ ] Custom learning schedule from file
 - [ ] Magri update rule (Stochastic OT)
@@ -98,7 +98,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [ ] LFCD example with expected output
 - [ ] FRed example with expected output
 - [ ] GLA/MaxEnt example with expected output
-- [ ] NHG example with expected output
+- [~] NHG example with expected output
 - [ ] Factorial typology example with expected output
 - [ ] Edge case examples (ranking failures, ties, large tableaux)
 

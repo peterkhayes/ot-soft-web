@@ -937,3 +937,44 @@ button:hover::before {
 .mb-sm { margin-bottom: var(--space-sm); }
 .mb-md { margin-bottom: var(--space-md); }
 .mb-lg { margin-bottom: var(--space-lg); }
+
+/* ═══════════════════════════════════════════════════════════════
+   NHG Panel
+   ═══════════════════════════════════════════════════════════════ */
+
+.nhg-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: var(--space-lg);
+    padding: var(--space-md);
+    background: var(--taupe-light);
+    border: 1px solid var(--stone-300);
+}
+
+.nhg-options-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--charcoal-soft);
+    margin-bottom: 0.3rem;
+}
+
+.nhg-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--charcoal);
+    cursor: pointer;
+}
+
+.nhg-checkbox input[type="checkbox"] {
+    width: 0.9rem;
+    height: 0.9rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.nhg-checkbox-indent {
+    margin-left: 1.6rem;
+}
