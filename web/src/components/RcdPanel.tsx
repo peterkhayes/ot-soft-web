@@ -125,7 +125,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
     <section className="analysis-panel">
       <div className="panel-header">
         <h2>Constraint Ranking</h2>
-        <span className="panel-number">03</span>
+        <span className="panel-number">04</span>
       </div>
 
       <div className="action-bar">

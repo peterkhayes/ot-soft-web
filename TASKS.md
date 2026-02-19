@@ -80,7 +80,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Tableau display (interactive table)
 - [x] RCD results display (stratified constraints)
 - [x] Download results button
-- [ ] Framework selection (Classical OT / MaxEnt / NHG / Stochastic OT)
+- [x] Framework selection (Classical OT / MaxEnt / NHG / Stochastic OT)
 - [~] Algorithm variant selection (RCD / BCD / LFCD)
 - [ ] Ranking argumentation options (MIB, details, minitableaux)
 - [ ] Factorial typology button and options

@@ -606,6 +606,58 @@ button:hover::before {
     cursor: pointer;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Framework Selection
+   ═══════════════════════════════════════════════════════════════ */
+
+.framework-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-sm);
+}
+
+.framework-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: var(--space-md);
+    border: 1px solid var(--taupe-light);
+    background: var(--cream);
+    cursor: pointer;
+    transition: border-color var(--transition-quick), background var(--transition-quick);
+}
+
+.framework-option:hover {
+    border-color: var(--burgundy);
+    background: var(--white);
+}
+
+.framework-option.selected {
+    border-color: var(--burgundy);
+    background: var(--white);
+    border-left-width: 3px;
+}
+
+.framework-option input[type="radio"] {
+    display: none;
+}
+
+.framework-label {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--charcoal);
+}
+
+.framework-option.selected .framework-label {
+    color: var(--burgundy);
+}
+
+.framework-description {
+    font-size: 0.8rem;
+    color: var(--charcoal-soft);
+}
+
 .stratum {
     margin-bottom: var(--space-lg);
     padding: var(--space-md);

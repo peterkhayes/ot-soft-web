@@ -2,7 +2,15 @@ import { useState, useEffect, useRef } from 'react'
 import type { Tableau } from '../pkg/ot_soft.js'
 import InputPanel from './components/InputPanel.tsx'
 import TableauPanel from './components/TableauPanel.tsx'
+import FrameworkPanel from './components/FrameworkPanel.tsx'
+import type { Framework } from './components/FrameworkPanel.tsx'
 import RcdPanel from './components/RcdPanel.tsx'
+
+const NOT_IMPLEMENTED: Record<string, string> = {
+  'maxent': 'Maximum Entropy',
+  'stochastic-ot': 'Stochastic OT',
+  'nhg': 'Noisy Harmonic Grammar',
+}
 
 function App() {
   const [wasmReady, setWasmReady] = useState(false)
@@ -11,6 +19,7 @@ function App() {
   const [currentTableauText, setCurrentTableauText] = useState<string | null>(null)
   const [currentInputFilename, setCurrentInputFilename] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
+  const [framework, setFramework] = useState<Framework>('classical-ot')
   const loadCountRef = useRef(0)
 
   useEffect(() => {
@@ -77,6 +86,8 @@ function App() {
     )
   }
 
+  const notImplementedName = NOT_IMPLEMENTED[framework]
+
   return (
     <>
       <div className="grain-overlay"></div>
@@ -106,12 +117,31 @@ function App() {
             )}
 
             {currentTableau && !parseError && (
+              <FrameworkPanel
+                framework={framework}
+                onFrameworkChange={setFramework}
+              />
+            )}
+
+            {currentTableau && !parseError && framework === 'classical-ot' && (
               <RcdPanel
                 key={loadCountRef.current}
                 tableau={currentTableau}
                 tableauText={currentTableauText!}
                 inputFilename={currentInputFilename}
               />
+            )}
+
+            {currentTableau && !parseError && notImplementedName && (
+              <section className="analysis-panel">
+                <div className="panel-header">
+                  <h2>Analysis</h2>
+                  <span className="panel-number">04</span>
+                </div>
+                <div className="rcd-status failure">
+                  {notImplementedName} is not yet implemented.
+                </div>
+              </section>
             )}
           </div>
         </main>
@@ -136,7 +166,7 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-divider"></div>
-      <p>Recursive Constraint Demotion &middot; Version 2.7</p>
+      <p>OT-Soft &middot; Version 2.7</p>
     </footer>
   )
 }

@@ -29,6 +29,11 @@ dev: build serve ## Build WASM and start Vite dev server
 web-build: ## Build web frontend for production
 	@cd web && npm run build
 
+web-check: ## Type-check web frontend without building
+	@echo "Type-checking web frontend..."
+	@cd web && npx tsc -b
+	@echo "✓ Web check complete"
+
 clean: ## Clean build artifacts
 	@echo "Cleaning build artifacts..."
 	@cd rust && cargo clean
