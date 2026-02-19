@@ -22,7 +22,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 ## Categorical Ranking Algorithms
 
 - [x] Recursive Constraint Demotion (RCD)
-- [x] RCD ranking arguments (transitive reduction basis)
+- [x] RCD ranking arguments (FRed Skeletal Basis)
 - [x] RCD mini-tableaux generation
 - [x] RCD constraint necessity analysis
 - [x] Biased Constraint Demotion (BCD)
@@ -32,10 +32,12 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 ## Ranking Argumentation (FRed)
 
-- [~] FRed — partial implementation exists within RCD output, but standalone FRed with full ERC fusion/recursion is not implemented
-- [ ] Skeletal Basis mode
-- [ ] Most Informative Basis mode
-- [ ] Detailed argumentation output
+- [x] FRed — full ERC fusion algebra and recursive basis computation
+- [x] Skeletal Basis mode (default)
+- [x] Most Informative Basis mode
+- [x] FRed integrated into RCD/BCD/LFCD Section 4 output
+- [x] Standalone `run_fred` and `format_fred_output` WASM exports
+- [ ] Detailed argumentation output (verbose recursion tree)
 - [ ] Hasse diagram generation (GraphViz DOT output)
 
 ## Probabilistic Learning Algorithms
@@ -96,7 +98,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Tiny example (`examples/tiny/`) with expected RCD output
 - [ ] BCD example with expected output
 - [ ] LFCD example with expected output
-- [ ] FRed example with expected output
+- [x] FRed example with expected output (tiny example verified)
 - [ ] GLA/MaxEnt example with expected output
 - [~] NHG example with expected output
 - [ ] Factorial typology example with expected output

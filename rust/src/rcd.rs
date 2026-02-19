@@ -6,6 +6,7 @@
 
 use wasm_bindgen::prelude::*;
 use crate::tableau::Tableau;
+use crate::fred::FRedResult;
 
 /// Classification of constraint necessity
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -13,13 +14,6 @@ pub enum ConstraintNecessity {
     Necessary,
     UnnecessaryButShownForFaithfulness,
     CompletelyUnnecessary,
-}
-
-/// A ranking argument showing one constraint must rank above another
-#[derive(Debug, Clone)]
-pub struct RankingArgument {
-    pub higher_constraint: usize,
-    pub lower_constraint: usize,
 }
 
 /// A mini-tableau showing a simplified winner-loser comparison
@@ -44,9 +38,9 @@ pub struct RCDResult {
     /// Necessity classification for each constraint (not exposed to WASM)
     #[wasm_bindgen(skip)]
     constraint_necessity: Vec<ConstraintNecessity>,
-    /// Ranking arguments derived from strata (not exposed to WASM)
+    /// FRed ranking-argumentation result (not exposed to WASM)
     #[wasm_bindgen(skip)]
-    ranking_arguments: Vec<RankingArgument>,
+    fred_result: Option<FRedResult>,
     /// Mini-tableaux for ranking arguments (not exposed to WASM)
     #[wasm_bindgen(skip)]
     mini_tableaux: Vec<MiniTableau>,
@@ -81,107 +75,21 @@ impl RCDResult {
             num_strata,
             success,
             constraint_necessity: Vec::new(),
-            ranking_arguments: Vec::new(),
+            fred_result: None,
             mini_tableaux: Vec::new(),
             tie_warning: false,
         }
     }
 
-    /// Compute additional analyses (necessity, ranking arguments, mini-tableaux)
+    /// Compute additional analyses (necessity, FRed ranking arguments, mini-tableaux)
     pub(crate) fn compute_extra_analyses(&mut self, tableau: &Tableau) {
         self.constraint_necessity = tableau.compute_constraint_necessity(self);
-        self.ranking_arguments = self.compute_ranking_arguments(tableau);
+        self.fred_result = Some(tableau.run_fred(false)); // Skeletal Basis mode
         self.mini_tableaux = self.generate_mini_tableaux(tableau);
     }
 
     pub(crate) fn set_tie_warning(&mut self, value: bool) {
         self.tie_warning = value;
-    }
-
-    /// Compute ranking arguments based on constraint strata
-    fn compute_ranking_arguments(&self, tableau: &Tableau) -> Vec<RankingArgument> {
-        let mut arguments = Vec::new();
-
-        // For each pair of constraints in different strata
-        for i in 0..self.constraint_strata.len() {
-            for j in 0..self.constraint_strata.len() {
-                if i != j && self.constraint_strata[i] < self.constraint_strata[j] {
-                    // Check if there's evidence for i >> j
-                    if self.has_ranking_evidence(tableau, i, j) {
-                        arguments.push(RankingArgument {
-                            higher_constraint: i,
-                            lower_constraint: j,
-                        });
-                    }
-                }
-            }
-        }
-
-        // Apply transitive reduction to get minimal set
-        self.transitive_reduction(arguments)
-    }
-
-    /// Check if there's evidence for higher >> lower ranking
-    fn has_ranking_evidence(&self, tableau: &Tableau, higher: usize, lower: usize) -> bool {
-        // Check if any winner-loser pair shows higher >> lower
-        for form in &tableau.forms {
-            // Find the winner
-            if let Some(winner) = form.candidates.iter().find(|c| c.frequency > 0) {
-                // Check each loser
-                for loser in form.candidates.iter().filter(|c| c.frequency == 0) {
-                    // higher prefers winner (winner has fewer violations),
-                    // lower prefers loser (loser has fewer violations)?
-                    if winner.violations[higher] < loser.violations[higher]
-                        && loser.violations[lower] < winner.violations[lower] {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-
-    /// Remove transitive rankings to get minimal set
-    /// If we have A >> B and B >> C, we keep both (we don't remove A >> C unless it's truly transitive)
-    fn transitive_reduction(&self, arguments: Vec<RankingArgument>) -> Vec<RankingArgument> {
-        let mut result = Vec::new();
-
-        for arg in &arguments {
-            let mut is_transitive = false;
-
-            // Check if this ranking can be derived from other rankings
-            // Look for an intermediate constraint k where:
-            // - higher >> k exists in arguments
-            // - k >> lower exists in arguments
-            // - k is in a stratum between higher and lower
-            for intermediate_arg in &arguments {
-                // Check if intermediate_arg.lower_constraint is between higher and lower in strata
-                if intermediate_arg.higher_constraint == arg.higher_constraint {
-                    let intermediate = intermediate_arg.lower_constraint;
-                    let intermediate_stratum = self.constraint_strata[intermediate];
-                    let higher_stratum = self.constraint_strata[arg.higher_constraint];
-                    let lower_stratum = self.constraint_strata[arg.lower_constraint];
-
-                    // Is intermediate truly between them?
-                    if higher_stratum < intermediate_stratum && intermediate_stratum < lower_stratum {
-                        // Check if there's also intermediate >> lower
-                        if arguments.iter().any(|a|
-                            a.higher_constraint == intermediate &&
-                            a.lower_constraint == arg.lower_constraint
-                        ) {
-                            is_transitive = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if !is_transitive {
-                result.push(arg.clone());
-            }
-        }
-
-        result
     }
 
     /// Generate mini-tableaux showing simplified ranking arguments
@@ -433,18 +341,9 @@ impl RCDResult {
             }
         }
 
-        // Section 4: Ranking Arguments
-        if !self.ranking_arguments.is_empty() {
-            output.push_str("4. Ranking Arguments, based on the Fusional Reduction Algorithm\n\n");
-            output.push_str("This run sought to obtain the Skeletal Basis, intended to keep each final ranking argument as pithy as possible.\n\n\n\n");
-            output.push_str("The final rankings obtained are as follows:\n\n");
-
-            for arg in &self.ranking_arguments {
-                let higher = &tableau.constraints[arg.higher_constraint];
-                let lower = &tableau.constraints[arg.lower_constraint];
-                output.push_str(&format!("      {} >> {}\n", higher.abbrev(), lower.abbrev()));
-            }
-            output.push_str("\n\n");
+        // Section 4: Ranking Arguments (FRed)
+        if let Some(ref fred) = self.fred_result {
+            output.push_str(&fred.format_section4());
         }
 
         // Section 5: Mini-Tableaux
@@ -756,16 +655,14 @@ impl Tableau {
                     num_strata: current_stratum,
                     success: true,
                     constraint_necessity: Vec::new(),
-                    ranking_arguments: Vec::new(),
+                    fred_result: None,
                     mini_tableaux: Vec::new(),
                     tie_warning: false,
                 };
 
                 // Compute additional analyses only if requested
                 if compute_extra_analyses {
-                    result.constraint_necessity = self.compute_constraint_necessity(&result);
-                    result.ranking_arguments = result.compute_ranking_arguments(self);
-                    result.mini_tableaux = result.generate_mini_tableaux(self);
+                    result.compute_extra_analyses(self);
                 }
 
                 return result;
@@ -788,7 +685,7 @@ impl Tableau {
                     num_strata: current_stratum - 1,
                     success: false,
                     constraint_necessity: Vec::new(),
-                    ranking_arguments: Vec::new(),
+                    fred_result: None,
                     mini_tableaux: Vec::new(),
                     tie_warning: false,
                 };
@@ -846,16 +743,14 @@ impl Tableau {
                     num_strata: current_stratum,
                     success: true,
                     constraint_necessity: Vec::new(),
-                    ranking_arguments: Vec::new(),
+                    fred_result: None,
                     mini_tableaux: Vec::new(),
                     tie_warning: false,
                 };
 
                 // Compute additional analyses only if requested
                 if compute_extra_analyses {
-                    result.constraint_necessity = self.compute_constraint_necessity(&result);
-                    result.ranking_arguments = result.compute_ranking_arguments(self);
-                    result.mini_tableaux = result.generate_mini_tableaux(self);
+                    result.compute_extra_analyses(self);
                 }
 
                 return result;
@@ -868,7 +763,7 @@ impl Tableau {
                     num_strata: current_stratum,
                     success: false,
                     constraint_necessity: Vec::new(),
-                    ranking_arguments: Vec::new(),
+                    fred_result: None,
                     mini_tableaux: Vec::new(),
                     tie_warning: false,
                 };
@@ -1109,9 +1004,11 @@ mod tests {
         assert!(generated.contains("Necessary") || generated.contains("Not necessary"),
             "Should classify constraints as necessary or not");
 
-        // Verify Section 4 is present
+        // Verify Section 4 is present with correct FRed-based ranking statements.
         assert!(generated.contains("4. Ranking Arguments"), "Should have Section 4 header");
-        assert!(generated.contains(">>"), "Should contain ranking arguments with >> symbol");
+        assert!(generated.contains("Skeletal Basis"), "Should mention Skeletal Basis");
+        assert!(generated.contains("*Coda >> Max"), "Should contain '*Coda >> Max' from FRed");
+        assert!(generated.contains("*NoOns >> Dep"), "Should contain '*NoOns >> Dep' from FRed");
 
         // Verify Section 5 is present
         assert!(generated.contains("5. Mini-Tableaux"), "Should have Section 5 header");

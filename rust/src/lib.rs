@@ -20,6 +20,7 @@ mod tableau;
 mod rcd;
 mod bcd;
 mod lfcd;
+mod fred;
 mod apriori;
 mod maxent;
 mod nhg;
@@ -27,6 +28,7 @@ mod nhg;
 // Re-export public types
 pub use tableau::{Tableau, Constraint, Candidate, InputForm};
 pub use rcd::RCDResult;
+pub use fred::FRedResult;
 pub use maxent::MaxEntResult;
 pub use nhg::NhgResult;
 
@@ -71,6 +73,36 @@ pub fn format_rcd_output(text: &str, filename: &str, apriori_text: &str) -> Resu
         tableau.run_rcd_with_apriori(&apriori)
     };
     Ok(result.format_output(&tableau, filename))
+}
+
+/// Run FRed (Fusional Reduction Algorithm) on a tableau.
+///
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+/// `use_mib`: if true, use Most Informative Basis; if false (default), use Skeletal Basis.
+#[wasm_bindgen]
+pub fn run_fred(text: &str, apriori_text: &str, use_mib: bool) -> Result<FRedResult, String> {
+    let tableau = Tableau::parse(text)?;
+    if apriori_text.trim().is_empty() {
+        Ok(tableau.run_fred(use_mib))
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        Ok(tableau.run_fred_with_apriori(use_mib, &apriori))
+    }
+}
+
+/// Format FRed results as a standalone text output for download.
+#[wasm_bindgen]
+pub fn format_fred_output(text: &str, _filename: &str, apriori_text: &str, use_mib: bool) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let result = if apriori_text.trim().is_empty() {
+        tableau.run_fred(use_mib)
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        tableau.run_fred_with_apriori(use_mib, &apriori)
+    };
+    Ok(result.format_section4())
 }
 
 /// Run BCD on a parsed tableau
