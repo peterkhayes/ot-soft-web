@@ -504,6 +504,9 @@ impl Tableau {
 
         let mut rng = Rng::new(demi_gaussians);
 
+        crate::ot_log!("Starting NHG with {} constraints, {} training exemplars, {} cycles",
+            nc, pool_size, cycles);
+
         // ── Main learning loop ───────────────────────────────────────────────────────────
         if pool_size > 0 {
             for stage in 0..4 {
@@ -548,6 +551,7 @@ impl Tableau {
                         }
                     }
                 }
+                crate::ot_log!("NHG stage {}/4 complete (plasticity = {:.4})", stage + 1, plasticity);
             }
         }
 
@@ -613,6 +617,8 @@ impl Tableau {
                 }
             }
         }
+
+        crate::ot_log!("NHG DONE: log_likelihood = {:.6}", log_likelihood);
 
         NhgResult {
             weights,

@@ -473,6 +473,7 @@ impl Tableau {
                     ErcStatus::Uninformative => continue,
                     ErcStatus::Unsatisfiable | ErcStatus::Duplicate => {
                         // Hard failure: winner cannot be derived under any ranking.
+                        crate::ot_log!("FRed FAILED: unsatisfiable ERC");
                         return FRedResult {
                             valhalla: Vec::new(),
                             failure: true,
@@ -490,8 +491,13 @@ impl Tableau {
             }
         }
 
+        let basis_name = if use_mib { "MIB" } else { "Skeletal Basis" };
+        crate::ot_log!("Starting FRed ({}) with {} constraints, {} ERCs",
+            basis_name, n, ercs.len());
+
         // If no informative ERCs were found, nothing to do.
         if ercs.is_empty() {
+            crate::ot_log!("FRed DONE: no informative ERCs");
             return FRedResult {
                 valhalla: Vec::new(),
                 failure: false,
@@ -512,6 +518,12 @@ impl Tableau {
 
         let erc_refs: Vec<&str> = ercs.iter().map(|s| s.as_str()).collect();
         state.recursive_routine(&erc_refs);
+
+        if state.failure_flag {
+            crate::ot_log!("FRed FAILED: inconsistent ERCs");
+        } else {
+            crate::ot_log!("FRed DONE: {} fusional reduction(s) in Valhalla", state.valhalla.len());
+        }
 
         FRedResult {
             valhalla: state.valhalla,

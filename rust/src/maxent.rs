@@ -212,6 +212,9 @@ impl Tableau {
             }
         }
 
+        crate::ot_log!("Starting MaxEnt with {} constraints, {} forms, {} iterations (weights: {}..{})",
+            nc, self.forms.len(), iterations, weight_min, weight_max);
+
         // GIS main loop
         for _ in 0..iterations {
             // Step 1: Calculate predicted proportions for each form
@@ -245,6 +248,7 @@ impl Tableau {
 
         // Calculate log probability of data
         let log_prob = self.calculate_log_prob(&weights, &predicted_probs);
+        crate::ot_log!("MaxEnt DONE: log_prob = {:.6} after {} iterations", log_prob, iterations);
 
         MaxEntResult {
             weights,

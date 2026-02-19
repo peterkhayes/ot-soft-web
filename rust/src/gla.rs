@@ -372,6 +372,10 @@ impl Tableau {
 
         let mut rng = Rng::new();
 
+        let mode_name = if maxent_mode { "MaxEnt" } else { "StochasticOT" };
+        crate::ot_log!("Starting GLA ({}) with {} constraints, {} training exemplars, {} cycles",
+            mode_name, nc, pool_size, cycles);
+
         // ── Main learning loop ────────────────────────────────────────────────
         if pool_size > 0 {
             for stage in 0..4 {
@@ -427,6 +431,7 @@ impl Tableau {
                         }
                     }
                 }
+                crate::ot_log!("GLA stage {}/4 complete (plasticity = {:.4})", stage + 1, plasticity);
             }
         }
 
@@ -468,6 +473,8 @@ impl Tableau {
                 }
             }
         }
+
+        crate::ot_log!("GLA ({}) DONE: log_likelihood = {:.6}", mode_name, log_likelihood);
 
         GlaResult {
             ranking_values,
