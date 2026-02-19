@@ -86,16 +86,34 @@ pub fn run_rcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
 
 /// Format RCD results as text for download.
 /// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+/// `include_fred`: include ranking arguments (FRed) section.
+/// `use_mib`: use Most Informative Basis (false = Skeletal Basis).
+/// `show_details`: include verbose FRed recursion tree.
+/// `include_mini_tableaux`: include illustrative mini-tableaux.
 #[wasm_bindgen]
-pub fn format_rcd_output(text: &str, filename: &str, apriori_text: &str) -> Result<String, String> {
+#[allow(clippy::too_many_arguments)]
+pub fn format_rcd_output(
+    text: &str,
+    filename: &str,
+    apriori_text: &str,
+    include_fred: bool,
+    use_mib: bool,
+    show_details: bool,
+    include_mini_tableaux: bool,
+) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = if apriori_text.trim().is_empty() {
-        tableau.run_rcd()
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
     } else {
         let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let mut result = if apriori.is_empty() {
+        tableau.run_rcd()
+    } else {
         tableau.run_rcd_with_apriori(&apriori)
     };
+    result.apply_fred_options(&tableau, &apriori, include_fred, use_mib, show_details, include_mini_tableaux);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -205,16 +223,30 @@ pub fn format_nhg_output(
     Ok(result.format_output(&tableau, filename))
 }
 
-/// Format BCD results as text for download
+/// Format BCD results as text for download.
+/// `include_fred`: include ranking arguments (FRed) section.
+/// `use_mib`: use Most Informative Basis (false = Skeletal Basis).
+/// `show_details`: include verbose FRed recursion tree.
+/// `include_mini_tableaux`: include illustrative mini-tableaux.
 #[wasm_bindgen]
-pub fn format_bcd_output(text: &str, filename: &str, specific: bool) -> Result<String, String> {
+#[allow(clippy::too_many_arguments)]
+pub fn format_bcd_output(
+    text: &str,
+    filename: &str,
+    specific: bool,
+    include_fred: bool,
+    use_mib: bool,
+    show_details: bool,
+    include_mini_tableaux: bool,
+) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_bcd(specific);
+    let mut result = tableau.run_bcd(specific);
     let algorithm_name = if specific {
         "Biased Constraint Demotion (Specific)"
     } else {
         "Biased Constraint Demotion"
     };
+    result.apply_fred_options(&tableau, &[], include_fred, use_mib, show_details, include_mini_tableaux);
     Ok(result.format_output_with_algorithm(&tableau, filename, algorithm_name))
 }
 
@@ -234,16 +266,34 @@ pub fn run_lfcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
 
 /// Format LFCD results as text for download.
 /// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+/// `include_fred`: include ranking arguments (FRed) section.
+/// `use_mib`: use Most Informative Basis (false = Skeletal Basis).
+/// `show_details`: include verbose FRed recursion tree.
+/// `include_mini_tableaux`: include illustrative mini-tableaux.
 #[wasm_bindgen]
-pub fn format_lfcd_output(text: &str, filename: &str, apriori_text: &str) -> Result<String, String> {
+#[allow(clippy::too_many_arguments)]
+pub fn format_lfcd_output(
+    text: &str,
+    filename: &str,
+    apriori_text: &str,
+    include_fred: bool,
+    use_mib: bool,
+    show_details: bool,
+    include_mini_tableaux: bool,
+) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = if apriori_text.trim().is_empty() {
-        tableau.run_lfcd()
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
     } else {
         let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let mut result = if apriori.is_empty() {
+        tableau.run_lfcd()
+    } else {
         tableau.run_lfcd_with_apriori(&apriori)
     };
+    result.apply_fred_options(&tableau, &apriori, include_fred, use_mib, show_details, include_mini_tableaux);
     Ok(result.format_output_with_algorithm(
         &tableau,
         filename,

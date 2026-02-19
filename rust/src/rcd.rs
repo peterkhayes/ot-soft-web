@@ -92,6 +92,45 @@ impl RCDResult {
         self.tie_warning = value;
     }
 
+    /// Override FRed options after the initial computation.
+    ///
+    /// Called by format functions to apply user-specified argumentation options:
+    /// - `include_fred`: if false, suppress FRed output and mini-tableaux
+    /// - `use_mib`: use Most Informative Basis instead of Skeletal Basis
+    /// - `verbose`: include verbose recursion tree in FRed output
+    /// - `include_mini_tableaux`: if false, suppress mini-tableaux
+    pub(crate) fn apply_fred_options(
+        &mut self,
+        tableau: &Tableau,
+        apriori: &[Vec<bool>],
+        include_fred: bool,
+        use_mib: bool,
+        verbose: bool,
+        include_mini_tableaux: bool,
+    ) {
+        if !include_fred {
+            self.fred_result = None;
+            self.mini_tableaux = Vec::new();
+            return;
+        }
+
+        // Re-run FRed if options differ from the default (SB, no verbose).
+        // Default was computed in compute_extra_analyses as run_fred(false).
+        if use_mib || verbose {
+            self.fred_result = Some(
+                if apriori.is_empty() {
+                    tableau.run_fred_verbose(use_mib, verbose)
+                } else {
+                    tableau.run_fred_with_apriori_verbose(use_mib, apriori, verbose)
+                }
+            );
+        }
+
+        if !include_mini_tableaux {
+            self.mini_tableaux = Vec::new();
+        }
+    }
+
     /// Generate mini-tableaux showing simplified ranking arguments
     fn generate_mini_tableaux(&self, tableau: &Tableau) -> Vec<MiniTableau> {
         let mut mini_tableaux = Vec::new();

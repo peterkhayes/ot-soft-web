@@ -37,7 +37,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Most Informative Basis mode
 - [x] FRed integrated into RCD/BCD/LFCD Section 4 output
 - [x] Standalone `run_fred` and `format_fred_output` WASM exports
-- [ ] Detailed argumentation output (verbose recursion tree)
+- [x] Detailed argumentation output (verbose recursion tree)
 - [ ] Hasse diagram generation (GraphViz DOT output)
 
 ## Probabilistic Learning Algorithms
@@ -84,7 +84,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Download results button
 - [x] Framework selection (Classical OT / MaxEnt / NHG / Stochastic OT)
 - [x] Algorithm variant selection (RCD / BCD / LFCD)
-- [ ] Ranking argumentation options (MIB, details, minitableaux)
+- [x] Ranking argumentation options (MIB, details, minitableaux)
 - [ ] Factorial typology button and options
 - [x] A priori rankings controls
 - [ ] Parameter inputs for probabilistic algorithms

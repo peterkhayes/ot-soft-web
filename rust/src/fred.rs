@@ -79,8 +79,9 @@ fn fusion(ercs: &[&str], n: usize) -> String {
 /// For each constraint column: if the column has only W's and e's (no L),
 /// with at least one W and one e, mark the ERCs with 'e' in that column.
 /// Return the fusion of all marked ERCs.
-fn fusion_of_total_residue(ercs: &[&str], n: usize) -> String {
+fn fusion_of_total_residue(ercs: &[&str], n: usize) -> (String, Vec<usize>) {
     let mut include = vec![false; ercs.len()];
+    let mut residue_indices: Vec<usize> = Vec::new();
 
     for col in 0..n {
         let mut has_l = false;
@@ -110,14 +111,18 @@ fn fusion_of_total_residue(ercs: &[&str], n: usize) -> String {
     let residue: Vec<&str> = ercs
         .iter()
         .zip(include.iter())
-        .filter(|(_, &inc)| inc)
-        .map(|(erc, _)| *erc)
+        .enumerate()
+        .filter(|(_, (_, &inc))| inc)
+        .map(|(i, (erc, _))| {
+            residue_indices.push(i);
+            *erc
+        })
         .collect();
 
     if residue.is_empty() {
-        String::new()
+        (String::new(), residue_indices)
     } else {
-        fusion(&residue, n)
+        (fusion(&residue, n), residue_indices)
     }
 }
 
@@ -169,15 +174,55 @@ struct FRedState {
     use_skeletal_basis: bool,
     /// De-duplication set for send-on ERC sets (concatenated ERC strings).
     visited: HashSet<String>,
+    /// Verbose output accumulator.
+    verbose: bool,
+    detail_log: String,
+    /// Constraint abbreviations for verbose output.
+    abbrevs: Vec<String>,
 }
 
 impl FRedState {
-    fn recursive_routine(&mut self, ercs: &[&str]) {
+    fn recursive_routine(&mut self, ercs: &[&str], path: &str, from_constraint: usize) {
+        // ── Verbose: report location ───────────────────────────────────────
+        if self.verbose {
+            self.detail_log.push_str(&format!(
+                "\n   Recursive search has now reached this location in the search tree:  {}\n",
+                path
+            ));
+            if from_constraint > 0 {
+                let abbrev = self.abbrevs.get(from_constraint - 1).map(|s| s.as_str()).unwrap_or("?");
+                self.detail_log.push_str(&format!(
+                    "   Current set of ERCs is based on constraint #{}, {}\n",
+                    from_constraint, abbrev
+                ));
+            }
+            if path != "1" {
+                self.detail_log.push_str("   Working with the following ERC set:\n");
+                for erc in ercs.iter() {
+                    self.detail_log.push_str(&format!("      {}\n", erc));
+                }
+            }
+        }
+
         // ── a. Compute fusion ──────────────────────────────────────────────
         let fus = fusion(ercs, self.num_constraints);
 
+        if self.verbose {
+            self.detail_log.push('\n');
+            self.detail_log.push_str(&format!(
+                "   Fusion of this ERC set is:  {}\n",
+                fus
+            ));
+        }
+
         // Failed fusion: L but no W → unrankable
         if l_count(&fus) > 0 && w_count(&fus) == 0 {
+            if self.verbose {
+                self.detail_log.push_str(
+                    "   The fused ERC set has at least one L and no W.\n   \
+                     This means that the constraints cannot be ranked to derive the outputs specified.\n"
+                );
+            }
             self.valhalla.push(fus);
             self.failure_flag = true;
             return;
@@ -185,16 +230,45 @@ impl FRedState {
 
         // Trivially satisfied: no L → any ranking works
         if l_count(&fus) == 0 {
+            if self.verbose {
+                self.detail_log.push_str(
+                    "   The fused ERC set has no L.\n   \
+                     This means that any ranking will work; there are no ranking arguments here.\n"
+                );
+            }
             self.valhalla.push(fus);
             self.failure_flag = true;
             return;
         }
 
         // ── b. Fusion of total residue ─────────────────────────────────────
-        let residue = fusion_of_total_residue(ercs, self.num_constraints);
+        if self.verbose {
+            self.detail_log.push_str("   The following ERCs form the total information-loss residue:\n");
+        }
+
+        let (residue, residue_indices) = fusion_of_total_residue(ercs, self.num_constraints);
+
+        if self.verbose {
+            if residue_indices.is_empty() {
+                self.detail_log.push_str("      (none)\n");
+            } else {
+                for &idx in &residue_indices {
+                    self.detail_log.push_str(&format!("      {}\n", ercs[idx]));
+                }
+            }
+            self.detail_log.push('\n');
+            if residue.is_empty() {
+                self.detail_log.push_str("   (The total information-loss residue is empty.)\n");
+            } else {
+                self.detail_log.push_str(&format!(
+                    "   Fusion of total residue:  {}\n",
+                    residue
+                ));
+            }
+        }
 
         // ── c. Entailment check ────────────────────────────────────────────
-        let entailed = self.entailment_check(&residue, &fus);
+        let entailed = self.entailment_check_verbose(&residue, &fus);
 
         if !entailed {
             // In Skeletal Basis mode, store the skeletal version of the fusion.
@@ -238,31 +312,92 @@ impl FRedState {
                 let check = send_on.concat();
                 if !self.visited.contains(&check) {
                     self.visited.insert(check);
-                    self.recursive_routine(&send_on);
+                    let send_path = format!("{}, {}", path, col + 1);
+                    self.recursive_routine(&send_on, &send_path, col + 1);
                     if self.failure_flag {
                         return;
                     }
+                } else if self.verbose {
+                    let send_path = format!("{}, {}", path, col + 1);
+                    self.detail_log.push_str(&format!(
+                        "   ([{}] not novel so not checked)\n",
+                        send_path
+                    ));
                 }
             }
         }
     }
 
-    /// Entailment check (returns true if the fusion IS entailed by the residue,
-    /// meaning it should NOT be added to Valhalla).
-    fn entailment_check(&self, residue: &str, fus: &str) -> bool {
+    /// Entailment check with verbose output. Returns true if entailed (should NOT be added to Valhalla).
+    fn entailment_check_verbose(&mut self, residue: &str, fus: &str) -> bool {
         // If residue is empty, there is no entailment relation.
         if residue.is_empty() {
+            if self.verbose {
+                let basis_name = if self.use_skeletal_basis { "Skeletal Basis" } else { "Most Informative Basis" };
+                self.detail_log.push_str(&format!(
+                    "\n   {} has a null residue and thus may be retained in the {} of ERCs.\n",
+                    fus, basis_name
+                ));
+            }
             return false;
         }
+
+        let basis_name = if self.use_skeletal_basis { "Skeletal Basis" } else { "Most Informative Basis" };
 
         if self.use_skeletal_basis {
             // Skeletal Basis mode: compute skeletal basis of fusion w.r.t. residue.
             // If the result has no L's → entailed (discard).
             let sb = skeletal_basis(fus, residue);
-            l_count(&sb) == 0
+            if self.verbose {
+                self.detail_log.push_str(&format!(
+                    "\n   Skeletal basis of the fusion:  {}\n",
+                    sb
+                ));
+            }
+            if l_count(&sb) == 0 {
+                if self.verbose {
+                    self.detail_log.push_str(&format!(
+                        "      {} has no L's, so it cannot be retained in the {}.\n",
+                        sb, basis_name
+                    ));
+                }
+                true
+            } else {
+                if self.verbose {
+                    self.detail_log.push_str(&format!(
+                        "      {} includes at least one L and thus is not entailed by {}.\n",
+                        sb, residue
+                    ));
+                    self.detail_log.push_str(&format!(
+                        "   Thus it may be retained in the {} of ERCs.\n",
+                        basis_name
+                    ));
+                }
+                false
+            }
         } else {
             // Most Informative Basis mode: check if residue entails fusion.
-            entails(residue, fus)
+            if entails(residue, fus) {
+                if self.verbose {
+                    self.detail_log.push_str(&format!(
+                        "\n   {} is entailed by {} and thus is not a valid conclusion.\n",
+                        fus, residue
+                    ));
+                }
+                true
+            } else {
+                if self.verbose {
+                    self.detail_log.push_str(&format!(
+                        "\n   {} is not entailed by {}.\n",
+                        fus, residue
+                    ));
+                    self.detail_log.push_str(&format!(
+                        "   Thus it may be retained in the {} of ERCs.\n",
+                        basis_name
+                    ));
+                }
+                false
+            }
         }
     }
 }
@@ -285,6 +420,9 @@ pub struct FRedResult {
     /// Constraint abbreviations for formatting ranking statements.
     #[wasm_bindgen(skip)]
     pub(crate) constraint_abbrevs: Vec<String>,
+    /// Verbose detail text (empty if not requested).
+    #[wasm_bindgen(skip)]
+    pub(crate) detail_text: String,
 }
 
 #[wasm_bindgen]
@@ -327,10 +465,23 @@ impl FRedResult {
             "This run sought to obtain the {basis_name}, intended to {purpose}.\n\n\n\n"
         ));
 
+        // Include verbose detail text (original ERC set + recursive search tree)
+        if !self.detail_text.is_empty() {
+            out.push_str(&self.detail_text);
+            out.push_str("\n\nRanking argumentation:  Final result\n\n");
+        }
+
         if self.failure {
             out.push_str(
                 "The constraints cannot be ranked to yield the desired outcomes.\n\n",
             );
+        } else if !self.detail_text.is_empty() {
+            let basis_name_full = if self.use_skeletal_basis { "Skeletal Basis" } else { "Most Informative Basis" };
+            out.push_str(&format!(
+                "The following set of ERCs forms the {} for the ERC set as a whole, \
+                 and thus encapsulates the available ranking information.\n\n",
+                basis_name_full
+            ));
         }
 
         out.push_str("The final rankings obtained are as follows:\n\n");
@@ -411,15 +562,25 @@ impl Tableau {
     /// `use_mib = false` → Skeletal Basis (default in VB6)
     /// `use_mib = true`  → Most Informative Basis
     pub fn run_fred(&self, use_mib: bool) -> FRedResult {
-        self.run_fred_internal(use_mib, &[])
+        self.run_fred_internal(use_mib, &[], false)
     }
 
     /// Run FRed with a priori rankings enforced as additional ERCs.
     pub fn run_fred_with_apriori(&self, use_mib: bool, apriori: &[Vec<bool>]) -> FRedResult {
-        self.run_fred_internal(use_mib, apriori)
+        self.run_fred_internal(use_mib, apriori, false)
     }
 
-    fn run_fred_internal(&self, use_mib: bool, apriori: &[Vec<bool>]) -> FRedResult {
+    /// Run FRed with verbose detail output.
+    pub fn run_fred_verbose(&self, use_mib: bool, verbose: bool) -> FRedResult {
+        self.run_fred_internal(use_mib, &[], verbose)
+    }
+
+    /// Run FRed with a priori rankings and verbose output.
+    pub fn run_fred_with_apriori_verbose(&self, use_mib: bool, apriori: &[Vec<bool>], verbose: bool) -> FRedResult {
+        self.run_fred_internal(use_mib, apriori, verbose)
+    }
+
+    fn run_fred_internal(&self, use_mib: bool, apriori: &[Vec<bool>], verbose: bool) -> FRedResult {
         let n = self.constraints.len();
         let abbrevs: Vec<String> = self.constraints.iter().map(|c| c.abbrev()).collect();
         let use_skeletal_basis = !use_mib;
@@ -427,6 +588,7 @@ impl Tableau {
         // ── Step 1: build original ERC set ────────────────────────────────
 
         let mut ercs: Vec<String> = Vec::new();
+        let mut erc_evidence: Vec<String> = Vec::new();
 
         // Prepend a priori ranking ERCs.
         if !apriori.is_empty() {
@@ -436,7 +598,9 @@ impl Tableau {
                         let mut erc = vec!['e'; n];
                         erc[i] = 'W'; // winner-preferrer
                         erc[j] = 'L'; // loser-preferrer
-                        ercs.push(erc.into_iter().collect());
+                        let erc_str: String = erc.into_iter().collect();
+                        erc_evidence.push("(a priori ranking)".to_string());
+                        ercs.push(erc_str);
                     }
                 }
             }
@@ -469,6 +633,11 @@ impl Tableau {
                     })
                     .collect();
 
+                let evidence = format!(
+                    "for /{}/,  {} >> {}",
+                    form.input, winner.form, rival.form
+                );
+
                 match erc_status(&erc) {
                     ErcStatus::Uninformative => continue,
                     ErcStatus::Unsatisfiable | ErcStatus::Duplicate => {
@@ -479,11 +648,16 @@ impl Tableau {
                             failure: true,
                             use_skeletal_basis,
                             constraint_abbrevs: abbrevs,
+                            detail_text: String::new(),
                         };
                     }
                     ErcStatus::Valid => {
                         // De-duplicate.
-                        if !ercs.contains(&erc) {
+                        if let Some(pos) = ercs.iter().position(|e| e == &erc) {
+                            // Duplicate ERC — append to existing evidence.
+                            erc_evidence[pos].push_str(&format!(", {}", evidence));
+                        } else {
+                            erc_evidence.push(evidence);
                             ercs.push(erc);
                         }
                     }
@@ -503,7 +677,32 @@ impl Tableau {
                 failure: false,
                 use_skeletal_basis,
                 constraint_abbrevs: abbrevs,
+                detail_text: String::new(),
             };
+        }
+
+        // ── Verbose: print original ERC set ──────────────────────────────
+        let mut detail_log = String::new();
+        if verbose {
+            detail_log.push_str("Original set of ERCs:\n\n");
+
+            // Determine column widths
+            let max_erc_len = ercs.iter().map(|e| e.len()).max().unwrap_or(0);
+            let erc_col_width = max_erc_len.max(3);
+
+            detail_log.push_str(&format!(
+                "   {:<6}  {:<erc_col_width$}  Evidence\n",
+                "#", "ERC", erc_col_width = erc_col_width
+            ));
+
+            for (i, (erc, ev)) in ercs.iter().zip(erc_evidence.iter()).enumerate() {
+                detail_log.push_str(&format!(
+                    "   {:<6}  {:<erc_col_width$}  {}\n",
+                    i + 1, erc, ev, erc_col_width = erc_col_width
+                ));
+            }
+
+            detail_log.push_str("\nRecursive ranking search\n");
         }
 
         // ── Step 2: recursive search ───────────────────────────────────────
@@ -514,10 +713,13 @@ impl Tableau {
             failure_flag: false,
             use_skeletal_basis,
             visited: HashSet::new(),
+            verbose,
+            detail_log,
+            abbrevs: abbrevs.clone(),
         };
 
         let erc_refs: Vec<&str> = ercs.iter().map(|s| s.as_str()).collect();
-        state.recursive_routine(&erc_refs);
+        state.recursive_routine(&erc_refs, "1", 0);
 
         if state.failure_flag {
             crate::ot_log!("FRed FAILED: inconsistent ERCs");
@@ -530,6 +732,7 @@ impl Tableau {
             failure: state.failure_flag,
             use_skeletal_basis,
             constraint_abbrevs: abbrevs,
+            detail_text: state.detail_log,
         }
     }
 }
@@ -660,5 +863,21 @@ mod tests {
         assert!(generated.contains("*NoOns >> Dep"), "Generated output missing '*NoOns >> Dep'");
         assert!(expected.contains("*Coda >> Max"), "Expected output missing '*Coda >> Max'");
         assert!(expected.contains("*NoOns >> Dep"), "Expected output missing '*NoOns >> Dep'");
+    }
+
+    #[test]
+    fn test_fred_verbose_output() {
+        let text = load_tiny();
+        let tableau = Tableau::parse(&text).expect("parse failed");
+        let result = tableau.run_fred_verbose(false, true); // Skeletal Basis, verbose
+
+        assert!(!result.failure, "FRed should not report failure");
+        assert!(!result.detail_text.is_empty(), "Verbose run should produce detail text");
+
+        // Should contain original ERC set header
+        assert!(result.detail_text.contains("Original set of ERCs"));
+        assert!(result.detail_text.contains("Recursive ranking search"));
+        // Should contain evidence for ERCs
+        assert!(result.detail_text.contains("for /"));
     }
 }

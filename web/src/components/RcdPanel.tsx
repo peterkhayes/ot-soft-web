@@ -51,6 +51,12 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const [aprioriText, setAprioriText] = useState<string>('')
   const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
 
+  // Ranking argumentation options (match VB6 defaults)
+  const [includeFred, setIncludeFred] = useState<boolean>(true)
+  const [useMib, setUseMib] = useState<boolean>(false)
+  const [showDetails, setShowDetails] = useState<boolean>(true)
+  const [includeMiniTableaux, setIncludeMiniTableaux] = useState<boolean>(true)
+
   const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
 
   function handleAprioriFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -107,10 +113,10 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
     try {
       const apriori = supportsApriori ? aprioriText : ''
       const formattedOutput = algorithm === 'rcd'
-        ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori)
+        ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori, includeFred, useMib, showDetails, includeMiniTableaux)
         : algorithm === 'lfcd'
-          ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori)
-          : format_bcd_output(tableauText, inputFilename || 'tableau.txt', algorithm === 'bcd-specific')
+          ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori, includeFred, useMib, showDetails, includeMiniTableaux)
+          : format_bcd_output(tableauText, inputFilename || 'tableau.txt', algorithm === 'bcd-specific', includeFred, useMib, showDetails, includeMiniTableaux)
 
       downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'Output'))
     } catch (err) {
@@ -159,6 +165,46 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
             </svg>
             Download Results
           </button>
+        )}
+      </div>
+
+      <div className="nhg-options">
+        <div className="nhg-options-label">Ranking Argumentation</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={includeFred}
+            onChange={(e) => setIncludeFred(e.target.checked)}
+          />
+          Include ranking arguments
+        </label>
+        {includeFred && (
+          <>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={useMib}
+                onChange={(e) => setUseMib(e.target.checked)}
+              />
+              Use Most Informative Basis
+            </label>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={showDetails}
+                onChange={(e) => setShowDetails(e.target.checked)}
+              />
+              Show details of argumentation
+            </label>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={includeMiniTableaux}
+                onChange={(e) => setIncludeMiniTableaux(e.target.checked)}
+              />
+              Include illustrative mini-tableaux
+            </label>
+          </>
         )}
       </div>
 
