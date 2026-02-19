@@ -5,9 +5,9 @@ import TableauPanel from './components/TableauPanel.tsx'
 import FrameworkPanel from './components/FrameworkPanel.tsx'
 import type { Framework } from './components/FrameworkPanel.tsx'
 import RcdPanel from './components/RcdPanel.tsx'
+import MaxEntPanel from './components/MaxEntPanel.tsx'
 
 const NOT_IMPLEMENTED: Record<string, string> = {
-  'maxent': 'Maximum Entropy',
   'stochastic-ot': 'Stochastic OT',
   'nhg': 'Noisy Harmonic Grammar',
 }
@@ -125,6 +125,15 @@ function App() {
 
             {currentTableau && !parseError && framework === 'classical-ot' && (
               <RcdPanel
+                key={loadCountRef.current}
+                tableau={currentTableau}
+                tableauText={currentTableauText!}
+                inputFilename={currentInputFilename}
+              />
+            )}
+
+            {currentTableau && !parseError && framework === 'maxent' && (
+              <MaxEntPanel
                 key={loadCountRef.current}
                 tableau={currentTableau}
                 tableauText={currentTableauText!}
