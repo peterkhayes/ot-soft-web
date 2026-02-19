@@ -62,10 +62,24 @@ impl Tableau {
             form.candidates.iter().map(|_| true).collect()
         }).collect();
 
+        // Helper: count still-informative loser pairs
+        let count_pairs = |si: &Vec<Vec<bool>>| -> usize {
+            self.forms.iter().enumerate()
+                .map(|(fi, form)| {
+                    form.candidates.iter().enumerate()
+                        .filter(|&(ri, c)| c.frequency == 0 && si[fi][ri])
+                        .count()
+                })
+                .sum()
+        };
+
+        crate::ot_log!("Starting LFCD with {} pairs", count_pairs(&still_informative));
+
         // Safety: at most nc+1 iterations
         loop {
             current_stratum += 1;
             if current_stratum > nc + 1 {
+                crate::ot_log!("LFCD FAILED: safety limit reached at stratum {}", current_stratum);
                 return RCDResult::new(strata, current_stratum - 1, false);
             }
 
@@ -308,13 +322,18 @@ impl Tableau {
                 }
             }
 
+            crate::ot_log!("After stratum {}: {} pairs remaining",
+                current_stratum, count_pairs(&still_informative));
+
             if !some_are_demotable {
                 // Case III: success
+                crate::ot_log!("LFCD SUCCEEDED with {} strata", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, true);
                 result.compute_extra_analyses(self);
                 return result;
             } else if !some_are_non_demotable {
                 // Case II: failure — assign remaining to current stratum for diagnostics
+                crate::ot_log!("LFCD FAILED: all remaining constraints are demotable at stratum {}", current_stratum);
                 for c_idx in 0..nc {
                     if strata[c_idx] == 0 {
                         strata[c_idx] = current_stratum;

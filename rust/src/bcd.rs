@@ -258,6 +258,19 @@ impl Tableau {
         let mut upper_tie_flag = false;
         let mut tie_flag = false;
 
+        // Helper: count still-informative loser pairs
+        let count_pairs = |si: &Vec<Vec<bool>>| -> usize {
+            self.forms.iter().enumerate()
+                .map(|(fi, form)| {
+                    form.candidates.iter().enumerate()
+                        .filter(|&(ri, c)| c.frequency == 0 && si[fi][ri])
+                        .count()
+                })
+                .sum()
+        };
+
+        crate::ot_log!("Starting BCD with {} pairs", count_pairs(&still_informative));
+
         loop {
             current_stratum += 1;
 
@@ -418,8 +431,11 @@ impl Tableau {
                 }
             }
 
+            crate::ot_log!("After stratum {}: {} pairs remaining",
+                current_stratum, count_pairs(&still_informative));
+
             if !unranked_remain {
-                // Success
+                crate::ot_log!("BCD SUCCEEDED with {} strata", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, true);
                 result.set_tie_warning(upper_tie_flag || tie_flag);
                 result.compute_extra_analyses(self);
@@ -427,7 +443,7 @@ impl Tableau {
             }
 
             if !a_constraint_was_ranked {
-                // Failure — no constraints ranked, inconsistent data
+                crate::ot_log!("BCD FAILED: no constraints added to stratum {}", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum - 1, false);
                 result.set_tie_warning(upper_tie_flag || tie_flag);
                 return result;
@@ -456,6 +472,7 @@ impl Tableau {
 
             // Safety check
             if current_stratum > nc {
+                crate::ot_log!("BCD FAILED: safety limit reached at stratum {}", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, false);
                 result.set_tie_warning(upper_tie_flag || tie_flag);
                 return result;

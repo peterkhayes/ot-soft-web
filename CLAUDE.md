@@ -37,3 +37,7 @@ Follow these steps when porting a new feature from the VB6 source:
 5. **Update `TASKS.md`** — Mark completed items and add any new tasks discovered during implementation.
 
 6. **Commit** — Create a git commit with all changes once the task is complete.
+
+## Commands
+
+Always use `make` targets rather than invoking `cargo`, `npm`, or other tools directly. See the Makefile for available targets (`make test`, `make build`, `make check`, `make serve`, etc.).

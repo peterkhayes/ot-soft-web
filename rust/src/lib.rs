@@ -18,6 +18,27 @@
 
 use wasm_bindgen::prelude::*;
 
+/// Log a message to the browser console (WASM) or stderr (native).
+#[macro_export]
+macro_rules! ot_log {
+    ($($arg:tt)*) => {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use wasm_bindgen::prelude::*;
+            #[wasm_bindgen]
+            extern "C" {
+                #[wasm_bindgen(js_namespace = console)]
+                fn log(s: &str);
+            }
+            log(&format!($($arg)*));
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            eprintln!($($arg)*);
+        }
+    };
+}
+
 mod tableau;
 mod rcd;
 mod bcd;
