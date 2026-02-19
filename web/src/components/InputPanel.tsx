@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import { parse_tableau } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { TINY_EXAMPLE } from '../constants.ts'
@@ -10,6 +10,7 @@ interface InputPanelProps {
 
 function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   const parseAndLoad = useCallback((text: string, filename: string) => {
     try {
@@ -36,6 +37,28 @@ function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
     parseAndLoad(TINY_EXAMPLE, 'TinyIllustrativeFile.txt')
   }
 
+  function handleDragOver(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault()
+    setIsDragging(true)
+  }
+
+  function handleDragLeave() {
+    setIsDragging(false)
+  }
+
+  function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
+    event.preventDefault()
+    setIsDragging(false)
+    const file = event.dataTransfer.files?.[0]
+    if (file) {
+      file.text().then(text => {
+        parseAndLoad(text, file.name)
+      }).catch(err => {
+        onParseError('Error reading file: ' + err)
+      })
+    }
+  }
+
   return (
     <section className="input-panel">
       <div className="panel-header">
@@ -53,7 +76,13 @@ function InputPanel({ onTableauLoaded, onParseError }: InputPanelProps) {
           id="fileInput"
           onChange={handleFileChange}
         />
-        <label htmlFor="fileInput" className="file-upload-label">
+        <label
+          htmlFor="fileInput"
+          className={`file-upload-label${isDragging ? ' file-upload-label--dragging' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>

@@ -279,7 +279,8 @@ body {
     transition: all var(--transition-smooth);
 }
 
-.file-upload-label:hover {
+.file-upload-label:hover,
+.file-upload-label--dragging {
     border-color: var(--burgundy);
     background: var(--parchment-dark);
     transform: translateY(-2px);
