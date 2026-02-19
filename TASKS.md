@@ -87,8 +87,8 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Ranking argumentation options (MIB, details, minitableaux)
 - [ ] Factorial typology button and options
 - [x] A priori rankings controls
-- [ ] Parameter inputs for probabilistic algorithms
-- [ ] Progress indicator for long computations
+- [x] Parameter inputs for probabilistic algorithms
+- [x] Progress indicator for long computations
 - [ ] Tableau axis switching (for crowded tableaux)
 - [ ] Hasse diagram viewer
 - [ ] Settings persistence
@@ -110,22 +110,16 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 Roughly ordered by value and dependency:
 
-1. **BCD algorithm** — Second categorical ranking algorithm. Shares core demotion logic with RCD but adds Faithfulness delay, activeness, and subset selection heuristics.
+1. **Factorial Typology** — Core remaining algorithmic feature. Requires FastRCD (streamlined RCD for derivability testing), cross-classification of output patterns, T-order computation, and FTSum/CompactSum output files.
 
-2. **LFCD algorithm** — Third categorical ranking algorithm. Adds superset filtering, specificity, and autonomy (helper counting).
+2. **Hasse diagrams** — Generate a visual ranking hierarchy from FRed output. Could use a JS graph library (e.g. D3, elkjs) rather than GraphViz DOT.
 
-3. **Framework selection UI** — Add radio buttons to choose between Classical OT / MaxEnt / NHG / Stochastic OT. Wire up algorithm variant selection (RCD/BCD/LFCD) for Classical OT.
+3. **Learning schedule** — Multi-stage plasticity interpolation for GLA/NHG. Allows the plasticity to follow a custom schedule rather than a simple linear interpolation.
 
-4. **FRed (full standalone)** — Complete ERC fusion algebra, recursive basis computation, entailment checks. Both Skeletal Basis and MIB modes.
+4. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
 
-5. **A priori rankings** — Parse ranking files, enforce during RCD/BCD/LFCD, convert to ERCs for FRed.
+5. **HTML tableaux** — Render tableaux as HTML with configurable shading, rather than plain text in the download.
 
-6. **Batch MaxEnt** — GIS optimizer. Simpler than GLA since it's a batch algorithm with no noise or sampling.
+6. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
 
-7. **GLA (Stochastic OT + online MaxEnt)** — Online error-driven learner with plasticity schedule and noise.
-
-8. **NHG** — Online learner with 8 noise variant configurations.
-
-9. **Factorial Typology** — Requires FastRCD. Incremental cross-classification of output patterns.
-
-10. **Hasse diagrams** — Generate DOT format from ranking arguments. Could use a JS graph library instead of GraphViz.
+7. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
