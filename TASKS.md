@@ -27,7 +27,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] RCD constraint necessity analysis
 - [x] Biased Constraint Demotion (BCD)
 - [x] BCD specificity option (`mnuSpecificBCD`)
-- [ ] Low Faithfulness Constraint Demotion (LFCD)
+- [x] Low Faithfulness Constraint Demotion (LFCD)
 - [ ] A priori ranking enforcement in RCD/BCD/LFCD
 
 ## Ranking Argumentation (FRed)
@@ -81,7 +81,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] RCD results display (stratified constraints)
 - [x] Download results button
 - [x] Framework selection (Classical OT / MaxEnt / NHG / Stochastic OT)
-- [~] Algorithm variant selection (RCD / BCD / LFCD)
+- [x] Algorithm variant selection (RCD / BCD / LFCD)
 - [ ] Ranking argumentation options (MIB, details, minitableaux)
 - [ ] Factorial typology button and options
 - [ ] A priori rankings controls

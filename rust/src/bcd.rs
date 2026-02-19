@@ -15,8 +15,8 @@ use crate::tableau::Tableau;
 /// (i.e., for all forms/rivals, violations(i) <= violations(j)), AND constraint i
 /// has at least one nonzero violation somewhere.
 ///
-/// Reproduces VB6 BCD.bas:LocateViolationSubsets
-fn locate_violation_subsets(tableau: &Tableau) -> Vec<Vec<bool>> {
+/// Reproduces VB6 BCD.bas:LocateViolationSubsets and LFCD.bas:LocateViolationSubsets
+pub(crate) fn locate_violation_subsets(tableau: &Tableau) -> Vec<Vec<bool>> {
     let nc = tableau.constraints.len();
     let mut subset = vec![vec![false; nc]; nc];
 

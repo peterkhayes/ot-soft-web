@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { run_rcd, format_rcd_output, run_bcd, format_bcd_output } from '../../pkg/ot_soft.js'
+import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 
 interface RcdPanelProps {
@@ -28,18 +28,20 @@ interface RcdErrorState {
 
 type RcdState = RcdResultState | RcdErrorState
 
-type Algorithm = 'rcd' | 'bcd' | 'bcd-specific'
+type Algorithm = 'rcd' | 'bcd' | 'bcd-specific' | 'lfcd'
 
 const ALGORITHM_LABELS: Record<Algorithm, string> = {
   'rcd': 'RCD',
   'bcd': 'BCD',
   'bcd-specific': 'BCD (Specific)',
+  'lfcd': 'LFCD',
 }
 
 const ALGORITHM_DESCRIPTIONS: Record<Algorithm, string> = {
   'rcd': 'Recursive Constraint Demotion',
   'bcd': 'Biased Constraint Demotion',
   'bcd-specific': 'Biased Constraint Demotion (favors specific faithfulness)',
+  'lfcd': 'Low Faithfulness Constraint Demotion',
 }
 
 function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
@@ -50,7 +52,9 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
     try {
       const result = algorithm === 'rcd'
         ? run_rcd(tableauText)
-        : run_bcd(tableauText, algorithm === 'bcd-specific')
+        : algorithm === 'lfcd'
+          ? run_lfcd(tableauText)
+          : run_bcd(tableauText, algorithm === 'bcd-specific')
 
       const numStrata = result.num_strata()
       const constraintCount = tableau.constraint_count()
@@ -101,7 +105,9 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
       const inputFilenameForHeader = inputFilename || 'tableau.txt'
       const formattedOutput = algorithm === 'rcd'
         ? format_rcd_output(tableauText, inputFilenameForHeader)
-        : format_bcd_output(tableauText, inputFilenameForHeader, algorithm === 'bcd-specific')
+        : algorithm === 'lfcd'
+          ? format_lfcd_output(tableauText, inputFilenameForHeader)
+          : format_bcd_output(tableauText, inputFilenameForHeader, algorithm === 'bcd-specific')
 
       const blob = new Blob([formattedOutput], { type: 'text/plain;charset=utf-8' })
       const url = URL.createObjectURL(blob)
@@ -138,6 +144,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           <option value="rcd">RCD</option>
           <option value="bcd">BCD</option>
           <option value="bcd-specific">BCD (Specific)</option>
+          <option value="lfcd">LFCD</option>
         </select>
         <button className="primary-button" onClick={handleRun}>
           <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -2,13 +2,15 @@
 //!
 //! This library implements parsing of OT tableaux and constraint ranking
 //! algorithms: Recursive Constraint Demotion (RCD), Biased Constraint
-//! Demotion (BCD), Maximum Entropy, and Noisy Harmonic Grammar (NHG).
+//! Demotion (BCD), Low Faithfulness Constraint Demotion (LFCD),
+//! Maximum Entropy, and Noisy Harmonic Grammar (NHG).
 //!
 //! ## Modules
 //!
 //! - `tableau`: Data structures and parsing for OT tableaux
 //! - `rcd`: Recursive Constraint Demotion algorithm
 //! - `bcd`: Biased Constraint Demotion algorithm
+//! - `lfcd`: Low Faithfulness Constraint Demotion algorithm
 //! - `maxent`: Batch Maximum Entropy (GIS optimizer)
 //! - `nhg`: Noisy Harmonic Grammar (online learner)
 
@@ -17,6 +19,7 @@ use wasm_bindgen::prelude::*;
 mod tableau;
 mod rcd;
 mod bcd;
+mod lfcd;
 mod maxent;
 mod nhg;
 
@@ -142,4 +145,23 @@ pub fn format_bcd_output(text: &str, filename: &str, specific: bool) -> Result<S
         "Biased Constraint Demotion"
     };
     Ok(result.format_output_with_algorithm(&tableau, filename, algorithm_name))
+}
+
+/// Run Low Faithfulness Constraint Demotion on a parsed tableau
+#[wasm_bindgen]
+pub fn run_lfcd(text: &str) -> Result<RCDResult, String> {
+    let tableau = Tableau::parse(text)?;
+    Ok(tableau.run_lfcd())
+}
+
+/// Format LFCD results as text for download
+#[wasm_bindgen]
+pub fn format_lfcd_output(text: &str, filename: &str) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let result = tableau.run_lfcd();
+    Ok(result.format_output_with_algorithm(
+        &tableau,
+        filename,
+        "Low Faithfulness Constraint Demotion",
+    ))
 }
