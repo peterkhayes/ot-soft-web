@@ -36,7 +36,10 @@ Follow these steps when porting a new feature from the VB6 source:
 
 5. **Update `TASKS.md`** — Mark completed items and add any new tasks discovered during implementation.
 
-6. **Commit** — Create a git commit with all changes once the task is complete.
+6. **Finish** — After every completed task, always do all three of these steps in order:
+   a. `make build` — rebuild WASM so local dev is up to date
+   b. Commit all changes with a descriptive message
+   c. `git push` — push to remote
 
 ## Commands
 
