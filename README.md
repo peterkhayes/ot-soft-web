@@ -1,4 +1,4 @@
-# OT-Soft
+# OTSoft (Web Version)
 
 A modern web-based linguistic analysis tool, ported from VB6 to Rust/WebAssembly.
 

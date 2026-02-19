@@ -29,7 +29,7 @@ function App() {
         const wasm = await import('../pkg/ot_soft.js')
         await wasm.default()
         setWasmReady(true)
-        console.log('OT-Soft WebAssembly module loaded successfully')
+        console.log('OTSoft WebAssembly module loaded successfully')
       } catch (err) {
         console.error('Failed to load WASM module:', err)
         setWasmError('Error loading WebAssembly module. Check console for details.')
@@ -192,7 +192,7 @@ function Header() {
   return (
     <header className="masthead">
       <div className="header-ornament"></div>
-      <h1 className="site-title">OT-Soft</h1>
+      <h1 className="site-title">OTSoft</h1>
       <p className="site-subtitle">Optimality Theory Analysis</p>
       <div className="header-divider"></div>
     </header>
@@ -203,7 +203,7 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-divider"></div>
-      <p>OT-Soft &middot; Version 2.7</p>
+      <p>OTSoft &middot; Version 2.7</p>
     </footer>
   )
 }
