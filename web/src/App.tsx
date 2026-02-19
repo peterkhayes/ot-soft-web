@@ -7,10 +7,9 @@ import type { Framework } from './components/FrameworkPanel.tsx'
 import RcdPanel from './components/RcdPanel.tsx'
 import MaxEntPanel from './components/MaxEntPanel.tsx'
 import NhgPanel from './components/NhgPanel.tsx'
+import GlaPanel from './components/GlaPanel.tsx'
 
-const NOT_IMPLEMENTED: Record<string, string> = {
-  'stochastic-ot': 'Stochastic OT',
-}
+const NOT_IMPLEMENTED: Record<string, string> = {}
 
 function App() {
   const [wasmReady, setWasmReady] = useState(false)
@@ -145,6 +144,15 @@ function App() {
 
             {currentTableau && !parseError && framework === 'nhg' && (
               <NhgPanel
+                key={loadCountRef.current}
+                tableau={currentTableau}
+                tableauText={currentTableauText!}
+                inputFilename={currentInputFilename}
+              />
+            )}
+
+            {currentTableau && !parseError && framework === 'stochastic-ot' && (
+              <GlaPanel
                 key={loadCountRef.current}
                 tableau={currentTableau}
                 tableauText={currentTableauText!}

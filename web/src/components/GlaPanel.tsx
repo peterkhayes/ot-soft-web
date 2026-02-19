@@ -1,0 +1,287 @@
+import { useState } from 'react'
+import { run_gla, format_gla_output } from '../../pkg/ot_soft.js'
+import type { Tableau } from '../../pkg/ot_soft.js'
+import { downloadTextFile, makeOutputFilename } from '../utils.ts'
+
+interface GlaPanelProps {
+  tableau: Tableau
+  tableauText: string
+  inputFilename: string | null
+}
+
+interface GlaResultState {
+  values: { fullName: string; abbrev: string; value: number }[]
+  forms: {
+    input: string
+    candidates: { form: string; obsPct: number; genPct: number }[]
+  }[]
+  logLikelihood: number
+  maxentMode: boolean
+  error?: undefined
+}
+
+interface GlaErrorState {
+  error: string
+  values?: undefined
+}
+
+type GlaState = GlaResultState | GlaErrorState
+
+function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
+  const [maxentMode, setMaxentMode] = useState(false)
+  const [cycles, setCycles] = useState(1000000)
+  const [initialPlasticity, setInitialPlasticity] = useState(2.0)
+  const [finalPlasticity, setFinalPlasticity] = useState(0.001)
+  const [testTrials, setTestTrials] = useState(10000)
+  const [negativeWeightsOk, setNegativeWeightsOk] = useState(false)
+
+  const [result, setResult] = useState<GlaState | null>(null)
+
+  function handleRun() {
+    try {
+      const r = run_gla(
+        tableauText,
+        maxentMode,
+        cycles,
+        initialPlasticity,
+        finalPlasticity,
+        maxentMode ? 0 : testTrials,
+        negativeWeightsOk,
+      )
+
+      const constraintCount = tableau.constraint_count()
+      const formCount = tableau.form_count()
+
+      const values = Array.from({ length: constraintCount }, (_, i) => {
+        const c = tableau.get_constraint(i)!
+        return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i) }
+      })
+
+      const forms = Array.from({ length: formCount }, (_, formIdx) => {
+        const form = tableau.get_form(formIdx)!
+        const totalFreq = Array.from({ length: form.candidate_count() }, (_, ci) =>
+          form.get_candidate(ci)!.frequency
+        ).reduce((a, b) => a + b, 0)
+
+        const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
+          const cand = form.get_candidate(candIdx)!
+          return {
+            form: cand.form,
+            obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
+            genPct: r.get_test_prob(formIdx, candIdx) * 100,
+          }
+        })
+
+        return { input: form.input, candidates }
+      })
+
+      setResult({ values, forms, logLikelihood: r.log_likelihood(), maxentMode: r.is_maxent_mode() })
+    } catch (err) {
+      console.error('GLA error:', err)
+      setResult({ error: String(err) })
+    }
+  }
+
+  function handleDownload() {
+    try {
+      const output = format_gla_output(
+        tableauText,
+        inputFilename || 'tableau.txt',
+        maxentMode,
+        cycles,
+        initialPlasticity,
+        finalPlasticity,
+        maxentMode ? 0 : testTrials,
+        negativeWeightsOk,
+      )
+      const suffix = maxentMode ? 'GLA-MaxEntOutput' : 'GLA-StochasticOTOutput'
+      downloadTextFile(output, makeOutputFilename(inputFilename, suffix))
+    } catch (err) {
+      console.error('Download error:', err)
+      alert('Error generating download: ' + err)
+    }
+  }
+
+  const successResult: GlaResultState | null = result && !result.error ? result as GlaResultState : null
+  const valueLabel = successResult?.maxentMode ? 'Weight' : 'Ranking Value'
+
+  return (
+    <section className="analysis-panel">
+      <div className="panel-header">
+        <h2>Gradual Learning Algorithm</h2>
+        <span className="panel-number">04</span>
+      </div>
+
+      <div className="nhg-options" style={{ marginBottom: '1rem' }}>
+        <div className="nhg-options-label">Framework:</div>
+        <label className="nhg-checkbox">
+          <input
+            type="radio"
+            name="gla-mode"
+            checked={!maxentMode}
+            onChange={() => setMaxentMode(false)}
+          />
+          Stochastic OT (ranking values)
+        </label>
+        <label className="nhg-checkbox">
+          <input
+            type="radio"
+            name="gla-mode"
+            checked={maxentMode}
+            onChange={() => setMaxentMode(true)}
+          />
+          Online MaxEnt (weights)
+        </label>
+      </div>
+
+      <div className="maxent-params">
+        <label className="param-label">
+          Cycles
+          <input
+            type="number"
+            className="param-input"
+            value={cycles}
+            min={1}
+            max={10000000}
+            onChange={e => setCycles(Math.max(1, parseInt(e.target.value) || 1))}
+          />
+        </label>
+        <label className="param-label">
+          Initial plasticity
+          <input
+            type="number"
+            className="param-input"
+            value={initialPlasticity}
+            min={0.0001}
+            step={0.1}
+            onChange={e => setInitialPlasticity(Math.max(0.0001, parseFloat(e.target.value) || 2))}
+          />
+        </label>
+        <label className="param-label">
+          Final plasticity
+          <input
+            type="number"
+            className="param-input"
+            value={finalPlasticity}
+            min={0.000001}
+            step={0.001}
+            onChange={e => setFinalPlasticity(Math.max(0.000001, parseFloat(e.target.value) || 0.001))}
+          />
+        </label>
+        {!maxentMode && (
+          <label className="param-label">
+            Test trials
+            <input
+              type="number"
+              className="param-input"
+              value={testTrials}
+              min={1}
+              max={100000}
+              onChange={e => setTestTrials(Math.max(1, parseInt(e.target.value) || 10000))}
+            />
+          </label>
+        )}
+      </div>
+
+      {maxentMode && (
+        <div className="nhg-options">
+          <div className="nhg-options-label">MaxEnt options:</div>
+          <label className="nhg-checkbox">
+            <input
+              type="checkbox"
+              checked={negativeWeightsOk}
+              onChange={e => setNegativeWeightsOk(e.target.checked)}
+            />
+            Allow constraint weights to go negative
+          </label>
+        </div>
+      )}
+
+      <div className="action-bar">
+        <button className="primary-button" onClick={handleRun}>
+          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Run GLA
+        </button>
+        {result && !result.error && (
+          <button className="download-button" onClick={handleDownload}>
+            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Results
+          </button>
+        )}
+      </div>
+
+      {result?.error && (
+        <div className="rcd-status failure">
+          Error running GLA: {result.error}
+        </div>
+      )}
+      {successResult && (
+        <div className="maxent-results">
+          <div className="maxent-weights">
+            <h3 className="results-subheader">Constraint {valueLabel}s</h3>
+            <table className="weights-table">
+              <thead>
+                <tr>
+                  <th>Constraint</th>
+                  <th className="weight-col">{valueLabel}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {successResult.values.map((v, i) => (
+                  <tr key={i}>
+                    <td>
+                      <span className="abbrev">{v.abbrev}</span>
+                      <span className="full-name"> ({v.fullName})</span>
+                    </td>
+                    <td className="weight-col weight-value">{v.value.toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="log-prob">
+              Log likelihood of data: {successResult.logLikelihood.toFixed(4)}
+            </div>
+          </div>
+
+          <div className="maxent-tableaux">
+            <h3 className="results-subheader">Matchup to Input Frequencies</h3>
+            {successResult.forms.map((form, fi) => (
+              <div className="maxent-form" key={fi}>
+                <div className="form-label">/{form.input}/</div>
+                <table className="predictions-table">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th className="pct-col">Obs%</th>
+                      <th className="pct-col">{successResult.maxentMode ? 'Prob%' : 'Gen%'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {form.candidates.map((cand, ci) => (
+                      <tr key={ci} className={cand.obsPct > 0 ? 'winner-row' : ''}>
+                        <td className="cand-form">
+                          {cand.obsPct > 0 && <span className="winner-marker">▶</span>}
+                          {cand.form}
+                        </td>
+                        <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
+                        <td className="pct-col">{cand.genPct.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+export default GlaPanel

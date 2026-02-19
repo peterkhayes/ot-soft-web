@@ -3,7 +3,8 @@
 //! This library implements parsing of OT tableaux and constraint ranking
 //! algorithms: Recursive Constraint Demotion (RCD), Biased Constraint
 //! Demotion (BCD), Low Faithfulness Constraint Demotion (LFCD),
-//! Maximum Entropy, and Noisy Harmonic Grammar (NHG).
+//! Maximum Entropy, Noisy Harmonic Grammar (NHG), and the Gradual
+//! Learning Algorithm (GLA) in Stochastic OT and online MaxEnt modes.
 //!
 //! ## Modules
 //!
@@ -13,6 +14,7 @@
 //! - `lfcd`: Low Faithfulness Constraint Demotion algorithm
 //! - `maxent`: Batch Maximum Entropy (GIS optimizer)
 //! - `nhg`: Noisy Harmonic Grammar (online learner)
+//! - `gla`: Gradual Learning Algorithm (StochasticOT and online MaxEnt)
 
 use wasm_bindgen::prelude::*;
 
@@ -24,6 +26,7 @@ mod fred;
 mod apriori;
 mod maxent;
 mod nhg;
+mod gla;
 
 // Re-export public types
 pub use tableau::{Tableau, Constraint, Candidate, InputForm};
@@ -31,6 +34,7 @@ pub use rcd::RCDResult;
 pub use fred::FRedResult;
 pub use maxent::MaxEntResult;
 pub use nhg::NhgResult;
+pub use gla::GlaResult;
 
 /// Initialize the module
 #[wasm_bindgen(start)]
@@ -225,4 +229,44 @@ pub fn format_lfcd_output(text: &str, filename: &str, apriori_text: &str) -> Res
         filename,
         "Low Faithfulness Constraint Demotion",
     ))
+}
+
+/// Run the Gradual Learning Algorithm (GLA) on a tableau.
+///
+/// `maxent_mode`: if true, run online MaxEnt; if false, run Stochastic OT.
+#[wasm_bindgen]
+pub fn run_gla(
+    text: &str,
+    maxent_mode: bool,
+    cycles: usize,
+    initial_plasticity: f64,
+    final_plasticity: f64,
+    test_trials: usize,
+    negative_weights_ok: bool,
+) -> Result<GlaResult, String> {
+    let tableau = Tableau::parse(text)?;
+    Ok(tableau.run_gla(
+        maxent_mode, cycles, initial_plasticity, final_plasticity,
+        test_trials, negative_weights_ok,
+    ))
+}
+
+/// Format GLA results as text for download.
+#[wasm_bindgen]
+pub fn format_gla_output(
+    text: &str,
+    filename: &str,
+    maxent_mode: bool,
+    cycles: usize,
+    initial_plasticity: f64,
+    final_plasticity: f64,
+    test_trials: usize,
+    negative_weights_ok: bool,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let result = tableau.run_gla(
+        maxent_mode, cycles, initial_plasticity, final_plasticity,
+        test_trials, negative_weights_ok,
+    );
+    Ok(result.format_output(&tableau, filename))
 }
