@@ -43,8 +43,11 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
   const [resolveTiesBySkipping, setResolveTiesBySkipping] = useState(false)
 
   const [result, setResult] = useState<NhgState | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   function handleRun() {
+    setIsLoading(true)
+    setTimeout(() => {
     try {
       const r = run_nhg(
         tableauText,
@@ -92,7 +95,10 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     } catch (err) {
       console.error('NHG error:', err)
       setResult({ error: String(err) })
+    } finally {
+      setIsLoading(false)
     }
+    }, 0)
   }
 
   function handleDownload() {
@@ -222,12 +228,15 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
       </div>
 
       <div className="action-bar">
-        <button className="primary-button" onClick={handleRun}>
+        <button className="primary-button" onClick={handleRun} disabled={isLoading}>
           <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           Run Noisy HG
         </button>
+        {isLoading && (
+          <div className="loading-indicator" title="Running NHG..."></div>
+        )}
         {result && !result.error && (
           <button className="download-button" onClick={handleDownload}>
             <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -36,8 +36,11 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   const [negativeWeightsOk, setNegativeWeightsOk] = useState(false)
 
   const [result, setResult] = useState<GlaState | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   function handleRun() {
+    setIsLoading(true)
+    setTimeout(() => {
     try {
       const r = run_gla(
         tableauText,
@@ -79,7 +82,10 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     } catch (err) {
       console.error('GLA error:', err)
       setResult({ error: String(err) })
+    } finally {
+      setIsLoading(false)
     }
+    }, 0)
   }
 
   function handleDownload() {
@@ -198,12 +204,15 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       )}
 
       <div className="action-bar">
-        <button className="primary-button" onClick={handleRun}>
+        <button className="primary-button" onClick={handleRun} disabled={isLoading}>
           <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           Run GLA
         </button>
+        {isLoading && (
+          <div className="loading-indicator" title="Running GLA..."></div>
+        )}
         {result && !result.error && (
           <button className="download-button" onClick={handleDownload}>
             <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

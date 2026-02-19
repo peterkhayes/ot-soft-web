@@ -50,6 +50,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const [algorithm, setAlgorithm] = useState<Algorithm>('rcd')
   const [aprioriText, setAprioriText] = useState<string>('')
   const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Ranking argumentation options (match VB6 defaults)
   const [includeFred, setIncludeFred] = useState<boolean>(true)
@@ -71,6 +72,8 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   }
 
   function handleRun() {
+    setIsLoading(true)
+    setTimeout(() => {
     try {
       const apriori = supportsApriori ? aprioriText : ''
       const result = algorithm === 'rcd'
@@ -106,7 +109,10 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
     } catch (err) {
       console.error('Algorithm error:', err)
       setRcdResult({ error: String(err) })
+    } finally {
+      setIsLoading(false)
     }
+    }, 0)
   }
 
   function handleDownload() {
@@ -150,12 +156,15 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
             <input type="file" accept=".txt" onChange={handleAprioriFile} style={{ display: 'none' }} />
           </label>
         )}
-        <button className="primary-button" onClick={handleRun}>
+        <button className="primary-button" onClick={handleRun} disabled={isLoading}>
           <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           Run {ALGORITHM_LABELS[algorithm]} Algorithm
         </button>
+        {isLoading && (
+          <div className="loading-indicator" title={`Running ${ALGORITHM_LABELS[algorithm]}...`}></div>
+        )}
         {rcdResult && !rcdResult.error && (
           <button className="download-button" onClick={handleDownload}>
             <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
