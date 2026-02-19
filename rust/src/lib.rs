@@ -20,6 +20,7 @@ mod tableau;
 mod rcd;
 mod bcd;
 mod lfcd;
+mod apriori;
 mod maxent;
 mod nhg;
 
@@ -43,18 +44,32 @@ pub fn parse_tableau(text: &str) -> Result<Tableau, String> {
     Tableau::parse(text)
 }
 
-/// Run RCD on a parsed tableau
+/// Run RCD on a parsed tableau.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
 #[wasm_bindgen]
-pub fn run_rcd(text: &str) -> Result<RCDResult, String> {
+pub fn run_rcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_rcd())
+    if apriori_text.trim().is_empty() {
+        Ok(tableau.run_rcd())
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        Ok(tableau.run_rcd_with_apriori(&apriori))
+    }
 }
 
-/// Format RCD results as text for download
+/// Format RCD results as text for download.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
 #[wasm_bindgen]
-pub fn format_rcd_output(text: &str, filename: &str) -> Result<String, String> {
+pub fn format_rcd_output(text: &str, filename: &str, apriori_text: &str) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_rcd();
+    let result = if apriori_text.trim().is_empty() {
+        tableau.run_rcd()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        tableau.run_rcd_with_apriori(&apriori)
+    };
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -147,18 +162,32 @@ pub fn format_bcd_output(text: &str, filename: &str, specific: bool) -> Result<S
     Ok(result.format_output_with_algorithm(&tableau, filename, algorithm_name))
 }
 
-/// Run Low Faithfulness Constraint Demotion on a parsed tableau
+/// Run Low Faithfulness Constraint Demotion on a parsed tableau.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
 #[wasm_bindgen]
-pub fn run_lfcd(text: &str) -> Result<RCDResult, String> {
+pub fn run_lfcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_lfcd())
+    if apriori_text.trim().is_empty() {
+        Ok(tableau.run_lfcd())
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        Ok(tableau.run_lfcd_with_apriori(&apriori))
+    }
 }
 
-/// Format LFCD results as text for download
+/// Format LFCD results as text for download.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
 #[wasm_bindgen]
-pub fn format_lfcd_output(text: &str, filename: &str) -> Result<String, String> {
+pub fn format_lfcd_output(text: &str, filename: &str, apriori_text: &str) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_lfcd();
+    let result = if apriori_text.trim().is_empty() {
+        tableau.run_lfcd()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
+        tableau.run_lfcd_with_apriori(&apriori)
+    };
     Ok(result.format_output_with_algorithm(
         &tableau,
         filename,

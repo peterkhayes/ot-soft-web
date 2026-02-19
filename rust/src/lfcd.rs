@@ -33,9 +33,16 @@ fn is_superset_rival(winner_viols: &[usize], rival_viols: &[usize]) -> bool {
 
 impl Tableau {
     /// Run Low Faithfulness Constraint Demotion to find a ranking.
+    pub fn run_lfcd(&self) -> RCDResult {
+        self.run_lfcd_with_apriori(&[])
+    }
+
+    /// Run LFCD enforcing a priori constraint rankings.
+    ///
+    /// `apriori[i][j] = true` means constraint i must rank above constraint j.
     ///
     /// Reproduces VB6 LowFaithfulnessConstraintDemotion.bas:Main
-    pub fn run_lfcd(&self) -> RCDResult {
+    pub fn run_lfcd_with_apriori(&self, apriori: &[Vec<bool>]) -> RCDResult {
         let nc = self.constraints.len();
 
         // Detect faithfulness constraints
@@ -86,6 +93,22 @@ impl Tableau {
                             && winner.violations[c_idx] > rival.violations[c_idx]
                         {
                             demotable[c_idx] = true;
+                        }
+                    }
+                }
+            }
+
+            // ===== ENFORCE A PRIORI RANKINGS =====
+            //
+            // Any constraint that is a priori dominated by an unranked constraint
+            // cannot join the current stratum.
+            if !apriori.is_empty() {
+                for outer in 0..nc {
+                    if strata[outer] == 0 {
+                        for inner in 0..nc {
+                            if apriori[outer][inner] {
+                                demotable[inner] = true;
+                            }
                         }
                     }
                 }

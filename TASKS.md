@@ -16,7 +16,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [ ] Excel file parsing (`.xlsx`)
 - [ ] Legacy Ranker format (`.in`)
 - [ ] Structural descriptions (automatic violation computation)
-- [ ] A priori rankings file parsing
+- [x] A priori rankings file parsing
 - [ ] Natural class file parsing
 
 ## Categorical Ranking Algorithms
@@ -28,7 +28,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Biased Constraint Demotion (BCD)
 - [x] BCD specificity option (`mnuSpecificBCD`)
 - [x] Low Faithfulness Constraint Demotion (LFCD)
-- [ ] A priori ranking enforcement in RCD/BCD/LFCD
+- [x] A priori ranking enforcement in RCD/BCD/LFCD
 
 ## Ranking Argumentation (FRed)
 
@@ -84,7 +84,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Algorithm variant selection (RCD / BCD / LFCD)
 - [ ] Ranking argumentation options (MIB, details, minitableaux)
 - [ ] Factorial typology button and options
-- [ ] A priori rankings controls
+- [x] A priori rankings controls
 - [ ] Parameter inputs for probabilistic algorithms
 - [ ] Progress indicator for long computations
 - [ ] Tableau axis switching (for crowded tableaux)

@@ -606,6 +606,27 @@ button:hover::before {
     cursor: pointer;
 }
 
+.apriori-upload {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border: 1px dashed var(--stone-300);
+    background: var(--white);
+    color: var(--charcoal-soft);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.apriori-upload:hover {
+    border-color: var(--charcoal-soft);
+    color: var(--charcoal);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Framework Selection
    ═══════════════════════════════════════════════════════════════ */

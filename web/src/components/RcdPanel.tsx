@@ -47,13 +47,29 @@ const ALGORITHM_DESCRIPTIONS: Record<Algorithm, string> = {
 function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const [rcdResult, setRcdResult] = useState<RcdState | null>(null)
   const [algorithm, setAlgorithm] = useState<Algorithm>('rcd')
+  const [aprioriText, setAprioriText] = useState<string>('')
+  const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
+
+  const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
+
+  function handleAprioriFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setAprioriText((ev.target?.result as string) ?? '')
+      setAprioriFilename(file.name)
+    }
+    reader.readAsText(file)
+  }
 
   function handleRun() {
     try {
+      const apriori = supportsApriori ? aprioriText : ''
       const result = algorithm === 'rcd'
-        ? run_rcd(tableauText)
+        ? run_rcd(tableauText, apriori)
         : algorithm === 'lfcd'
-          ? run_lfcd(tableauText)
+          ? run_lfcd(tableauText, apriori)
           : run_bcd(tableauText, algorithm === 'bcd-specific')
 
       const numStrata = result.num_strata()
@@ -103,10 +119,11 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
       }
 
       const inputFilenameForHeader = inputFilename || 'tableau.txt'
+      const apriori = supportsApriori ? aprioriText : ''
       const formattedOutput = algorithm === 'rcd'
-        ? format_rcd_output(tableauText, inputFilenameForHeader)
+        ? format_rcd_output(tableauText, inputFilenameForHeader, apriori)
         : algorithm === 'lfcd'
-          ? format_lfcd_output(tableauText, inputFilenameForHeader)
+          ? format_lfcd_output(tableauText, inputFilenameForHeader, apriori)
           : format_bcd_output(tableauText, inputFilenameForHeader, algorithm === 'bcd-specific')
 
       const blob = new Blob([formattedOutput], { type: 'text/plain;charset=utf-8' })
@@ -146,6 +163,12 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           <option value="bcd-specific">BCD (Specific)</option>
           <option value="lfcd">LFCD</option>
         </select>
+        {supportsApriori && (
+          <label className="apriori-upload" title="Optional: load an a priori rankings file">
+            <span>{aprioriFilename ?? 'A priori rankings (optional)'}</span>
+            <input type="file" accept=".txt" onChange={handleAprioriFile} style={{ display: 'none' }} />
+          </label>
+        )}
         <button className="primary-button" onClick={handleRun}>
           <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>

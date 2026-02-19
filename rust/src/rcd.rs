@@ -495,7 +495,7 @@ impl RCDResult {
         };
 
         // Run RCD on modified tableau (without computing extra analyses to avoid recursion)
-        let test_result = modified_tableau.run_rcd_internal(false);
+        let test_result = modified_tableau.run_rcd_internal(false, &[]);
         test_result.success
     }
 
@@ -625,11 +625,18 @@ impl RCDResult {
 impl Tableau {
     /// Run Recursive Constraint Demotion to find a ranking
     pub fn run_rcd(&self) -> RCDResult {
-        self.run_rcd_internal(true)
+        self.run_rcd_internal(true, &[])
     }
 
-    /// Internal RCD implementation with flag to control additional analyses
-    fn run_rcd_internal(&self, compute_extra_analyses: bool) -> RCDResult {
+    /// Run RCD enforcing a priori constraint rankings.
+    ///
+    /// `apriori[i][j] = true` means constraint i must rank above constraint j.
+    pub fn run_rcd_with_apriori(&self, apriori: &[Vec<bool>]) -> RCDResult {
+        self.run_rcd_internal(true, apriori)
+    }
+
+    /// Internal RCD implementation
+    fn run_rcd_internal(&self, compute_extra_analyses: bool, apriori: &[Vec<bool>]) -> RCDResult {
         let num_constraints = self.constraints.len();
         let mut constraint_strata = vec![0; num_constraints];
         let mut current_stratum = 0;
@@ -685,6 +692,21 @@ impl Tableau {
                     // Constraint prefers loser if loser has fewer violations
                     if loser_viols < winner_viols {
                         demotable[c_idx] = true;
+                    }
+                }
+            }
+
+            // ENFORCE A PRIORI RANKINGS
+            // Any constraint that is a priori dominated by an unranked constraint
+            // cannot join the current stratum.
+            if !apriori.is_empty() {
+                for outer in 0..num_constraints {
+                    if constraint_strata[outer] == 0 {
+                        for inner in 0..num_constraints {
+                            if apriori[outer][inner] {
+                                demotable[inner] = true;
+                            }
+                        }
                     }
                 }
             }
@@ -884,7 +906,7 @@ impl Tableau {
         let modified_tableau = self.clone_with_constraint_removed(constraint_idx);
 
         // Run RCD on modified tableau (without computing extra analyses to avoid recursion)
-        let test_result = modified_tableau.run_rcd_internal(false);
+        let test_result = modified_tableau.run_rcd_internal(false, &[]);
 
         // Constraint is necessary if RCD fails without it
         !test_result.success
