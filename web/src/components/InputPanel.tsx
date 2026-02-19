@@ -110,13 +110,17 @@ function InputPanel({ onTableauLoaded, onParseError, loadedFilename }: InputPane
         )}
       </div>
 
-      <div className="divider-with-text">
-        <span>or</span>
-      </div>
+      {!loadedFilename && (
+        <>
+          <div className="divider-with-text">
+            <span>or</span>
+          </div>
 
-      <button className="secondary-button" onClick={handleLoadExample}>
-        Load Example Tableau
-      </button>
+          <button className="secondary-button" onClick={handleLoadExample}>
+            Load Example Tableau
+          </button>
+        </>
+      )}
     </section>
   )
 }
