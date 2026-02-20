@@ -110,16 +110,18 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 Roughly ordered by value and dependency:
 
-1. **Factorial Typology** — Core remaining algorithmic feature. Requires FastRCD (streamlined RCD for derivability testing), cross-classification of output patterns, T-order computation, and FTSum/CompactSum output files.
+1. **FT full listing** — For each output pattern in the factorial typology, run RCD and show the ranking that produces it (plus optional tableaux and FRed arguments). Depends on factorial typology core (done).
 
-2. **Hasse diagrams** — Generate a visual ranking hierarchy from FRed output. Could use a JS graph library (e.g. D3, elkjs) rather than GraphViz DOT.
+2. **FTSum / CompactSum output** — Generate the tab-delimited `FTSum.txt` (one row per pattern) and `CompactSum.txt` (collapsed by surface outputs, deduplicated) files.
 
-3. **Learning schedule** — Multi-stage plasticity interpolation for GLA/NHG. Allows the plasticity to follow a custom schedule rather than a simple linear interpolation.
+3. **Hasse diagrams** — Generate a visual ranking hierarchy from FRed output. Could use a JS graph library (e.g. D3, elkjs) rather than GraphViz DOT.
 
-4. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
+4. **Learning schedule** — Multi-stage plasticity interpolation for GLA/NHG. Allows the plasticity to follow a custom schedule rather than a simple linear interpolation.
 
-5. **HTML tableaux** — Render tableaux as HTML with configurable shading, rather than plain text in the download.
+5. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
 
-6. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
+6. **HTML tableaux** — Render tableaux as HTML with configurable shading, rather than plain text in the download.
 
-7. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
+7. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
+
+8. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
