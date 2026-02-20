@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output, FredOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
@@ -31,6 +32,9 @@ type RcdState = RcdResultState | RcdErrorState
 
 type Algorithm = 'rcd' | 'bcd' | 'bcd-specific' | 'lfcd'
 
+interface RcdParams { algorithm: Algorithm; includeFred: boolean; useMib: boolean; showDetails: boolean; includeMiniTableaux: boolean }
+const RCD_DEFAULTS: RcdParams = { algorithm: 'rcd', includeFred: true, useMib: false, showDetails: true, includeMiniTableaux: true }
+
 const ALGORITHM_LABELS: Record<Algorithm, string> = {
   'rcd': 'RCD',
   'bcd': 'BCD',
@@ -47,16 +51,11 @@ const ALGORITHM_DESCRIPTIONS: Record<Algorithm, string> = {
 
 function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const [rcdResult, setRcdResult] = useState<RcdState | null>(null)
-  const [algorithm, setAlgorithm] = useState<Algorithm>('rcd')
+  const [params, setParams] = useLocalStorage<RcdParams>('otsoft:params:rcd', RCD_DEFAULTS)
+  const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux } = params
   const [aprioriText, setAprioriText] = useState<string>('')
   const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-
-  // Ranking argumentation options (match VB6 defaults)
-  const [includeFred, setIncludeFred] = useState<boolean>(true)
-  const [useMib, setUseMib] = useState<boolean>(false)
-  const [showDetails, setShowDetails] = useState<boolean>(true)
-  const [includeMiniTableaux, setIncludeMiniTableaux] = useState<boolean>(true)
 
   const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
 
@@ -147,7 +146,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
         <select
           className="algorithm-select"
           value={algorithm}
-          onChange={(e) => setAlgorithm(e.target.value as Algorithm)}
+          onChange={(e) => setParams({ algorithm: e.target.value as Algorithm })}
           title={ALGORITHM_DESCRIPTIONS[algorithm]}
         >
           <option value="rcd">RCD</option>
@@ -193,7 +192,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           <input
             type="checkbox"
             checked={includeFred}
-            onChange={(e) => setIncludeFred(e.target.checked)}
+            onChange={(e) => setParams({ includeFred: e.target.checked })}
           />
           Include ranking arguments
         </label>
@@ -203,7 +202,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
               <input
                 type="checkbox"
                 checked={useMib}
-                onChange={(e) => setUseMib(e.target.checked)}
+                onChange={(e) => setParams({ useMib: e.target.checked })}
               />
               Use Most Informative Basis
             </label>
@@ -211,7 +210,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
               <input
                 type="checkbox"
                 checked={showDetails}
-                onChange={(e) => setShowDetails(e.target.checked)}
+                onChange={(e) => setParams({ showDetails: e.target.checked })}
               />
               Show details of argumentation
             </label>
@@ -219,7 +218,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
               <input
                 type="checkbox"
                 checked={includeMiniTableaux}
-                onChange={(e) => setIncludeMiniTableaux(e.target.checked)}
+                onChange={(e) => setParams({ includeMiniTableaux: e.target.checked })}
               />
               Include illustrative mini-tableaux
             </label>

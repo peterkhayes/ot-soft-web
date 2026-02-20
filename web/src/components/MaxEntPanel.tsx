@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_maxent, format_maxent_output, MaxEntOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
@@ -31,10 +32,12 @@ interface MaxEntErrorState {
 
 type MaxEntState = MaxEntResultState | MaxEntErrorState
 
+interface MaxEntParams { iterations: number; weightMin: number; weightMax: number }
+const MAXENT_DEFAULTS: MaxEntParams = { iterations: 100, weightMin: 0, weightMax: 50 }
+
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
-  const [iterations, setIterations] = useState(100)
-  const [weightMin, setWeightMin] = useState(0)
-  const [weightMax, setWeightMax] = useState(50)
+  const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', MAXENT_DEFAULTS)
+  const { iterations, weightMin, weightMax } = params
   const [result, setResult] = useState<MaxEntState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -124,7 +127,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             value={iterations}
             min={1}
             max={100000}
-            onChange={e => setIterations(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={e => setParams({ iterations: Math.max(1, parseInt(e.target.value) || 1) })}
           />
         </label>
         <label className="param-label">
@@ -134,7 +137,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             className="param-input"
             value={weightMin}
             step={0.1}
-            onChange={e => setWeightMin(parseFloat(e.target.value) || 0)}
+            onChange={e => setParams({ weightMin: parseFloat(e.target.value) || 0 })}
           />
         </label>
         <label className="param-label">
@@ -145,7 +148,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             value={weightMax}
             min={0.1}
             step={1}
-            onChange={e => setWeightMax(Math.max(0.1, parseFloat(e.target.value) || 50))}
+            onChange={e => setParams({ weightMax: Math.max(0.1, parseFloat(e.target.value) || 50) })}
           />
         </label>
       </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_gla, format_gla_output, GlaOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
@@ -27,13 +28,12 @@ interface GlaErrorState {
 
 type GlaState = GlaResultState | GlaErrorState
 
+interface GlaParams { maxentMode: boolean; cycles: number; initialPlasticity: number; finalPlasticity: number; testTrials: number; negativeWeightsOk: boolean }
+const GLA_DEFAULTS: GlaParams = { maxentMode: false, cycles: 1000000, initialPlasticity: 2.0, finalPlasticity: 0.001, testTrials: 10000, negativeWeightsOk: false }
+
 function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
-  const [maxentMode, setMaxentMode] = useState(false)
-  const [cycles, setCycles] = useState(1000000)
-  const [initialPlasticity, setInitialPlasticity] = useState(2.0)
-  const [finalPlasticity, setFinalPlasticity] = useState(0.001)
-  const [testTrials, setTestTrials] = useState(10000)
-  const [negativeWeightsOk, setNegativeWeightsOk] = useState(false)
+  const [params, setParams] = useLocalStorage<GlaParams>('otsoft:params:gla', GLA_DEFAULTS)
+  const { maxentMode, cycles, initialPlasticity, finalPlasticity, testTrials, negativeWeightsOk } = params
 
   const [result, setResult] = useState<GlaState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -122,7 +122,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             type="radio"
             name="gla-mode"
             checked={!maxentMode}
-            onChange={() => setMaxentMode(false)}
+            onChange={() => setParams({ maxentMode: false })}
           />
           Stochastic OT (ranking values)
         </label>
@@ -131,7 +131,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             type="radio"
             name="gla-mode"
             checked={maxentMode}
-            onChange={() => setMaxentMode(true)}
+            onChange={() => setParams({ maxentMode: true })}
           />
           Online MaxEnt (weights)
         </label>
@@ -146,7 +146,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             value={cycles}
             min={1}
             max={10000000}
-            onChange={e => setCycles(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={e => setParams({ cycles: Math.max(1, parseInt(e.target.value) || 1) })}
           />
         </label>
         <label className="param-label">
@@ -157,7 +157,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             value={initialPlasticity}
             min={0.0001}
             step={0.1}
-            onChange={e => setInitialPlasticity(Math.max(0.0001, parseFloat(e.target.value) || 2))}
+            onChange={e => setParams({ initialPlasticity: Math.max(0.0001, parseFloat(e.target.value) || 2) })}
           />
         </label>
         <label className="param-label">
@@ -168,7 +168,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             value={finalPlasticity}
             min={0.000001}
             step={0.001}
-            onChange={e => setFinalPlasticity(Math.max(0.000001, parseFloat(e.target.value) || 0.001))}
+            onChange={e => setParams({ finalPlasticity: Math.max(0.000001, parseFloat(e.target.value) || 0.001) })}
           />
         </label>
         {!maxentMode && (
@@ -180,7 +180,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               value={testTrials}
               min={1}
               max={100000}
-              onChange={e => setTestTrials(Math.max(1, parseInt(e.target.value) || 10000))}
+              onChange={e => setParams({ testTrials: Math.max(1, parseInt(e.target.value) || 10000) })}
             />
           </label>
         )}
@@ -193,7 +193,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             <input
               type="checkbox"
               checked={negativeWeightsOk}
-              onChange={e => setNegativeWeightsOk(e.target.checked)}
+              onChange={e => setParams({ negativeWeightsOk: e.target.checked })}
             />
             Allow constraint weights to go negative
           </label>

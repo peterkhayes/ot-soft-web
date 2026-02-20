@@ -64,7 +64,18 @@ function App() {
   const [currentTableauText, setCurrentTableauText] = useState<string | null>(null)
   const [currentInputFilename, setCurrentInputFilename] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
-  const [framework, setFramework] = useState<Framework>('classical-ot')
+  const VALID_FRAMEWORKS = new Set<Framework>(['classical-ot', 'maxent', 'stochastic-ot', 'nhg'])
+  const [framework, setFrameworkRaw] = useState<Framework>(() => {
+    try {
+      const stored = localStorage.getItem('otsoft:framework')
+      if (stored && VALID_FRAMEWORKS.has(stored as Framework)) return stored as Framework
+    } catch {}
+    return 'classical-ot'
+  })
+  function setFramework(fw: Framework) {
+    try { localStorage.setItem('otsoft:framework', fw) } catch {}
+    setFrameworkRaw(fw)
+  }
   // loadCountRef is used as a React key on algorithm panels to force a full remount
   // (resetting their internal state) whenever a new tableau is loaded.
   const loadCountRef = useRef(0)

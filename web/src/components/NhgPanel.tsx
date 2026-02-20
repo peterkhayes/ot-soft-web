@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_nhg, format_nhg_output, NhgOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
@@ -26,21 +27,22 @@ interface NhgErrorState {
 
 type NhgState = NhgResultState | NhgErrorState
 
-function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
-  const [cycles, setCycles] = useState(5000)
-  const [initialPlasticity, setInitialPlasticity] = useState(2.0)
-  const [finalPlasticity, setFinalPlasticity] = useState(0.002)
-  const [testTrials, setTestTrials] = useState(2000)
+interface NhgParams {
+  cycles: number; initialPlasticity: number; finalPlasticity: number; testTrials: number
+  noiseByCell: boolean; postMultNoise: boolean; noiseForZeroCells: boolean; lateNoise: boolean
+  exponentialNhg: boolean; demiGaussians: boolean; negativeWeightsOk: boolean; resolveTiesBySkipping: boolean
+}
+const NHG_DEFAULTS: NhgParams = {
+  cycles: 5000, initialPlasticity: 2.0, finalPlasticity: 0.002, testTrials: 2000,
+  noiseByCell: false, postMultNoise: false, noiseForZeroCells: false, lateNoise: false,
+  exponentialNhg: false, demiGaussians: false, negativeWeightsOk: false, resolveTiesBySkipping: false,
+}
 
-  // Noise variant checkboxes
-  const [noiseByCell, setNoiseByCell] = useState(false)
-  const [postMultNoise, setPostMultNoise] = useState(false)
-  const [noiseForZeroCells, setNoiseForZeroCells] = useState(false)
-  const [lateNoise, setLateNoise] = useState(false)
-  const [exponentialNhg, setExponentialNhg] = useState(false)
-  const [demiGaussians, setDemiGaussians] = useState(false)
-  const [negativeWeightsOk, setNegativeWeightsOk] = useState(false)
-  const [resolveTiesBySkipping, setResolveTiesBySkipping] = useState(false)
+function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
+  const [params, setParams] = useLocalStorage<NhgParams>('otsoft:params:nhg', NHG_DEFAULTS)
+  const { cycles, initialPlasticity, finalPlasticity, testTrials,
+    noiseByCell, postMultNoise, noiseForZeroCells, lateNoise,
+    exponentialNhg, demiGaussians, negativeWeightsOk, resolveTiesBySkipping } = params
 
   const [result, setResult] = useState<NhgState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -141,7 +143,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             value={cycles}
             min={1}
             max={10000000}
-            onChange={e => setCycles(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={e => setParams({ cycles: Math.max(1, parseInt(e.target.value) || 1) })}
           />
         </label>
         <label className="param-label">
@@ -152,7 +154,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             value={initialPlasticity}
             min={0.0001}
             step={0.1}
-            onChange={e => setInitialPlasticity(Math.max(0.0001, parseFloat(e.target.value) || 2))}
+            onChange={e => setParams({ initialPlasticity: Math.max(0.0001, parseFloat(e.target.value) || 2) })}
           />
         </label>
         <label className="param-label">
@@ -163,7 +165,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             value={finalPlasticity}
             min={0.000001}
             step={0.001}
-            onChange={e => setFinalPlasticity(Math.max(0.000001, parseFloat(e.target.value) || 0.002))}
+            onChange={e => setParams({ finalPlasticity: Math.max(0.000001, parseFloat(e.target.value) || 0.002) })}
           />
         </label>
         <label className="param-label">
@@ -174,7 +176,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             value={testTrials}
             min={1}
             max={100000}
-            onChange={e => setTestTrials(Math.max(1, parseInt(e.target.value) || 2000))}
+            onChange={e => setParams({ testTrials: Math.max(1, parseInt(e.target.value) || 2000) })}
           />
         </label>
       </div>
@@ -182,7 +184,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
       <div className="nhg-options">
         <div className="nhg-options-label">Noise variant options:</div>
         <label className="nhg-checkbox">
-          <input type="checkbox" checked={noiseByCell} onChange={e => setNoiseByCell(e.target.checked)} />
+          <input type="checkbox" checked={noiseByCell} onChange={e => setParams({ noiseByCell: e.target.checked })} />
           Apply noise by tableau cell, not by constraint
         </label>
         <label className="nhg-checkbox">
@@ -190,36 +192,35 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             type="checkbox"
             checked={postMultNoise}
             onChange={e => {
-              setPostMultNoise(e.target.checked)
-              if (!e.target.checked) setNoiseForZeroCells(false)
+              setParams(e.target.checked ? { postMultNoise: true } : { postMultNoise: false, noiseForZeroCells: false })
             }}
           />
           Apply noise after multiplication of weights by violations
         </label>
         {postMultNoise && (
           <label className="nhg-checkbox nhg-checkbox-indent">
-            <input type="checkbox" checked={noiseForZeroCells} onChange={e => setNoiseForZeroCells(e.target.checked)} />
+            <input type="checkbox" checked={noiseForZeroCells} onChange={e => setParams({ noiseForZeroCells: e.target.checked })} />
             Include noise even in cells with no violation
           </label>
         )}
         <label className="nhg-checkbox">
-          <input type="checkbox" checked={lateNoise} onChange={e => setLateNoise(e.target.checked)} />
+          <input type="checkbox" checked={lateNoise} onChange={e => setParams({ lateNoise: e.target.checked })} />
           Add noise to candidates, after harmony calculation
         </label>
         <label className="nhg-checkbox">
-          <input type="checkbox" checked={exponentialNhg} onChange={e => setExponentialNhg(e.target.checked)} />
+          <input type="checkbox" checked={exponentialNhg} onChange={e => setParams({ exponentialNhg: e.target.checked })} />
           Employ Exponential NHG
         </label>
         <label className="nhg-checkbox">
-          <input type="checkbox" checked={demiGaussians} onChange={e => setDemiGaussians(e.target.checked)} />
+          <input type="checkbox" checked={demiGaussians} onChange={e => setParams({ demiGaussians: e.target.checked })} />
           Use positive demi-Gaussians
         </label>
         <label className="nhg-checkbox">
-          <input type="checkbox" checked={negativeWeightsOk} onChange={e => setNegativeWeightsOk(e.target.checked)} />
+          <input type="checkbox" checked={negativeWeightsOk} onChange={e => setParams({ negativeWeightsOk: e.target.checked })} />
           Allow constraint weights to go negative
         </label>
         <label className="nhg-checkbox">
-          <input type="checkbox" checked={resolveTiesBySkipping} onChange={e => setResolveTiesBySkipping(e.target.checked)} />
+          <input type="checkbox" checked={resolveTiesBySkipping} onChange={e => setParams({ resolveTiesBySkipping: e.target.checked })} />
           Resolve ties by skipping trial
         </label>
       </div>
