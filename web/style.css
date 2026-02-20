@@ -23,6 +23,7 @@
     --font-mono: 'JetBrains Mono', monospace;
 
     /* Spacing */
+    --space-2xs: 0.25rem;
     --space-xs: 0.5rem;
     --space-sm: 1rem;
     --space-md: 1.5rem;
@@ -82,13 +83,13 @@ body {
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: var(--space-lg) var(--space-md);
+    padding: var(--space-md) var(--space-md);
     position: relative;
 }
 
 @media (min-width: 768px) {
     .container {
-        padding: var(--space-xl) var(--space-lg);
+        padding: var(--space-md) var(--space-lg);
     }
 }
 
@@ -98,8 +99,8 @@ body {
 
 .masthead {
     text-align: center;
-    margin-bottom: var(--space-xl);
-    padding: var(--space-xl) var(--space-md);
+    margin-bottom: var(--space-md);
+    padding: var(--space-xs) var(--space-md);
     position: relative;
     animation: fadeInDown var(--transition-elegant) ease-out;
 }
@@ -119,35 +120,35 @@ body {
     width: 60px;
     height: 3px;
     background: linear-gradient(90deg, transparent, var(--burgundy), transparent);
-    margin: 0 auto var(--space-md);
+    margin: 0 auto var(--space-xs);
     opacity: 0.6;
 }
 
 .site-title {
     font-family: var(--font-display);
-    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--charcoal);
-    margin-bottom: var(--space-xs);
+    margin-bottom: var(--space-2xs);
     line-height: 1.1;
 }
 
 .site-subtitle {
     font-family: var(--font-body);
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 300;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--charcoal-soft);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-2xs);
 }
 
 .header-divider {
     width: 120px;
     height: 1px;
     background: var(--taupe);
-    margin: var(--space-md) auto 0;
+    margin: var(--space-xs) auto 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -968,6 +969,16 @@ button:hover::before {
     letter-spacing: 0.05em;
 }
 
+.site-footer a {
+    color: var(--charcoal-soft);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.site-footer a:hover {
+    color: var(--charcoal);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Responsive Design
    ═══════════════════════════════════════════════════════════════ */
@@ -1010,6 +1021,77 @@ button:hover::before {
 .mb-sm { margin-bottom: var(--space-sm); }
 .mb-md { margin-bottom: var(--space-md); }
 .mb-lg { margin-bottom: var(--space-lg); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Expandable Section
+   ═══════════════════════════════════════════════════════════════ */
+
+.expandable-section {
+    margin-bottom: var(--space-lg);
+}
+
+.expandable-section .input-panel,
+.expandable-section .output-panel,
+.expandable-section .analysis-panel {
+    margin-bottom: 0;
+}
+
+.expandable-body {
+    position: relative;
+}
+
+.expandable-body--collapsed.expandable-body--overflows {
+    max-height: 900px;
+    overflow: hidden;
+}
+
+.expandable-body--collapsed.expandable-body--overflows::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: linear-gradient(to bottom, transparent, var(--cream));
+    pointer-events: none;
+}
+
+.expand-bar {
+    background: var(--cream);
+    border: 1px solid var(--taupe-light);
+    border-top: none;
+    display: flex;
+    justify-content: center;
+    padding: var(--space-2xs) 0;
+    box-shadow: var(--shadow-soft);
+}
+
+.expand-toggle {
+    background: none;
+    border: none;
+    color: var(--charcoal-soft);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.3rem 1.5rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color var(--transition-quick);
+    overflow: visible;
+}
+
+.expand-toggle:hover {
+    color: var(--burgundy);
+    background: none;
+    transform: none;
+    box-shadow: none;
+}
+
+.expand-toggle::before {
+    display: none;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    NHG Panel
