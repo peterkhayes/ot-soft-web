@@ -1373,8 +1373,8 @@ button:disabled {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 64px;
-    background: linear-gradient(to bottom, transparent, var(--cream));
+    height: 120px;
+    background: linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--cream) 60%, transparent) 40%, var(--cream) 100%);
     pointer-events: none;
 }
 
