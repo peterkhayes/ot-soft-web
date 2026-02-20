@@ -34,7 +34,7 @@ Follow these steps when porting a new feature from the VB6 source:
    a. Add any necessary UI elements (buttons, inputs, displays) to the web interface.
    b. All business logic must remain in Rust — the web layer only handles presentation and calls into Wasm.
 
-5. **Update `TASKS.md`** — Mark completed items and add any new tasks discovered during implementation.
+5. **Update documentation** — Update all relevant docs: mark completed items in `TASKS.md`, add any newly discovered tasks, and update any `CLAUDE.md` files whose descriptions have become inaccurate (e.g. new modules, changed file structure, new patterns).
 
 6. **Finish** — After every completed task, always do all three of these steps in order:
    a. `make build` — rebuild WASM so local dev is up to date
