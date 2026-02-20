@@ -444,6 +444,16 @@ button:hover::before {
     transform: translateY(0);
 }
 
+.primary-button--loading {
+    cursor: wait;
+    opacity: 0.8;
+}
+
+.primary-button--loading:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 .secondary-button {
     background: var(--parchment-dark);
     color: var(--charcoal);

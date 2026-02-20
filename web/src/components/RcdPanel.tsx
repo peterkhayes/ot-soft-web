@@ -161,15 +161,20 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
             <input type="file" accept=".txt" onChange={handleAprioriFile} style={{ display: 'none' }} />
           </label>
         )}
-        <button className="primary-button" onClick={handleRun} disabled={isLoading}>
-          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
+        <button className={`primary-button${isLoading ? ' primary-button--loading' : ''}`} onClick={handleRun} disabled={isLoading}>
+          {isLoading ? (
+            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 22h14"/><path d="M5 2h14"/>
+              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+            </svg>
+          ) : (
+            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          )}
           Run {ALGORITHM_LABELS[algorithm]} Algorithm
         </button>
-        {isLoading && (
-          <div className="loading-indicator" title={`Running ${ALGORITHM_LABELS[algorithm]}...`}></div>
-        )}
         {rcdResult && !rcdResult.error && (
           <button className="download-button" onClick={handleDownload}>
             <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
