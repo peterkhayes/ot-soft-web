@@ -18,6 +18,113 @@
 
 use wasm_bindgen::prelude::*;
 
+/// Options for the Noisy Harmonic Grammar algorithm.
+#[wasm_bindgen]
+pub struct NhgOptions {
+    pub cycles: usize,
+    pub initial_plasticity: f64,
+    pub final_plasticity: f64,
+    pub test_trials: usize,
+    pub noise_by_cell: bool,
+    pub post_mult_noise: bool,
+    pub noise_for_zero_cells: bool,
+    pub late_noise: bool,
+    pub exponential_nhg: bool,
+    pub demi_gaussians: bool,
+    pub negative_weights_ok: bool,
+    pub resolve_ties_by_skipping: bool,
+}
+
+#[wasm_bindgen]
+impl NhgOptions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            cycles: 5000,
+            initial_plasticity: 2.0,
+            final_plasticity: 0.002,
+            test_trials: 2000,
+            noise_by_cell: false,
+            post_mult_noise: false,
+            noise_for_zero_cells: false,
+            late_noise: false,
+            exponential_nhg: false,
+            demi_gaussians: false,
+            negative_weights_ok: false,
+            resolve_ties_by_skipping: false,
+        }
+    }
+}
+
+/// Options for the Gradual Learning Algorithm.
+#[wasm_bindgen]
+pub struct GlaOptions {
+    pub maxent_mode: bool,
+    pub cycles: usize,
+    pub initial_plasticity: f64,
+    pub final_plasticity: f64,
+    pub test_trials: usize,
+    pub negative_weights_ok: bool,
+}
+
+#[wasm_bindgen]
+impl GlaOptions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            maxent_mode: false,
+            cycles: 1_000_000,
+            initial_plasticity: 2.0,
+            final_plasticity: 0.001,
+            test_trials: 10000,
+            negative_weights_ok: false,
+        }
+    }
+}
+
+/// Options for the Maximum Entropy algorithm.
+#[wasm_bindgen]
+pub struct MaxEntOptions {
+    pub iterations: usize,
+    pub weight_min: f64,
+    pub weight_max: f64,
+}
+
+#[wasm_bindgen]
+impl MaxEntOptions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            iterations: 100,
+            weight_min: 0.0,
+            weight_max: 50.0,
+        }
+    }
+}
+
+/// Options controlling the FRed (ranking argumentation) section of output.
+/// Used by RCD, BCD, and LFCD format functions.
+#[wasm_bindgen]
+pub struct FredOptions {
+    pub include_fred: bool,
+    pub use_mib: bool,
+    pub show_details: bool,
+    pub include_mini_tableaux: bool,
+}
+
+#[wasm_bindgen]
+impl FredOptions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            include_fred: true,
+            use_mib: false,
+            show_details: true,
+            include_mini_tableaux: true,
+        }
+    }
+}
+
 /// Log a message to the browser console (WASM) or stderr (native).
 #[macro_export]
 macro_rules! ot_log {
@@ -86,20 +193,12 @@ pub fn run_rcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
 
 /// Format RCD results as text for download.
 /// `apriori_text`: contents of an a priori rankings file, or empty string for none.
-/// `include_fred`: include ranking arguments (FRed) section.
-/// `use_mib`: use Most Informative Basis (false = Skeletal Basis).
-/// `show_details`: include verbose FRed recursion tree.
-/// `include_mini_tableaux`: include illustrative mini-tableaux.
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
 pub fn format_rcd_output(
     text: &str,
     filename: &str,
     apriori_text: &str,
-    include_fred: bool,
-    use_mib: bool,
-    show_details: bool,
-    include_mini_tableaux: bool,
+    fred_opts: &FredOptions,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let apriori = if apriori_text.trim().is_empty() {
@@ -113,7 +212,7 @@ pub fn format_rcd_output(
     } else {
         tableau.run_rcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, &apriori, include_fred, use_mib, show_details, include_mini_tableaux);
+    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -156,88 +255,49 @@ pub fn run_bcd(text: &str, specific: bool) -> Result<RCDResult, String> {
 
 /// Run Maximum Entropy on a tableau
 #[wasm_bindgen]
-pub fn run_maxent(text: &str, iterations: usize, weight_min: f64, weight_max: f64) -> Result<MaxEntResult, String> {
+pub fn run_maxent(text: &str, opts: &MaxEntOptions) -> Result<MaxEntResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_maxent(iterations, weight_min, weight_max))
+    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max))
 }
 
 /// Format MaxEnt results as text for download
 #[wasm_bindgen]
-pub fn format_maxent_output(text: &str, filename: &str, iterations: usize, weight_min: f64, weight_max: f64) -> Result<String, String> {
+pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_maxent(iterations, weight_min, weight_max);
+    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max);
     Ok(result.format_output(&tableau, filename))
 }
 
 /// Run Noisy Harmonic Grammar on a tableau
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
-pub fn run_nhg(
-    text: &str,
-    cycles: usize,
-    initial_plasticity: f64,
-    final_plasticity: f64,
-    test_trials: usize,
-    noise_by_cell: bool,
-    post_mult_noise: bool,
-    noise_for_zero_cells: bool,
-    late_noise: bool,
-    exponential_nhg: bool,
-    demi_gaussians: bool,
-    negative_weights_ok: bool,
-    resolve_ties_by_skipping: bool,
-) -> Result<NhgResult, String> {
+pub fn run_nhg(text: &str, opts: &NhgOptions) -> Result<NhgResult, String> {
     let tableau = Tableau::parse(text)?;
     Ok(tableau.run_nhg(
-        cycles, initial_plasticity, final_plasticity, test_trials,
-        noise_by_cell, post_mult_noise, noise_for_zero_cells, late_noise,
-        exponential_nhg, demi_gaussians, negative_weights_ok, resolve_ties_by_skipping,
+        opts.cycles, opts.initial_plasticity, opts.final_plasticity, opts.test_trials,
+        opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
+        opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
     ))
 }
 
 /// Format NHG results as text for download
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
-pub fn format_nhg_output(
-    text: &str,
-    filename: &str,
-    cycles: usize,
-    initial_plasticity: f64,
-    final_plasticity: f64,
-    test_trials: usize,
-    noise_by_cell: bool,
-    post_mult_noise: bool,
-    noise_for_zero_cells: bool,
-    late_noise: bool,
-    exponential_nhg: bool,
-    demi_gaussians: bool,
-    negative_weights_ok: bool,
-    resolve_ties_by_skipping: bool,
-) -> Result<String, String> {
+pub fn format_nhg_output(text: &str, filename: &str, opts: &NhgOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let result = tableau.run_nhg(
-        cycles, initial_plasticity, final_plasticity, test_trials,
-        noise_by_cell, post_mult_noise, noise_for_zero_cells, late_noise,
-        exponential_nhg, demi_gaussians, negative_weights_ok, resolve_ties_by_skipping,
+        opts.cycles, opts.initial_plasticity, opts.final_plasticity, opts.test_trials,
+        opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
+        opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
     );
     Ok(result.format_output(&tableau, filename))
 }
 
 /// Format BCD results as text for download.
-/// `include_fred`: include ranking arguments (FRed) section.
-/// `use_mib`: use Most Informative Basis (false = Skeletal Basis).
-/// `show_details`: include verbose FRed recursion tree.
-/// `include_mini_tableaux`: include illustrative mini-tableaux.
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
 pub fn format_bcd_output(
     text: &str,
     filename: &str,
     specific: bool,
-    include_fred: bool,
-    use_mib: bool,
-    show_details: bool,
-    include_mini_tableaux: bool,
+    fred_opts: &FredOptions,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
@@ -246,7 +306,7 @@ pub fn format_bcd_output(
     } else {
         "Biased Constraint Demotion"
     };
-    result.apply_fred_options(&tableau, &[], include_fred, use_mib, show_details, include_mini_tableaux);
+    result.apply_fred_options(&tableau, &[], fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_output_with_algorithm(&tableau, filename, algorithm_name))
 }
 
@@ -266,20 +326,12 @@ pub fn run_lfcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
 
 /// Format LFCD results as text for download.
 /// `apriori_text`: contents of an a priori rankings file, or empty string for none.
-/// `include_fred`: include ranking arguments (FRed) section.
-/// `use_mib`: use Most Informative Basis (false = Skeletal Basis).
-/// `show_details`: include verbose FRed recursion tree.
-/// `include_mini_tableaux`: include illustrative mini-tableaux.
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
 pub fn format_lfcd_output(
     text: &str,
     filename: &str,
     apriori_text: &str,
-    include_fred: bool,
-    use_mib: bool,
-    show_details: bool,
-    include_mini_tableaux: bool,
+    fred_opts: &FredOptions,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let apriori = if apriori_text.trim().is_empty() {
@@ -293,7 +345,7 @@ pub fn format_lfcd_output(
     } else {
         tableau.run_lfcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, &apriori, include_fred, use_mib, show_details, include_mini_tableaux);
+    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_output_with_algorithm(
         &tableau,
         filename,
@@ -302,41 +354,22 @@ pub fn format_lfcd_output(
 }
 
 /// Run the Gradual Learning Algorithm (GLA) on a tableau.
-///
-/// `maxent_mode`: if true, run online MaxEnt; if false, run Stochastic OT.
 #[wasm_bindgen]
-pub fn run_gla(
-    text: &str,
-    maxent_mode: bool,
-    cycles: usize,
-    initial_plasticity: f64,
-    final_plasticity: f64,
-    test_trials: usize,
-    negative_weights_ok: bool,
-) -> Result<GlaResult, String> {
+pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
     let tableau = Tableau::parse(text)?;
     Ok(tableau.run_gla(
-        maxent_mode, cycles, initial_plasticity, final_plasticity,
-        test_trials, negative_weights_ok,
+        opts.maxent_mode, opts.cycles, opts.initial_plasticity, opts.final_plasticity,
+        opts.test_trials, opts.negative_weights_ok,
     ))
 }
 
 /// Format GLA results as text for download.
 #[wasm_bindgen]
-pub fn format_gla_output(
-    text: &str,
-    filename: &str,
-    maxent_mode: bool,
-    cycles: usize,
-    initial_plasticity: f64,
-    final_plasticity: f64,
-    test_trials: usize,
-    negative_weights_ok: bool,
-) -> Result<String, String> {
+pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let result = tableau.run_gla(
-        maxent_mode, cycles, initial_plasticity, final_plasticity,
-        test_trials, negative_weights_ok,
+        opts.maxent_mode, opts.cycles, opts.initial_plasticity, opts.final_plasticity,
+        opts.test_trials, opts.negative_weights_ok,
     );
     Ok(result.format_output(&tableau, filename))
 }

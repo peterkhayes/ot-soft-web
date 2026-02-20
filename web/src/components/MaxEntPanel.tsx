@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { run_maxent, format_maxent_output } from '../../pkg/ot_soft.js'
+import { run_maxent, format_maxent_output, MaxEntOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
 
@@ -42,7 +42,11 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
     setIsLoading(true)
     setTimeout(() => {
     try {
-      const r = run_maxent(tableauText, iterations, weightMin, weightMax)
+      const opts = new MaxEntOptions()
+      opts.iterations = iterations
+      opts.weight_min = weightMin
+      opts.weight_max = weightMax
+      const r = run_maxent(tableauText, opts)
       const constraintCount = tableau.constraint_count()
       const formCount = tableau.form_count()
 
@@ -86,13 +90,11 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
 
   function handleDownload() {
     try {
-      const formattedOutput = format_maxent_output(
-        tableauText,
-        inputFilename || 'tableau.txt',
-        iterations,
-        weightMin,
-        weightMax
-      )
+      const opts = new MaxEntOptions()
+      opts.iterations = iterations
+      opts.weight_min = weightMin
+      opts.weight_max = weightMax
+      const formattedOutput = format_maxent_output(tableauText, inputFilename || 'tableau.txt', opts)
       downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'MaxEntOutput'))
     } catch (err) {
       console.error('Download error:', err)

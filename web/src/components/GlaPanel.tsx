@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { run_gla, format_gla_output } from '../../pkg/ot_soft.js'
+import { run_gla, format_gla_output, GlaOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
 
@@ -42,15 +42,14 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     setIsLoading(true)
     setTimeout(() => {
     try {
-      const r = run_gla(
-        tableauText,
-        maxentMode,
-        cycles,
-        initialPlasticity,
-        finalPlasticity,
-        maxentMode ? 0 : testTrials,
-        negativeWeightsOk,
-      )
+      const opts = new GlaOptions()
+      opts.maxent_mode = maxentMode
+      opts.cycles = cycles
+      opts.initial_plasticity = initialPlasticity
+      opts.final_plasticity = finalPlasticity
+      opts.test_trials = maxentMode ? 0 : testTrials
+      opts.negative_weights_ok = negativeWeightsOk
+      const r = run_gla(tableauText, opts)
 
       const constraintCount = tableau.constraint_count()
       const formCount = tableau.form_count()
@@ -90,16 +89,14 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
   function handleDownload() {
     try {
-      const output = format_gla_output(
-        tableauText,
-        inputFilename || 'tableau.txt',
-        maxentMode,
-        cycles,
-        initialPlasticity,
-        finalPlasticity,
-        maxentMode ? 0 : testTrials,
-        negativeWeightsOk,
-      )
+      const opts = new GlaOptions()
+      opts.maxent_mode = maxentMode
+      opts.cycles = cycles
+      opts.initial_plasticity = initialPlasticity
+      opts.final_plasticity = finalPlasticity
+      opts.test_trials = maxentMode ? 0 : testTrials
+      opts.negative_weights_ok = negativeWeightsOk
+      const output = format_gla_output(tableauText, inputFilename || 'tableau.txt', opts)
       const suffix = maxentMode ? 'GLA-MaxEntOutput' : 'GLA-StochasticOTOutput'
       downloadTextFile(output, makeOutputFilename(inputFilename, suffix))
     } catch (err) {

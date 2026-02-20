@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { run_nhg, format_nhg_output } from '../../pkg/ot_soft.js'
+import { run_nhg, format_nhg_output, NhgOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
 
@@ -49,21 +49,20 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     setIsLoading(true)
     setTimeout(() => {
     try {
-      const r = run_nhg(
-        tableauText,
-        cycles,
-        initialPlasticity,
-        finalPlasticity,
-        testTrials,
-        noiseByCell,
-        postMultNoise,
-        noiseForZeroCells,
-        lateNoise,
-        exponentialNhg,
-        demiGaussians,
-        negativeWeightsOk,
-        resolveTiesBySkipping,
-      )
+      const opts = new NhgOptions()
+      opts.cycles = cycles
+      opts.initial_plasticity = initialPlasticity
+      opts.final_plasticity = finalPlasticity
+      opts.test_trials = testTrials
+      opts.noise_by_cell = noiseByCell
+      opts.post_mult_noise = postMultNoise
+      opts.noise_for_zero_cells = noiseForZeroCells
+      opts.late_noise = lateNoise
+      opts.exponential_nhg = exponentialNhg
+      opts.demi_gaussians = demiGaussians
+      opts.negative_weights_ok = negativeWeightsOk
+      opts.resolve_ties_by_skipping = resolveTiesBySkipping
+      const r = run_nhg(tableauText, opts)
 
       const constraintCount = tableau.constraint_count()
       const formCount = tableau.form_count()
@@ -103,22 +102,20 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
 
   function handleDownload() {
     try {
-      const formattedOutput = format_nhg_output(
-        tableauText,
-        inputFilename || 'tableau.txt',
-        cycles,
-        initialPlasticity,
-        finalPlasticity,
-        testTrials,
-        noiseByCell,
-        postMultNoise,
-        noiseForZeroCells,
-        lateNoise,
-        exponentialNhg,
-        demiGaussians,
-        negativeWeightsOk,
-        resolveTiesBySkipping,
-      )
+      const opts = new NhgOptions()
+      opts.cycles = cycles
+      opts.initial_plasticity = initialPlasticity
+      opts.final_plasticity = finalPlasticity
+      opts.test_trials = testTrials
+      opts.noise_by_cell = noiseByCell
+      opts.post_mult_noise = postMultNoise
+      opts.noise_for_zero_cells = noiseForZeroCells
+      opts.late_noise = lateNoise
+      opts.exponential_nhg = exponentialNhg
+      opts.demi_gaussians = demiGaussians
+      opts.negative_weights_ok = negativeWeightsOk
+      opts.resolve_ties_by_skipping = resolveTiesBySkipping
+      const formattedOutput = format_nhg_output(tableauText, inputFilename || 'tableau.txt', opts)
       downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'NHGOutput'))
     } catch (err) {
       console.error('Download error:', err)

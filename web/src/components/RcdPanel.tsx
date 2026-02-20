@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output } from '../../pkg/ot_soft.js'
+import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output, FredOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
 
@@ -118,11 +118,16 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   function handleDownload() {
     try {
       const apriori = supportsApriori ? aprioriText : ''
+      const fredOpts = new FredOptions()
+      fredOpts.include_fred = includeFred
+      fredOpts.use_mib = useMib
+      fredOpts.show_details = showDetails
+      fredOpts.include_mini_tableaux = includeMiniTableaux
       const formattedOutput = algorithm === 'rcd'
-        ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori, includeFred, useMib, showDetails, includeMiniTableaux)
+        ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
         : algorithm === 'lfcd'
-          ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori, includeFred, useMib, showDetails, includeMiniTableaux)
-          : format_bcd_output(tableauText, inputFilename || 'tableau.txt', algorithm === 'bcd-specific', includeFred, useMib, showDetails, includeMiniTableaux)
+          ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
+          : format_bcd_output(tableauText, inputFilename || 'tableau.txt', algorithm === 'bcd-specific', fredOpts)
 
       downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'Output'))
     } catch (err) {
