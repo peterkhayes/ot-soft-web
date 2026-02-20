@@ -16,6 +16,7 @@
     --taupe: #C9BFB0;
     --taupe-light: #E5DFD4;
     --cream: #FFFDF9;
+    --white: #ffffff;
 
     /* Typography Scale */
     --font-display: 'Cormorant Garamond', serif;
@@ -938,13 +939,14 @@ button:disabled {
 }
 
 .algorithm-select {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--stone-300);
-    background: var(--white);
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border: 1px solid var(--taupe);
+    background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233A3A3A'/%3E%3C/svg%3E") no-repeat right 0.65rem center;
     color: var(--charcoal);
     font-family: var(--font-body);
     font-size: 0.85rem;
     cursor: pointer;
+    appearance: none;
 }
 
 .apriori-upload {
@@ -952,7 +954,7 @@ button:disabled {
     align-items: center;
     gap: 0.3rem;
     padding: 0.5rem 0.75rem;
-    border: 1px dashed var(--stone-300);
+    border: 1px dashed var(--taupe);
     background: var(--white);
     color: var(--charcoal-soft);
     font-family: var(--font-body);
@@ -1077,7 +1079,7 @@ button:disabled {
 .param-input {
     width: 6rem;
     padding: 0.4rem 0.5rem;
-    border: 1px solid var(--stone-300);
+    border: 1px solid var(--taupe);
     background: var(--white);
     color: var(--charcoal);
     font-family: var(--font-mono);
@@ -1426,7 +1428,7 @@ button:disabled {
     margin-bottom: var(--space-lg);
     padding: var(--space-md);
     background: var(--taupe-light);
-    border: 1px solid var(--stone-300);
+    border: 1px solid var(--taupe);
 }
 
 .nhg-options-label {
