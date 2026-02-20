@@ -187,7 +187,10 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
       </div>
 
       <div className="nhg-options">
-        <div className="nhg-options-label">Ranking Argumentation</div>
+        <div className="nhg-options-header">
+          <span className="nhg-options-label">Ranking Argumentation</span>
+          <button className="reset-button" onClick={() => setParams(RCD_DEFAULTS)}>Reset to defaults</button>
+        </div>
         <label className="nhg-checkbox">
           <input
             type="checkbox"

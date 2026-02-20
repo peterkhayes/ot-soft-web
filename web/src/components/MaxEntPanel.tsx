@@ -118,6 +118,9 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         <span className="panel-number">04</span>
       </div>
 
+      <div className="nhg-options-header" style={{ marginBottom: 'var(--space-xs)' }}>
+        <button className="reset-button" style={{ marginLeft: 'auto' }} onClick={() => setParams(MAXENT_DEFAULTS)}>Reset to defaults</button>
+      </div>
       <div className="maxent-params">
         <label className="param-label">
           Iterations

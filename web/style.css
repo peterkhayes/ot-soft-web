@@ -1124,6 +1124,33 @@ button:hover::before {
     margin-bottom: 0.3rem;
 }
 
+.nhg-options-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nhg-options-header .nhg-options-label {
+    margin-bottom: 0;
+}
+
+.reset-button {
+    font-size: 0.75rem;
+    color: var(--charcoal-soft);
+    background: none;
+    border: 1px solid var(--taupe);
+    border-radius: 3px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: background var(--transition-quick), border-color var(--transition-quick);
+}
+
+.reset-button:hover {
+    background: var(--parchment-dark);
+    border-color: var(--charcoal-soft);
+}
+
 .nhg-checkbox {
     display: flex;
     align-items: center;

@@ -116,7 +116,10 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       </div>
 
       <div className="nhg-options" style={{ marginBottom: '1rem' }}>
-        <div className="nhg-options-label">Framework:</div>
+        <div className="nhg-options-header">
+          <span className="nhg-options-label">Framework:</span>
+          <button className="reset-button" onClick={() => setParams(GLA_DEFAULTS)}>Reset to defaults</button>
+        </div>
         <label className="nhg-checkbox">
           <input
             type="radio"
