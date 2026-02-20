@@ -1,4 +1,11 @@
 /**
+ * Returns true if every key in `params` matches the corresponding value in `defaults`.
+ */
+export function isAtDefaults<T extends object>(params: T, defaults: T): boolean {
+  return (Object.keys(defaults) as (keyof T)[]).every(k => params[k] === defaults[k])
+}
+
+/**
  * Trigger a browser download of text content as a file.
  */
 export function downloadTextFile(content: string, filename: string): void {

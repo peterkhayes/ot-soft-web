@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output, FredOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename } from '../utils.ts'
+import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
 
 interface RcdPanelProps {
   tableau: Tableau
@@ -58,6 +58,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
+  const atDefaults = isAtDefaults(params, RCD_DEFAULTS)
 
   function handleAprioriFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -184,13 +185,17 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
             Download Results
           </button>
         )}
+        <button className="reset-button" onClick={() => setParams(RCD_DEFAULTS)} disabled={atDefaults}>
+          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
+          </svg>
+          Reset to Defaults
+        </button>
       </div>
 
       <div className="nhg-options">
-        <div className="nhg-options-header">
-          <span className="nhg-options-label">Ranking Argumentation</span>
-          <button className="reset-button" onClick={() => setParams(RCD_DEFAULTS)}>Reset to defaults</button>
-        </div>
+        <div className="nhg-options-label">Ranking Argumentation</div>
         <label className="nhg-checkbox">
           <input
             type="checkbox"

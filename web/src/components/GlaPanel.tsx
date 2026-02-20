@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_gla, format_gla_output, GlaOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename } from '../utils.ts'
+import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
 
 interface GlaPanelProps {
   tableau: Tableau
@@ -105,6 +105,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     }
   }
 
+  const atDefaults = isAtDefaults(params, GLA_DEFAULTS)
   const successResult: GlaResultState | null = result && !result.error ? result as GlaResultState : null
   const valueLabel = successResult?.maxentMode ? 'Weight' : 'Ranking Value'
 
@@ -116,10 +117,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       </div>
 
       <div className="nhg-options" style={{ marginBottom: '1rem' }}>
-        <div className="nhg-options-header">
-          <span className="nhg-options-label">Framework:</span>
-          <button className="reset-button" onClick={() => setParams(GLA_DEFAULTS)}>Reset to defaults</button>
-        </div>
+        <div className="nhg-options-label">Framework:</div>
         <label className="nhg-checkbox">
           <input
             type="radio"
@@ -228,6 +226,13 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             Download Results
           </button>
         )}
+        <button className="reset-button" onClick={() => setParams(GLA_DEFAULTS)} disabled={atDefaults}>
+          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
+          </svg>
+          Reset to Defaults
+        </button>
       </div>
 
       {result?.error && (

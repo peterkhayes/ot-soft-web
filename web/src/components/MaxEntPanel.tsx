@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_maxent, format_maxent_output, MaxEntOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename } from '../utils.ts'
+import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
 
 interface MaxEntPanelProps {
   tableau: Tableau
@@ -105,6 +105,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
     }
   }
 
+  const atDefaults = isAtDefaults(params, MAXENT_DEFAULTS)
   const constraintCount = tableau.constraint_count()
   const constraintAbbrevs = Array.from({ length: constraintCount }, (_, i) =>
     tableau.get_constraint(i)!.abbrev
@@ -118,9 +119,6 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         <span className="panel-number">04</span>
       </div>
 
-      <div className="nhg-options-header" style={{ marginBottom: 'var(--space-xs)' }}>
-        <button className="reset-button" style={{ marginLeft: 'auto' }} onClick={() => setParams(MAXENT_DEFAULTS)}>Reset to defaults</button>
-      </div>
       <div className="maxent-params">
         <label className="param-label">
           Iterations
@@ -181,6 +179,13 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             Download Results
           </button>
         )}
+        <button className="reset-button" onClick={() => setParams(MAXENT_DEFAULTS)} disabled={atDefaults}>
+          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
+          </svg>
+          Reset to Defaults
+        </button>
       </div>
 
       {result?.error && (

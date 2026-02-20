@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_nhg, format_nhg_output, NhgOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename } from '../utils.ts'
+import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
 
 interface NhgPanelProps {
   tableau: Tableau
@@ -125,6 +125,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     }
   }
 
+  const atDefaults = isAtDefaults(params, NHG_DEFAULTS)
   const successResult: NhgResultState | null = result && !result.error ? result as NhgResultState : null
 
   return (
@@ -134,9 +135,6 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         <span className="panel-number">04</span>
       </div>
 
-      <div className="nhg-options-header" style={{ marginBottom: 'var(--space-xs)' }}>
-        <button className="reset-button" style={{ marginLeft: 'auto' }} onClick={() => setParams(NHG_DEFAULTS)}>Reset to defaults</button>
-      </div>
       <div className="maxent-params">
         <label className="param-label">
           Cycles
@@ -253,6 +251,13 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             Download Results
           </button>
         )}
+        <button className="reset-button" onClick={() => setParams(NHG_DEFAULTS)} disabled={atDefaults}>
+          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
+          </svg>
+          Reset to Defaults
+        </button>
       </div>
 
       {result?.error && (
