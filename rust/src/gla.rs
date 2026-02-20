@@ -378,8 +378,7 @@ impl Tableau {
 
         // ── Main learning loop ────────────────────────────────────────────────
         if pool_size > 0 {
-            for stage in 0..4 {
-                let plasticity = plasticities[stage];
+            for (stage, &plasticity) in plasticities.iter().enumerate() {
 
                 for _ in 0..trials_per_stage {
                     // Select observed exemplar weighted by frequency
@@ -407,26 +406,26 @@ impl Tableau {
                         // MaxEnt update: reproduces VB6 RankingValueAdjustment (MaxEnt branch)
                         // change = plasticity * (obs_viols - gen_viols)
                         // weight -= change  →  weight += plasticity * (gen_viols - obs_viols)
-                        for c in 0..nc {
+                        for (c, rv) in ranking_values.iter_mut().enumerate() {
                             let gen_v = gen_cand.violations[c] as f64;
                             let obs_v = obs_cand.violations[c] as f64;
-                            ranking_values[c] += plasticity * (gen_v - obs_v);
-                            if !negative_weights_ok && ranking_values[c] < 0.0 {
-                                ranking_values[c] = 0.0;
+                            *rv += plasticity * (gen_v - obs_v);
+                            if !negative_weights_ok && *rv < 0.0 {
+                                *rv = 0.0;
                             }
                         }
                     } else {
                         // StochasticOT update: binary ±plasticity per constraint
                         // Reproduces VB6 RankingValueAdjustment (StochasticOT branch)
-                        for c in 0..nc {
+                        for (c, rv) in ranking_values.iter_mut().enumerate() {
                             let gen_v = gen_cand.violations[c];
                             let obs_v = obs_cand.violations[c];
                             if gen_v > obs_v {
                                 // Generated violates more: strengthen (raise)
-                                ranking_values[c] += plasticity;
+                                *rv += plasticity;
                             } else if gen_v < obs_v {
                                 // Generated violates less: weaken (lower)
-                                ranking_values[c] -= plasticity;
+                                *rv -= plasticity;
                             }
                         }
                     }

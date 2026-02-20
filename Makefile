@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-build
+.PHONY: build test serve dev clean help web-build lint
 
 # Default target
 .DEFAULT_GOAL := help
@@ -44,6 +44,11 @@ check: ## Check Rust code without building
 	@echo "Checking Rust code..."
 	@cd rust && cargo check
 	@echo "✓ Check complete"
+
+lint: ## Lint Rust code with Clippy
+	@echo "Linting Rust code..."
+	@cd rust && cargo clippy -- -D warnings
+	@echo "✓ Lint complete"
 
 fmt: ## Format Rust code
 	@echo "Formatting Rust code..."

@@ -497,7 +497,7 @@ impl FRedResult {
             }
         }
         // Blank line after WCount=1 section (matches VB6's `Print #mTmpFile,`).
-        out.push_str("\n");
+        out.push('\n');
 
         // WCount > 1 next ("At least one of {…} >> {…}" form)
         for erc in &self.valhalla {
@@ -511,7 +511,7 @@ impl FRedResult {
         }
 
         // Final blank line to complete 2 blank lines total at the section end.
-        out.push_str("\n");
+        out.push('\n');
         out
     }
 

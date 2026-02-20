@@ -188,8 +188,8 @@ impl Tableau {
         for form in &self.forms {
             for cand in &form.candidates {
                 let freq = cand.frequency as f64;
-                for c_idx in 0..nc {
-                    observed[c_idx] += freq * cand.violations[c_idx] as f64;
+                for (c_idx, obs) in observed.iter_mut().enumerate() {
+                    *obs += freq * cand.violations[c_idx] as f64;
                 }
             }
         }
@@ -226,8 +226,8 @@ impl Tableau {
                 let total_freq = total_freq_per_form[form_idx];
                 for (cand_idx, cand) in form.candidates.iter().enumerate() {
                     let pred_prob = predicted[form_idx][cand_idx];
-                    for c_idx in 0..nc {
-                        expected[c_idx] += total_freq * pred_prob * cand.violations[c_idx] as f64;
+                    for (c_idx, exp) in expected.iter_mut().enumerate() {
+                        *exp += total_freq * pred_prob * cand.violations[c_idx] as f64;
                     }
                 }
             }

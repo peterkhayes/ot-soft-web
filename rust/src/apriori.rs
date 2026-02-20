@@ -87,11 +87,11 @@ pub fn parse_apriori(text: &str, abbrevs: &[String]) -> Result<Vec<Vec<bool>>, S
             ));
         }
 
-        for j in 0..nc {
+        for (j, cell_val) in table[i].iter_mut().enumerate() {
             let col = j + 1;
             let cell = if col < fields.len() { fields[col].trim() } else { "" };
             if !cell.is_empty() {
-                table[i][j] = true;
+                *cell_val = true;
             }
         }
     }

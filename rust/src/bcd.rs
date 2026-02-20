@@ -20,8 +20,8 @@ pub(crate) fn locate_violation_subsets(tableau: &Tableau) -> Vec<Vec<bool>> {
     let nc = tableau.constraints.len();
     let mut subset = vec![vec![false; nc]; nc];
 
-    for outer in 0..nc {
-        for inner in 0..nc {
+    for (outer, row) in subset.iter_mut().enumerate() {
+        for (inner, cell) in row.iter_mut().enumerate() {
             if outer == inner {
                 continue;
             }
@@ -57,7 +57,7 @@ pub(crate) fn locate_violation_subsets(tableau: &Tableau) -> Vec<Vec<bool>> {
             }
 
             // Subset(outer, inner) = true only if is_subset AND outer has at least one violation
-            subset[outer][inner] = is_subset && has_any_violation;
+            *cell = is_subset && has_any_violation;
         }
     }
 
@@ -92,8 +92,8 @@ fn check_markedness_release(
 
     loop {
         // Remove pairs decided by constraints in current stratum
-        for c_idx in 0..nc {
-            if local_strata[c_idx] != local_current_stratum {
+        for (c_idx, &c_stratum) in local_strata.iter().enumerate() {
+            if c_stratum != local_current_stratum {
                 continue;
             }
             for (form_idx, form) in tableau.forms.iter().enumerate() {
@@ -129,11 +129,11 @@ fn check_markedness_release(
                 if !local_informative[form_idx][rival_idx] {
                     continue;
                 }
-                for c_idx in 0..nc {
-                    if local_strata[c_idx] == 0 {
-                        if winner.violations[c_idx] > rival.violations[c_idx] {
-                            demotable[c_idx] = true;
-                        }
+                for (c_idx, demot) in demotable.iter_mut().enumerate() {
+                    if local_strata[c_idx] == 0
+                        && winner.violations[c_idx] > rival.violations[c_idx]
+                    {
+                        *demot = true;
                     }
                 }
             }
@@ -141,10 +141,10 @@ fn check_markedness_release(
 
         // Rank non-demotable markedness constraints
         let mut markedness_count = 0;
-        for c_idx in 0..nc {
-            if local_strata[c_idx] == 0 && !demotable[c_idx] && !is_faithfulness[c_idx] {
+        for (c_idx, ls) in local_strata.iter_mut().enumerate() {
+            if *ls == 0 && !demotable[c_idx] && !is_faithfulness[c_idx] {
                 markedness_count += 1;
-                local_strata[c_idx] = local_current_stratum;
+                *ls = local_current_stratum;
             }
         }
 
@@ -162,6 +162,7 @@ fn check_markedness_release(
 /// evaluate each, and track the best (most markedness freed).
 ///
 /// Reproduces VB6 BCD.bas:EvaluateFaithSubsets
+#[allow(clippy::too_many_arguments)]
 fn evaluate_faith_subsets(
     rankable_faith: &[usize],
     target_size: usize,
@@ -316,11 +317,9 @@ impl Tableau {
 
             for c_idx in 0..nc {
                 if strata[c_idx] == 0 && !demotable[c_idx] {
-                    if is_faithfulness[c_idx] {
-                        if active[c_idx] {
-                            faith_is_active = true;
-                        }
-                    } else {
+                    if is_faithfulness[c_idx] && active[c_idx] {
+                        faith_is_active = true;
+                    } else if !is_faithfulness[c_idx] {
                         // Non-demotable markedness: install in current stratum
                         rankable_marked = true;
                         strata[c_idx] = current_stratum;
@@ -423,10 +422,10 @@ impl Tableau {
             let mut unranked_remain = false;
             let mut a_constraint_was_ranked = false;
 
-            for c_idx in 0..nc {
-                if strata[c_idx] == 0 {
+            for &c_stratum in &strata {
+                if c_stratum == 0 {
                     unranked_remain = true;
-                } else if strata[c_idx] == current_stratum {
+                } else if c_stratum == current_stratum {
                     a_constraint_was_ranked = true;
                 }
             }
@@ -450,8 +449,8 @@ impl Tableau {
             }
 
             // UPDATE INFORMATIVENESS
-            for c_idx in 0..nc {
-                if strata[c_idx] != current_stratum {
+            for (c_idx, &c_stratum) in strata.iter().enumerate() {
+                if c_stratum != current_stratum {
                     continue;
                 }
                 for (form_idx, form) in self.forms.iter().enumerate() {

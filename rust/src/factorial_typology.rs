@@ -325,11 +325,11 @@ impl Tableau {
             .collect();
 
         // ── Step 3: Incremental Construction ─────────────────────────────────
-        for form_idx in 1..nf {
+        for (form_idx, possible_cands) in possible.iter().enumerate().skip(1) {
             let mut new_patterns: Vec<Vec<usize>> = Vec::new();
 
             for old_pattern in &patterns {
-                for &new_cand in &possible[form_idx] {
+                for &new_cand in possible_cands {
                     // Build the test data: for each form in 0..=form_idx,
                     // the selected candidate is the winner and all others are rivals.
 

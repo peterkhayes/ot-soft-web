@@ -20,3 +20,5 @@ src/
 ```
 
 Tests live in each module's `#[cfg(test)]` section. Use `make test` to run them.
+
+Run `make lint` to check Clippy linting. All warnings are treated as errors (`-D warnings`). New code must pass lint before committing.

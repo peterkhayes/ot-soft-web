@@ -35,6 +35,10 @@ pub struct NhgOptions {
     pub resolve_ties_by_skipping: bool,
 }
 
+impl Default for NhgOptions {
+    fn default() -> Self { Self::new() }
+}
+
 #[wasm_bindgen]
 impl NhgOptions {
     #[wasm_bindgen(constructor)]
@@ -67,6 +71,10 @@ pub struct GlaOptions {
     pub negative_weights_ok: bool,
 }
 
+impl Default for GlaOptions {
+    fn default() -> Self { Self::new() }
+}
+
 #[wasm_bindgen]
 impl GlaOptions {
     #[wasm_bindgen(constructor)]
@@ -90,6 +98,10 @@ pub struct MaxEntOptions {
     pub weight_max: f64,
 }
 
+impl Default for MaxEntOptions {
+    fn default() -> Self { Self::new() }
+}
+
 #[wasm_bindgen]
 impl MaxEntOptions {
     #[wasm_bindgen(constructor)]
@@ -110,6 +122,10 @@ pub struct FredOptions {
     pub use_mib: bool,
     pub show_details: bool,
     pub include_mini_tableaux: bool,
+}
+
+impl Default for FredOptions {
+    fn default() -> Self { Self::new() }
 }
 
 #[wasm_bindgen]

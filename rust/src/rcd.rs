@@ -237,13 +237,13 @@ impl RCDResult {
                 }
             }
         }
-        output.push_str("\n");
+        output.push('\n');
 
         // Section 2: Tableaux
         output.push_str("2. Tableaux\n\n");
 
         for form in &tableau.forms {
-            output.push_str("\n");
+            output.push('\n');
             output.push_str(&format!("/{}/: \n", form.input));
 
             // Build constraint header with stratum separators
@@ -280,7 +280,7 @@ impl RCDResult {
                 header.push_str(&constraint.abbrev());
             }
             output.push_str(&header);
-            output.push_str("\n");
+            output.push('\n');
 
             // Find winner
             let winner_idx = form.candidates.iter()
@@ -292,10 +292,12 @@ impl RCDResult {
                 let marker = if is_winner { ">" } else { " " };
 
                 // Find the first fatal violation (if any) for this loser
-                let first_fatal_idx = if !is_winner && winner_idx.is_some() {
-                    let winner = &form.candidates[winner_idx.unwrap()];
-                    candidate.violations.iter().enumerate()
-                        .position(|(idx, &viols)| viols > winner.violations[idx])
+                let first_fatal_idx = if !is_winner {
+                    winner_idx.and_then(|wi| {
+                        let winner = &form.candidates[wi];
+                        candidate.violations.iter().enumerate()
+                            .position(|(idx, &viols)| viols > winner.violations[idx])
+                    })
                 } else {
                     None
                 };
@@ -350,9 +352,9 @@ impl RCDResult {
                         }
                     }
                 }
-                output.push_str("\n");
+                output.push('\n');
             }
-            output.push_str("\n");
+            output.push('\n');
         }
 
         // Section 3: Status of Proposed Constraints
@@ -472,7 +474,7 @@ impl RCDResult {
             header.push_str(&constraint.abbrev());
         }
         output.push_str(&header);
-        output.push_str("\n");
+        output.push('\n');
 
         // Output winner
         output.push_str(&format!(">{:<width$} ", winner.form, width = max_cand_width));
@@ -513,7 +515,7 @@ impl RCDResult {
                 }
             }
         }
-        output.push_str("\n");
+        output.push('\n');
 
         // Output loser (without fatal violation markers in mini-tableaux)
         output.push_str(&format!(" {:<width$} ", loser.form, width = max_cand_width));
@@ -698,8 +700,8 @@ impl Tableau {
                 let loser = &self.forms[form_idx].candidates[loser_idx];
 
                 // Check if any constraint in current stratum decides this pair
-                for c_idx in 0..num_constraints {
-                    if constraint_strata[c_idx] == current_stratum {
+                for (c_idx, &c_stratum) in constraint_strata.iter().enumerate() {
+                    if c_stratum == current_stratum {
                         let winner_viols = winner.violations[c_idx];
                         let loser_viols = loser.violations[c_idx];
 
@@ -719,9 +721,9 @@ impl Tableau {
 
                 // Unranked constraints go in final stratum
                 if !all_ranked {
-                    for c_idx in 0..num_constraints {
-                        if constraint_strata[c_idx] == 0 {
-                            constraint_strata[c_idx] = current_stratum + 1;
+                    for s in constraint_strata.iter_mut() {
+                        if *s == 0 {
+                            *s = current_stratum + 1;
                         }
                     }
                     current_stratum += 1;
@@ -772,14 +774,14 @@ impl Tableau {
             return necessity;
         }
 
-        for c_idx in 0..self.constraints.len() {
+        for (c_idx, nec) in necessity.iter_mut().enumerate() {
             // Test if constraint is necessary
             if !self.is_constraint_necessary(c_idx) {
                 // Constraint is unnecessary - check if violated by any winner
                 if self.is_violated_by_winner(c_idx) {
-                    necessity[c_idx] = ConstraintNecessity::UnnecessaryButShownForFaithfulness;
+                    *nec = ConstraintNecessity::UnnecessaryButShownForFaithfulness;
                 } else {
-                    necessity[c_idx] = ConstraintNecessity::CompletelyUnnecessary;
+                    *nec = ConstraintNecessity::CompletelyUnnecessary;
                 }
             }
         }

@@ -70,6 +70,7 @@ const MAX_TIE_RETRIES: usize = 100;
 /// Compute the noisy harmony of each candidate for one input form and return the index
 /// of the winning candidate (lowest harmony). Returns `NO_WINNER` if tie-skipping is
 /// active and a tie persists after MAX_TIE_RETRIES attempts.
+#[allow(clippy::too_many_arguments)]
 fn generate_form(
     candidates: &[crate::tableau::Candidate],
     weights: &[f64],
@@ -185,24 +186,24 @@ fn generate_form(
             } else {
                 // B/B' or E/F: noise generated per (candidate, constraint) cell
                 let mut h = 0.0f64;
-                for c in 0..nc {
+                for (c, &wc) in weights.iter().enumerate() {
                     let v = cand.violations[c] as f64;
                     if post_mult_noise {
                         // E/F: noise added after weight × violations
                         if v != 0.0 || noise_for_zero_cells {
                             let g = noise_std * rng.gaussian();
                             let contrib = if exponential_nhg {
-                                (weights[c] * v + g).exp()
+                                (wc * v + g).exp()
                             } else {
                                 let eff_w = if v != 0.0 {
-                                    weights[c] + g / v
+                                    wc + g / v
                                 } else {
                                     0.0
                                 };
                                 if eff_w < 0.0 && !negative_weights_ok {
                                     0.0
                                 } else {
-                                    weights[c] * v + g
+                                    wc * v + g
                                 }
                             };
                             h += contrib;
@@ -210,7 +211,7 @@ fn generate_form(
                     } else {
                         // B/B': re-perturb weight per cell, zero × anything = 0
                         if v != 0.0 {
-                            let mut local_w = weights[c] + noise_std * rng.gaussian();
+                            let mut local_w = wc + noise_std * rng.gaussian();
                             if local_w < 0.0 && !negative_weights_ok && !exponential_nhg {
                                 local_w = 0.0;
                             }
@@ -509,8 +510,7 @@ impl Tableau {
 
         // ── Main learning loop ───────────────────────────────────────────────────────────
         if pool_size > 0 {
-            for stage in 0..4 {
-                let plasticity = plasticities[stage];
+            for (stage, &plasticity) in plasticities.iter().enumerate() {
 
                 for _ in 0..trials_per_stage {
                     // Select training exemplar (stochastic, weighted by frequency)
@@ -538,14 +538,14 @@ impl Tableau {
                         let winner_cand = &self.forms[selected_form].candidates[generated];
                         let target_cand = &self.forms[selected_form].candidates[selected_cand];
 
-                        for c in 0..nc {
+                        for (c, w) in weights.iter_mut().enumerate() {
                             let wv = winner_cand.violations[c] as f64;
                             let tv = target_cand.violations[c] as f64;
                             if wv != tv {
                                 // VB6: weight += plasticity * (winner_viols - training_viols)
-                                weights[c] += plasticity * (wv - tv);
-                                if weights[c] < 0.0 && !negative_weights_ok && !exponential_nhg {
-                                    weights[c] = 0.0;
+                                *w += plasticity * (wv - tv);
+                                if *w < 0.0 && !negative_weights_ok && !exponential_nhg {
+                                    *w = 0.0;
                                 }
                             }
                         }

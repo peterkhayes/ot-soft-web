@@ -27,7 +27,7 @@ Follow these steps when porting a new feature from the VB6 source:
 3. **Implement in Rust**
    a. Write the implementation following patterns established in existing Rust modules.
    b. Write tests that validate against expected outputs (add example files to `examples/` if needed).
-   c. Run tests to confirm correctness.
+   c. Run `make lint` to check for style issues, then `make test` to confirm correctness.
    d. If a source file grows too large, split it into separate modules.
 
 4. **Implement Web UI**
@@ -43,4 +43,4 @@ Follow these steps when porting a new feature from the VB6 source:
 
 ## Commands
 
-Always use `make` targets rather than invoking `cargo`, `npm`, or other tools directly. See the Makefile for available targets (`make test`, `make build`, `make check`, `make serve`, etc.).
+Always use `make` targets rather than invoking `cargo`, `npm`, or other tools directly. See the Makefile for available targets (`make test`, `make lint`, `make build`, `make check`, `make serve`, etc.).

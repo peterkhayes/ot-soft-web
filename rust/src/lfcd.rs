@@ -334,9 +334,9 @@ impl Tableau {
             } else if !some_are_non_demotable {
                 // Case II: failure — assign remaining to current stratum for diagnostics
                 crate::ot_log!("LFCD FAILED: all remaining constraints are demotable at stratum {}", current_stratum);
-                for c_idx in 0..nc {
-                    if strata[c_idx] == 0 {
-                        strata[c_idx] = current_stratum;
+                for s in strata.iter_mut() {
+                    if *s == 0 {
+                        *s = current_stratum;
                     }
                 }
                 return RCDResult::new(strata, current_stratum, false);
@@ -347,8 +347,8 @@ impl Tableau {
             // ===== UPDATE INFORMATIVENESS =====
             //
             // A pair is no longer informative once a ranked constraint prefers the winner.
-            for c_idx in 0..nc {
-                if strata[c_idx] != current_stratum {
+            for (c_idx, &c_stratum) in strata.iter().enumerate() {
+                if c_stratum != current_stratum {
                     continue;
                 }
                 for (form_idx, form) in self.forms.iter().enumerate() {
