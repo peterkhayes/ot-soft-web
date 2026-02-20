@@ -1,6 +1,6 @@
 # OTSoft (Web Version)
 
-[OTSoft](https://brucehayes.org/otsoft/) (short for Optimality Theory Software) is originally a Windows program meant to facilitate analysis in [Optimality Theory](https://en.wikipedia.org/wiki/Optimality_theory) and related frameworks by using algorithms to do tasks that are too large or complex to be done reliably by hand.
+[OTSoft](https://brucehayes.org/otsoft/) (short for Optimality Theory Software) is a Windows program meant to facilitate analysis in [Optimality Theory](https://en.wikipedia.org/wiki/Optimality_theory) and related frameworks by using algorithms to do tasks that are too large or complex to be done reliably by hand.
 
 OTSoft is written in [Visual Basic 6](https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-basic-6/visual-basic-6.0-documentation) and is distributed as [a Windows installation file](https://brucehayes.org/otsoft/OTSoft2.5.zip). This leads to difficulties in portability, especially for non-Windows computers.
 
@@ -8,17 +8,20 @@ This project seeks to address those by creating a web version (Rust/WASM/TypeScr
 
 ## Philosophy
 
-This project is developed using an "interesting" development workflow that is newly possible in 2026. In short:
+This project uses an "interesting" development workflow newly possible in 2026. In short:
 
-- The original source code is copied verbatim into this repo.
-- [Claude Code](https://code.claude.com/docs/en/overview) analyses that code and, with some human supervision, writes the new Rust and Web code to match.
-- A corpus of test files, outputted from the original code, is used as a verification mechanism.
+- The original source code was copied verbatim into this repository.
+- [Claude Code](https://code.claude.com/docs/en/overview) produced a detailed analysis of the code.
+- With some human supervision, Claude Code ports the code to new technologies.
+- A corpus of test data files (generated using the VB6 version) is used as a verification mechanism.
 
-This solves the following problems:
+This produces a division of labor as follows:
 
-- **Bruce Hayes** (the primary OTSoft author) isn't familiar with web programming technologies.
-- **Peter Hayes** (me, his son) is familiar with modern software development practices, but isn't familiar with linguistics.
-- **Claude Code** can write decent code very quickly and cheaply.
+- **Bruce Hayes** (the primary OTSoft author) understands the source code and the expected behavior.
+- **Peter Hayes** (me, his son) understands web technologies and software development workflows.
+- **Claude Code** can write decent code very quickly and cheaply, if given clear specifications.
+
+It remains to be seen if this approach will succeed, but it has been an interesting journey so far!
 
 ### Technologies
 
@@ -42,7 +45,7 @@ Once complete, development can move to a workflow where new changes made by Bruc
 
 ### Risks
 
-This software will produce divergent results compared to the original code if Claude Code makes mistakes in its code, and if those mistakes are not caught via testing.
+This software will produce divergent results compared to the original code if Claude Code makes mistakes in its port, and if those mistakes are not caught via testing.
 
 As a result, this project is highly reliant on its test suite, which itself relies on a well-chosen corpus of test cases (input + parameters + output). That corpus is not well-developed at this time. **Until that point, this project should not be used for real work.**
 
