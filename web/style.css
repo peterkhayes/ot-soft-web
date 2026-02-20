@@ -681,6 +681,23 @@ button:disabled {
     font-weight: 700;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Factorial Typology
+   ═══════════════════════════════════════════════════════════════ */
+
+.ft-output {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    background: var(--parchment);
+    border: 1px solid var(--taupe-light);
+    padding: var(--space-lg);
+    margin-top: var(--space-md);
+    overflow-x: auto;
+    white-space: pre;
+    animation: fadeIn var(--transition-smooth) ease-out;
+}
+
 .algorithm-select {
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--stone-300);

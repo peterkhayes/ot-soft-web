@@ -16,6 +16,7 @@ src/
   maxent.rs     Maximum Entropy learning
   nhg.rs        Noisy Harmonic Grammar
   gla.rs        Gradual Learning Algorithm (Stochastic OT + online MaxEnt)
+  factorial_typology.rs  Factorial Typology (FastRCD, cross-classification, T-order)
 ```
 
 Tests live in each module's `#[cfg(test)]` section. Use `make test` to run them.

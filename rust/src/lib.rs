@@ -155,6 +155,7 @@ mod apriori;
 mod maxent;
 mod nhg;
 mod gla;
+mod factorial_typology;
 
 // Re-export public types
 pub use tableau::{Tableau, Constraint, Candidate, InputForm};
@@ -163,6 +164,7 @@ pub use fred::FRedResult;
 pub use maxent::MaxEntResult;
 pub use nhg::NhgResult;
 pub use gla::GlaResult;
+pub use factorial_typology::FactorialTypologyResult;
 
 /// Initialize the module
 #[wasm_bindgen(start)]
@@ -371,5 +373,24 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
         opts.maxent_mode, opts.cycles, opts.initial_plasticity, opts.final_plasticity,
         opts.test_trials, opts.negative_weights_ok,
     );
+    Ok(result.format_output(&tableau, filename))
+}
+
+/// Format factorial typology results as text for download.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+#[wasm_bindgen]
+pub fn format_factorial_typology_output(
+    text: &str,
+    filename: &str,
+    apriori_text: &str,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let result = tableau.run_factorial_typology(&apriori);
     Ok(result.format_output(&tableau, filename))
 }

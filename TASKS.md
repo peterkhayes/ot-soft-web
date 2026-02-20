@@ -57,9 +57,9 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 ## Factorial Typology
 
-- [ ] Core factorial typology computation
-- [ ] FastRCD (streamlined RCD for derivability testing)
-- [ ] T-order computation (typological implications)
+- [x] Core factorial typology computation
+- [x] FastRCD (streamlined RCD for derivability testing)
+- [x] T-order computation (typological implications)
 - [ ] FTSum output file
 - [ ] CompactSum output file
 - [ ] Full listing with grammars per output pattern
@@ -85,7 +85,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Framework selection (Classical OT / MaxEnt / NHG / Stochastic OT)
 - [x] Algorithm variant selection (RCD / BCD / LFCD)
 - [x] Ranking argumentation options (MIB, details, minitableaux)
-- [ ] Factorial typology button and options
+- [x] Factorial typology button and options
 - [x] A priori rankings controls
 - [x] Parameter inputs for probabilistic algorithms
 - [x] Progress indicator for long computations
@@ -101,7 +101,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] FRed example with expected output (tiny example verified)
 - [ ] GLA/MaxEnt example with expected output
 - [~] NHG example with expected output
-- [ ] Factorial typology example with expected output
+- [~] Factorial typology example with expected output
 - [ ] Edge case examples (ranking failures, ties, large tableaux)
 
 ---

@@ -8,6 +8,7 @@ import RcdPanel from './components/RcdPanel.tsx'
 import MaxEntPanel from './components/MaxEntPanel.tsx'
 import NhgPanel from './components/NhgPanel.tsx'
 import GlaPanel from './components/GlaPanel.tsx'
+import FactorialTypologyPanel from './components/FactorialTypologyPanel.tsx'
 
 const NOT_IMPLEMENTED: Record<string, string> = {}
 
@@ -199,6 +200,17 @@ function App() {
             {currentTableau && !parseError && framework === 'classical-ot' && (
               <ExpandableSection>
                 <RcdPanel
+                  key={loadCountRef.current}
+                  tableau={currentTableau}
+                  tableauText={currentTableauText!}
+                  inputFilename={currentInputFilename}
+                />
+              </ExpandableSection>
+            )}
+
+            {currentTableau && !parseError && framework === 'classical-ot' && (
+              <ExpandableSection>
+                <FactorialTypologyPanel
                   key={loadCountRef.current}
                   tableau={currentTableau}
                   tableauText={currentTableauText!}
