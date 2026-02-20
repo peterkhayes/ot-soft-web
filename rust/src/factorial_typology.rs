@@ -17,6 +17,7 @@
 //!
 //! 4. Derive candidate_derivable and T-order from the final pattern set.
 
+use wasm_bindgen::prelude::*;
 use crate::tableau::Tableau;
 
 /// A single typological implication in the t-order.
@@ -31,18 +32,65 @@ pub struct TOrderEntry {
 }
 
 /// Result of a factorial typology run.
+#[wasm_bindgen]
 #[derive(Debug, Clone)]
 pub struct FactorialTypologyResult {
     /// Each pattern is a vec of candidate indices (0-indexed), one per form.
     /// patterns[pattern_idx][form_idx] = candidate_idx into form.candidates
+    #[wasm_bindgen(skip)]
     pub patterns: Vec<Vec<usize>>,
 
     /// For each form, for each candidate: whether it appears in any pattern.
     /// candidate_derivable[form_idx][cand_idx]
+    #[wasm_bindgen(skip)]
     pub candidate_derivable: Vec<Vec<bool>>,
 
     /// T-order implications.
+    #[wasm_bindgen(skip)]
     pub torder: Vec<TOrderEntry>,
+}
+
+#[wasm_bindgen]
+impl FactorialTypologyResult {
+    /// Number of derivable output patterns.
+    pub fn pattern_count(&self) -> usize {
+        self.patterns.len()
+    }
+
+    /// Candidate index (into the form's candidates) for a given pattern and form.
+    pub fn get_pattern_candidate(&self, pattern_idx: usize, form_idx: usize) -> Option<usize> {
+        self.patterns.get(pattern_idx)?.get(form_idx).copied()
+    }
+
+    /// Whether a given candidate is derivable by any ranking.
+    pub fn is_candidate_derivable(&self, form_idx: usize, cand_idx: usize) -> bool {
+        self.candidate_derivable
+            .get(form_idx)
+            .and_then(|row| row.get(cand_idx))
+            .copied()
+            .unwrap_or(false)
+    }
+
+    /// Number of t-order implications.
+    pub fn torder_count(&self) -> usize {
+        self.torder.len()
+    }
+
+    pub fn get_torder_implicator_form(&self, i: usize) -> usize {
+        self.torder[i].implicator_form
+    }
+
+    pub fn get_torder_implicator_candidate(&self, i: usize) -> usize {
+        self.torder[i].implicator_candidate
+    }
+
+    pub fn get_torder_implicated_form(&self, i: usize) -> usize {
+        self.torder[i].implicated_form
+    }
+
+    pub fn get_torder_implicated_candidate(&self, i: usize) -> usize {
+        self.torder[i].implicated_candidate
+    }
 }
 
 // ─── FastRCD ─────────────────────────────────────────────────────────────────

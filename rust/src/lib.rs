@@ -376,6 +376,20 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
     Ok(result.format_output(&tableau, filename))
 }
 
+/// Run factorial typology on a tableau.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+#[wasm_bindgen]
+pub fn run_factorial_typology(text: &str, apriori_text: &str) -> Result<FactorialTypologyResult, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    Ok(tableau.run_factorial_typology(&apriori))
+}
+
 /// Format factorial typology results as text for download.
 /// `apriori_text`: contents of an a priori rankings file, or empty string for none.
 #[wasm_bindgen]
