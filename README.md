@@ -6,6 +6,10 @@ OTSoft is written in [Visual Basic 6](https://learn.microsoft.com/en-us/previous
 
 This project seeks to address those by creating a web version (Rust/WASM/TypeScript) that can be opened on any device with a modern web browser.
 
+## Usage
+
+Simply visit the web application, which is currently hosted at [https://peterkhayes.github.io/ot-soft-web]. No installation is required.
+
 ## Philosophy
 
 This project uses an "interesting" development workflow newly possible in 2026. In short:
@@ -49,44 +53,12 @@ This software will produce divergent results compared to the original code if Cl
 
 As a result, this project is highly reliant on its test suite, which itself relies on a well-chosen corpus of test cases (input + parameters + output). That corpus is not well-developed at this time. **Until that point, this project should not be used for real work.**
 
-## Project Structure
-
-- `source/` - original VB6 source code, UI screenshots, and reference documentation written by Claude
-- `rust/` - rust code
-- `web/` - web app code
-- `examples/` - test input/output files
-
-## Setup
-
-### Prerequisites
-
-- [Rust](https://rustup.rs/) (latest stable)
-- [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
-- [Node.js](https://nodejs.org/) (for the Vite dev server)
-
-### Quick Start
-
-Build and run the development server:
-
-```bash
-make dev
-```
-
-Then open http://localhost:5173 in your browser.
-
-### Available Commands
-
-```bash
-make help     # Show all available commands
-make build    # Build Rust to WebAssembly
-make test     # Run Rust tests
-make serve    # Start development server
-make dev      # Build and serve (one command)
-make clean    # Clean build artifacts
-make check    # Check Rust code without building
-make fmt      # Format Rust code
-```
-
 ## Development
 
-See `CLAUDE.md`.
+The following steps are only required if you want to modify the source code. As mentioned above, if you simply want to _use_ the software, you can open the web application at https://peterkhayes.github.io/ot-soft-web.
+
+### Setup
+
+1. [Install Claude Code](https://code.claude.com/docs/en/overview#get-started). Other AI coding tools, such as [Cursor](https://cursor.com/), [Codex](https://openai.com/codex/), or [Antigravity](https://antigravity.google/), would likely work as well.
+2. Tell Claude Code to follow the instructions in INSTALLATION.md.
+3. Open http://localhost:5173 in your browser to use the application.
