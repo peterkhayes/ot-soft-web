@@ -19,6 +19,9 @@ node_modules/
 *.swo
 *~
 
+# Temporary files
+.tmp/
+
 # OS
 .DS_Store
 Thumbs.db
