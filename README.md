@@ -8,9 +8,11 @@ This project seeks to address those by creating a web version (Rust/WASM/TypeScr
 
 ## Usage
 
-Simply visit the web application, which is currently hosted at [https://peterkhayes.github.io/ot-soft-web]. No installation is required.
+Information on what OTSoft does and how to use it can be found on [the main webpage](https://brucehayes.org/otsoft/).
 
-## Philosophy
+To use this web version, simply open https://peterkhayes.github.io/ot-soft-web in your web browser. No installation is required.
+
+## About
 
 This project uses an "interesting" development workflow newly possible in 2026. In short:
 
@@ -25,7 +27,19 @@ This produces a division of labor as follows:
 - **Peter Hayes** (me, his son) understands web technologies and software development workflows.
 - **Claude Code** can write decent code very quickly and cheaply, if given clear specifications.
 
-It remains to be seen if this approach will succeed, but it has been an interesting journey so far!
+### Status
+
+At present, the port is not complete. It has most of the core OTSoft functionality, but is missing many features. It also has not been properly validated for correctness.
+
+It remains to be seen if the development approach will succeed, but it has been an interesting journey so far, and I hope to continue as my Claude Code token limits allow.
+
+Once complete, development can move to a workflow where new changes made by Bruce Hayes (or collaborators) are pulled into this repo; Claude can then analyze the diff and implement the changes.
+
+### Risks
+
+This software will produce divergent results compared to the original code if Claude Code makes mistakes in its port, and if those mistakes are not caught via testing.
+
+As a result, this project is highly reliant on its test suite, which itself relies on a well-chosen corpus of test cases (input + parameters + output). But that corpus is not well-developed at this time. **Until that point, this project should not be used for real work.**
 
 ### Technologies
 
@@ -41,24 +55,10 @@ Given that I wanted a web app, I chose the following technologies:
 
 A pure-TypeScript implementation is also possible, but would likely be slower than the Rust/Wasm version.
 
-### Status
-
-At present, the port is not complete. It has most of the core OTSoft functionality, but is missing many features. I hope to continue development as my Claude Code token limits allow.
-
-Once complete, development can move to a workflow where new changes made by Bruce Hayes (or collaborators) are pulled into this repo; Claude can then analyze the diff and implement the changes.
-
-### Risks
-
-This software will produce divergent results compared to the original code if Claude Code makes mistakes in its port, and if those mistakes are not caught via testing.
-
-As a result, this project is highly reliant on its test suite, which itself relies on a well-chosen corpus of test cases (input + parameters + output). That corpus is not well-developed at this time. **Until that point, this project should not be used for real work.**
-
 ## Development
 
 The following steps are only required if you want to modify the source code. As mentioned above, if you simply want to _use_ the software, you can open the web application at https://peterkhayes.github.io/ot-soft-web.
 
-### Setup
-
-1. [Install Claude Code](https://code.claude.com/docs/en/overview#get-started). Other AI coding tools, such as [Cursor](https://cursor.com/), [Codex](https://openai.com/codex/), or [Antigravity](https://antigravity.google/), would likely work as well.
-2. Tell Claude Code to follow the instructions in INSTALLATION.md.
+1. Install [Claude Code](https://code.claude.com/docs/en/overview#get-started). Other AI coding tools such as [Cursor](https://cursor.com/), [Codex](https://openai.com/codex/), or [Antigravity](https://antigravity.google/) would likely work as well.
+2. Tell Claude Code to follow the setup instructions in [INSTALLATION.md](INSTALLATION.md), or follow them yourself.
 3. Open http://localhost:5173 in your browser to use the application.
