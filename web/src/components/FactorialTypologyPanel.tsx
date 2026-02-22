@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
-import { run_factorial_typology, format_factorial_typology_output } from '../../pkg/ot_soft.js'
+import { run_factorial_typology, format_factorial_typology_output, FtOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { downloadTextFile, makeOutputFilename } from '../utils.ts'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 
 interface FactorialTypologyPanelProps {
   tableau: Tableau
@@ -50,9 +51,19 @@ interface FtErrorState {
 
 type FtState = FtResultState | FtErrorState
 
+interface FtParams {
+  includeFullListing: boolean
+}
+
+const FT_DEFAULTS: FtParams = {
+  includeFullListing: false,
+}
+
 function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: FactorialTypologyPanelProps) {
   const [result, setResult] = useState<FtState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [params, setParams] = useLocalStorage<FtParams>('otsoft:params:ft', FT_DEFAULTS)
+  const { includeFullListing } = params
   const [aprioriText, setAprioriText] = useState('')
   const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
   const [isAprioriDragging, setIsAprioriDragging] = useState(false)
@@ -183,7 +194,9 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
   function handleDownload() {
     try {
       const filename = inputFilename || 'tableau.txt'
-      const output = format_factorial_typology_output(tableauText, filename, aprioriText)
+      const opts = new FtOptions()
+      opts.include_full_listing = includeFullListing
+      const output = format_factorial_typology_output(tableauText, filename, aprioriText, opts)
       downloadTextFile(output, makeOutputFilename(inputFilename, 'FactorialTypology'))
     } catch (err) {
       console.error('Download error:', err)
@@ -219,6 +232,15 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
             >×</button>
           )}
         </div>
+
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={includeFullListing}
+            onChange={e => setParams({ includeFullListing: e.target.checked })}
+          />
+          Include grammar listing
+        </label>
 
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}

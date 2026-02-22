@@ -114,6 +114,24 @@ impl MaxEntOptions {
     }
 }
 
+/// Options controlling factorial typology output.
+#[wasm_bindgen]
+pub struct FtOptions {
+    pub include_full_listing: bool,
+}
+
+impl Default for FtOptions {
+    fn default() -> Self { Self::new() }
+}
+
+#[wasm_bindgen]
+impl FtOptions {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self { include_full_listing: false }
+    }
+}
+
 /// Options controlling the FRed (ranking argumentation) section of output.
 /// Used by RCD, BCD, and LFCD format functions.
 #[wasm_bindgen]
@@ -413,6 +431,7 @@ pub fn format_factorial_typology_output(
     text: &str,
     filename: &str,
     apriori_text: &str,
+    opts: &FtOptions,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let apriori = if apriori_text.trim().is_empty() {
@@ -422,5 +441,9 @@ pub fn format_factorial_typology_output(
         apriori::parse_apriori(apriori_text, &abbrevs)?
     };
     let result = tableau.run_factorial_typology(&apriori);
-    Ok(result.format_output(&tableau, filename))
+    let mut out = result.format_output(&tableau, filename);
+    if opts.include_full_listing {
+        out.push_str(&result.format_full_listing(&tableau, &apriori));
+    }
+    Ok(out)
 }

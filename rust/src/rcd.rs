@@ -575,6 +575,104 @@ impl Tableau {
         self.run_rcd_internal(true, apriori)
     }
 
+    /// Run RCD with explicitly specified winner indices (one per form).
+    ///
+    /// Used internally for factorial typology full listing.
+    /// Returns a minimal RCDResult without FRed or necessity analysis.
+    pub(crate) fn run_rcd_with_winner_indices(
+        &self,
+        winner_indices: &[usize],
+        apriori: &[Vec<bool>],
+    ) -> RCDResult {
+        debug_assert_eq!(winner_indices.len(), self.forms.len());
+        let num_constraints = self.constraints.len();
+        let mut constraint_strata = vec![0usize; num_constraints];
+        let mut current_stratum = 0;
+
+        let mut informative_pairs: Vec<(usize, usize, usize)> = Vec::new();
+        for (form_idx, (&winner_idx, form)) in winner_indices.iter().zip(&self.forms).enumerate() {
+            for (loser_idx, _) in form.candidates.iter().enumerate() {
+                if loser_idx != winner_idx {
+                    informative_pairs.push((form_idx, winner_idx, loser_idx));
+                }
+            }
+        }
+
+        loop {
+            current_stratum += 1;
+
+            let mut demotable = vec![false; num_constraints];
+            for &(form_idx, winner_idx, loser_idx) in &informative_pairs {
+                let winner = &self.forms[form_idx].candidates[winner_idx];
+                let loser = &self.forms[form_idx].candidates[loser_idx];
+                for c_idx in 0..num_constraints {
+                    if constraint_strata[c_idx] != 0 {
+                        continue;
+                    }
+                    if loser.violations[c_idx] < winner.violations[c_idx] {
+                        demotable[c_idx] = true;
+                    }
+                }
+            }
+
+            if !apriori.is_empty() {
+                for outer in 0..num_constraints {
+                    if constraint_strata[outer] == 0 {
+                        for inner in 0..num_constraints {
+                            if apriori[outer][inner] {
+                                demotable[inner] = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let mut added_any = false;
+            for c_idx in 0..num_constraints {
+                if constraint_strata[c_idx] == 0 && !demotable[c_idx] {
+                    constraint_strata[c_idx] = current_stratum;
+                    added_any = true;
+                }
+            }
+
+            let all_ranked = constraint_strata.iter().all(|&s| s != 0);
+            if all_ranked {
+                return RCDResult::new(constraint_strata, current_stratum, true);
+            }
+
+            if !added_any {
+                return RCDResult::new(constraint_strata, current_stratum - 1, false);
+            }
+
+            informative_pairs.retain(|&(form_idx, winner_idx, loser_idx)| {
+                let winner = &self.forms[form_idx].candidates[winner_idx];
+                let loser = &self.forms[form_idx].candidates[loser_idx];
+                for (c_idx, &c_stratum) in constraint_strata.iter().enumerate() {
+                    if c_stratum == current_stratum && winner.violations[c_idx] < loser.violations[c_idx] {
+                        return false;
+                    }
+                }
+                true
+            });
+
+            if informative_pairs.is_empty() {
+                if !constraint_strata.iter().all(|&s| s != 0) {
+                    for s in constraint_strata.iter_mut() {
+                        if *s == 0 {
+                            *s = current_stratum + 1;
+                        }
+                    }
+                    current_stratum += 1;
+                }
+                return RCDResult::new(constraint_strata, current_stratum, true);
+            }
+
+            if current_stratum > num_constraints {
+                return RCDResult::new(constraint_strata, current_stratum, false);
+            }
+        }
+    }
+
     /// Internal RCD implementation
     fn run_rcd_internal(&self, compute_extra_analyses: bool, apriori: &[Vec<bool>]) -> RCDResult {
         let num_constraints = self.constraints.len();

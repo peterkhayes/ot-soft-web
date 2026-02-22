@@ -62,7 +62,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] T-order computation (typological implications)
 - [ ] FTSum output file
 - [ ] CompactSum output file
-- [ ] Full listing with grammars per output pattern
+- [x] Full listing with grammars per output pattern
 
 ## Output Formatting
 
@@ -91,7 +91,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Progress indicator for long computations
 - [ ] Tableau axis switching (for crowded tableaux)
 - [ ] Hasse diagram viewer
-- [ ] Settings persistence
+- [x] Settings persistence
 
 ## Testing & Examples
 

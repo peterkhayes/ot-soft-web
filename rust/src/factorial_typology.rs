@@ -651,6 +651,74 @@ impl FactorialTypologyResult {
 
         out
     }
+
+    /// Append the complete listing section: for each pattern, run RCD and show the grammar.
+    pub fn format_full_listing(&self, tableau: &Tableau, apriori: &[Vec<bool>]) -> String {
+        let nc = tableau.constraints.len();
+        let np = self.patterns.len();
+
+        if np == 0 {
+            return String::new();
+        }
+
+        let mut out = String::new();
+
+        out.push_str("\n\nComplete Listing of Output Patterns\n\n");
+
+        // Width for aligning input column
+        let max_input_width = tableau.forms.iter().map(|f| f.input.len()).max().unwrap_or(0);
+
+        for (pat_idx, pattern) in self.patterns.iter().enumerate() {
+            if pat_idx > 0 {
+                out.push_str("\n\n------------------------------------------------------------------------------\n");
+            }
+
+            out.push_str(&format!("OUTPUT SET #{}:\n", pat_idx + 1));
+            out.push_str(
+                "These are the winning outputs.  > specifies outputs marked as winning candidates in the input file.\n\n",
+            );
+
+            for (fi, &ci) in pattern.iter().enumerate() {
+                let form = &tableau.forms[fi];
+                let cand = &form.candidates[ci];
+                let input_padded = format!("/{}/", form.input);
+                let is_actual = cand.frequency > 0;
+                let marker = if is_actual { ">" } else { " " };
+                let actual_label = if is_actual { "  (actual)" } else { "" };
+                out.push_str(&format!(
+                    "   {:<width$}  -->  {}{}{}\n",
+                    input_padded,
+                    marker,
+                    cand.form,
+                    actual_label,
+                    width = max_input_width + 4,
+                ));
+            }
+
+            out.push('\n');
+
+            // Run RCD with this pattern's candidates as winners
+            let rcd = tableau.run_rcd_with_winner_indices(pattern, apriori);
+
+            out.push_str("Grammar:\n\n");
+            for stratum in 1..=rcd.num_strata() {
+                out.push_str(&format!("   Stratum #{}\n", stratum));
+                for c_idx in 0..nc {
+                    if rcd.get_stratum(c_idx) == Some(stratum) {
+                        let c = &tableau.constraints[c_idx];
+                        out.push_str(&format!(
+                            "      {:<42}[= {}]\n",
+                            c.full_name(),
+                            c.abbrev()
+                        ));
+                    }
+                }
+            }
+        }
+
+        out.push('\n');
+        out
+    }
 }
 
 /// Compute n! returning None if overflow would occur (n > 20)
