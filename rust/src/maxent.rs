@@ -25,6 +25,9 @@ pub struct MaxEntResult {
     /// Parameters used
     weight_min: f64,
     weight_max: f64,
+    /// Gaussian prior parameters (None if no prior)
+    use_prior: bool,
+    sigma_squared: f64,
 }
 
 #[wasm_bindgen]
@@ -47,6 +50,14 @@ impl MaxEntResult {
 
     pub fn iterations(&self) -> usize {
         self.iterations
+    }
+
+    pub fn use_prior(&self) -> bool {
+        self.use_prior
+    }
+
+    pub fn sigma_squared(&self) -> f64 {
+        self.sigma_squared
     }
 
     /// Format results as text output for download.
@@ -75,6 +86,10 @@ impl MaxEntResult {
         out.push_str(&format!("   Iterations: {}\n", self.iterations));
         out.push_str(&format!("   Weight minimum: {}\n", self.weight_min));
         out.push_str(&format!("   Weight maximum: {}\n", self.weight_max));
+        if self.use_prior {
+            out.push_str(&format!("   Sigma squared: {}\n", self.sigma_squared));
+            out.push_str("   A Gaussian prior for MaxEnt learning was in effect.\n");
+        }
         out.push_str("\n\n");
 
         // Section 1: Constraint weights
@@ -164,6 +179,30 @@ impl MaxEntResult {
     }
 }
 
+/// Newton's method for the Gaussian prior GIS update.
+///
+/// Reproduces VB6 MyMaxEnt.frm:DeltaUsingPrior.
+///
+/// Solves (Goodman 2002, p. 12):
+///   0 = expected * exp(delta * slowing_factor) + (weight + delta) / sigma_squared - observed
+///
+/// Iterates until |function_value| < 1e-5 or up to 100,000 iterations.
+fn delta_using_prior(expected: f64, observed: f64, weight: f64, slowing_factor: f64, sigma_squared: f64) -> f64 {
+    let mut delta = 0.0f64;
+    for _ in 0..100_000 {
+        let f = expected * (delta * slowing_factor).exp() + (weight + delta) / sigma_squared - observed;
+        let df = expected * slowing_factor * (delta * slowing_factor).exp() + 1.0 / sigma_squared;
+        if df == 0.0 {
+            break;
+        }
+        delta -= f / df;
+        if f.abs() < 1e-5 {
+            break;
+        }
+    }
+    delta
+}
+
 impl Tableau {
     /// Run the MaxEnt algorithm with Generalized Iterative Scaling.
     ///
@@ -172,7 +211,12 @@ impl Tableau {
     /// constraints uniformly.
     ///
     /// Reproduces VB6 MyMaxEnt.frm:MaxEntCore / CalculateExpectedViolations.
-    pub fn run_maxent(&self, iterations: usize, weight_min: f64, weight_max: f64) -> MaxEntResult {
+    ///
+    /// When `use_prior` is true, applies Gaussian L2 regularization with
+    /// variance `sigma_squared` (Goodman 2002). The Newton's method update
+    /// divides by 1000, reproducing the VB6 behavior (including the `/ 1000`
+    /// noted as unexplained in the VB6 source).
+    pub fn run_maxent(&self, iterations: usize, weight_min: f64, weight_max: f64, use_prior: bool, sigma_squared: f64) -> MaxEntResult {
         let nc = self.constraints.len();
 
         // Initialize all weights to 0
@@ -212,8 +256,8 @@ impl Tableau {
             }
         }
 
-        crate::ot_log!("Starting MaxEnt with {} constraints, {} forms, {} iterations (weights: {}..{})",
-            nc, self.forms.len(), iterations, weight_min, weight_max);
+        crate::ot_log!("Starting MaxEnt with {} constraints, {} forms, {} iterations (weights: {}..{}, prior: {})",
+            nc, self.forms.len(), iterations, weight_min, weight_max, use_prior);
 
         // GIS main loop
         for _ in 0..iterations {
@@ -232,14 +276,24 @@ impl Tableau {
                 }
             }
 
-            // Step 3: Update weights (GIS without prior)
+            // Step 3: Update weights
             for c_idx in 0..nc {
-                if expected[c_idx] <= 0.0 {
-                    // Skip — cannot compute log ratio
-                    continue;
+                if use_prior {
+                    // Gaussian prior: Newton's method (Goodman 2002, p. 12)
+                    // Reproduces VB6 DeltaUsingPrior + the unexplained / 1000 scaling.
+                    let delta = delta_using_prior(
+                        expected[c_idx], observed[c_idx], weights[c_idx],
+                        slowing_factor, sigma_squared,
+                    );
+                    weights[c_idx] = (weights[c_idx] - delta / 1000.0).clamp(weight_min, weight_max);
+                } else {
+                    // Standard GIS (no prior)
+                    if expected[c_idx] <= 0.0 {
+                        continue;
+                    }
+                    let delta = (observed[c_idx] / expected[c_idx]).ln() / slowing_factor;
+                    weights[c_idx] = (weights[c_idx] - delta).clamp(weight_min, weight_max);
                 }
-                let delta = (observed[c_idx] / expected[c_idx]).ln() / slowing_factor;
-                weights[c_idx] = (weights[c_idx] - delta).clamp(weight_min, weight_max);
             }
         }
 
@@ -257,6 +311,8 @@ impl Tableau {
             iterations,
             weight_min,
             weight_max,
+            use_prior,
+            sigma_squared,
         }
     }
 
@@ -309,7 +365,7 @@ mod tests {
     fn test_maxent_tiny_example() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(100, 0.0, 50.0);
+        let result = tableau.run_maxent(100, 0.0, 50.0, false, 1.0);
 
         // After 100 iterations, markedness weights should be higher than faithfulness
         // (the data has only markedness violations causing losers)
@@ -333,7 +389,7 @@ mod tests {
     fn test_maxent_predicted_probs_sum_to_one() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(10, 0.0, 50.0);
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0);
 
         // For each input form, predicted probabilities should sum to 1
         let form_count = tableau.form_count();
@@ -355,7 +411,7 @@ mod tests {
     fn test_maxent_output_format() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(5, 0.0, 50.0);
+        let result = tableau.run_maxent(5, 0.0, 50.0, false, 1.0);
         let output = result.format_output(&tableau, "test.txt");
 
         assert!(output.contains("Results of Applying Maximum Entropy to test.txt"));
@@ -371,7 +427,7 @@ mod tests {
     fn test_maxent_weight_bounds() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(100, 1.0, 10.0);
+        let result = tableau.run_maxent(100, 1.0, 10.0, false, 1.0);
 
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -379,5 +435,34 @@ mod tests {
             assert!(w >= 1.0, "Weight {} should be >= min 1.0, got {}", c_idx, w);
             assert!(w <= 10.0, "Weight {} should be <= max 10.0, got {}", c_idx, w);
         }
+    }
+
+    #[test]
+    fn test_maxent_gaussian_prior_runs() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        // With sigma_squared=1.0, the prior term is enabled; results should still be finite
+        let result = tableau.run_maxent(10, 0.0, 50.0, true, 1.0);
+
+        let nc = tableau.constraint_count();
+        for c_idx in 0..nc {
+            let w = result.get_weight(c_idx);
+            assert!(w.is_finite(), "Weight {} should be finite with prior", c_idx);
+            assert!(w >= 0.0, "Weight {} should be >= 0", c_idx);
+        }
+        assert!(result.log_prob().is_finite(), "Log prob should be finite with prior");
+        assert!(result.use_prior(), "use_prior() should return true");
+        assert_eq!(result.sigma_squared(), 1.0, "sigma_squared() should return 1.0");
+    }
+
+    #[test]
+    fn test_maxent_prior_output_format() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        let result = tableau.run_maxent(5, 0.0, 50.0, true, 1.0);
+        let output = result.format_output(&tableau, "test.txt");
+
+        assert!(output.contains("A Gaussian prior for MaxEnt learning was in effect."));
+        assert!(output.contains("Sigma squared:"));
     }
 }

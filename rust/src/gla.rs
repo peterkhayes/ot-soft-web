@@ -174,6 +174,9 @@ pub struct GlaResult {
     initial_plasticity: f64,
     final_plasticity: f64,
     test_trials: usize,
+    /// Gaussian prior parameters (MaxEnt mode only)
+    gaussian_prior: bool,
+    sigma: f64,
 }
 
 #[wasm_bindgen]
@@ -196,6 +199,14 @@ impl GlaResult {
 
     pub fn is_maxent_mode(&self) -> bool {
         self.maxent_mode
+    }
+
+    pub fn gaussian_prior(&self) -> bool {
+        self.gaussian_prior
+    }
+
+    pub fn sigma(&self) -> f64 {
+        self.sigma
     }
 
     /// Format results as text output for download.
@@ -231,6 +242,10 @@ impl GlaResult {
         out.push_str(&format!("   Initial plasticity: {:.3}\n", self.initial_plasticity));
         out.push_str(&format!("   Final plasticity: {:.3}\n", self.final_plasticity));
         out.push_str(&format!("   Times to test grammar: {}\n", self.test_trials));
+        if self.maxent_mode && self.gaussian_prior {
+            out.push_str(&format!("   Sigma: {}\n", self.sigma));
+            out.push_str("   A Gaussian prior for MaxEnt learning was in effect.\n");
+        }
         out.push_str("\n\n");
 
         // Section 1: Ranking Values / Weights Found (original constraint order)
@@ -333,6 +348,9 @@ impl Tableau {
     /// * `test_trials` — evaluation trials after learning; only used in StochasticOT mode
     ///   (MaxEnt uses exact probabilities)
     /// * `negative_weights_ok` — allow weights below 0 (MaxEnt mode only)
+    /// * `gaussian_prior` — if true (MaxEnt mode only), apply Gaussian L2 prior each update
+    /// * `sigma` — standard deviation of the Gaussian prior (default 1.0; mu=0 for all constraints)
+    #[allow(clippy::too_many_arguments)]
     pub fn run_gla(
         &self,
         maxent_mode: bool,
@@ -341,6 +359,8 @@ impl Tableau {
         final_plasticity: f64,
         test_trials: usize,
         negative_weights_ok: bool,
+        gaussian_prior: bool,
+        sigma: f64,
     ) -> GlaResult {
         let nc = self.constraints.len();
 
@@ -404,12 +424,20 @@ impl Tableau {
                     // Update ranking values / weights
                     if maxent_mode {
                         // MaxEnt update: reproduces VB6 RankingValueAdjustment (MaxEnt branch)
-                        // change = plasticity * (obs_viols - gen_viols)
-                        // weight -= change  →  weight += plasticity * (gen_viols - obs_viols)
+                        // With optional Gaussian prior: reproduces VB6 boersma.frm lines 2719-2757.
+                        // PriorBasedChange = plasticity * (weight - mu) / sigma² / 2  (mu=0)
+                        // The "/2" is "out of the blue" per the VB6 author's comment; reproduced for fidelity.
+                        let sigma_sq = sigma * sigma;
                         for (c, rv) in ranking_values.iter_mut().enumerate() {
                             let gen_v = gen_cand.violations[c] as f64;
                             let obs_v = obs_cand.violations[c] as f64;
-                            *rv += plasticity * (gen_v - obs_v);
+                            let likelihood_change = plasticity * (gen_v - obs_v);
+                            let prior_change = if gaussian_prior {
+                                plasticity * *rv / sigma_sq / 2.0
+                            } else {
+                                0.0
+                            };
+                            *rv -= likelihood_change + prior_change;
                             if !negative_weights_ok && *rv < 0.0 {
                                 *rv = 0.0;
                             }
@@ -484,6 +512,8 @@ impl Tableau {
             initial_plasticity,
             final_plasticity,
             test_trials,
+            gaussian_prior,
+            sigma,
         }
     }
 }
@@ -502,7 +532,7 @@ mod tests {
     #[test]
     fn test_gla_sot_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false);
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -514,7 +544,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -527,7 +557,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_probs_sum_to_one() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0);
 
         for fi in 0..tableau.form_count() {
             let form = tableau.get_form(fi).unwrap();
@@ -543,7 +573,7 @@ mod tests {
         // StochasticOT should start at 100 (Boersma's canonical value)
         // After 0 cycles, values should still be 100
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 0, 2.0, 0.001, 100, false);
+        let result = tableau.run_gla(false, 0, 2.0, 0.001, 100, false, false, 1.0);
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 100.0,
@@ -555,7 +585,7 @@ mod tests {
     fn test_gla_maxent_initial_values_zero() {
         // MaxEnt should start at 0
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 0, 2.0, 0.001, 0, false);
+        let result = tableau.run_gla(true, 0, 2.0, 0.001, 0, false, false, 1.0);
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 0.0,
@@ -566,7 +596,7 @@ mod tests {
     #[test]
     fn test_gla_sot_output_format() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 200, 2.0, 0.001, 100, false);
+        let result = tableau.run_gla(false, 200, 2.0, 0.001, 100, false, false, 1.0);
         let output = result.format_output(&tableau, "test.txt");
 
         assert!(output.contains("GLA-Stochastic OT"));
@@ -578,11 +608,35 @@ mod tests {
     #[test]
     fn test_gla_maxent_output_format() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 200, 2.0, 0.001, 0, false);
+        let result = tableau.run_gla(true, 200, 2.0, 0.001, 0, false, false, 1.0);
         let output = result.format_output(&tableau, "test.txt");
 
         assert!(output.contains("GLA-MaxEnt"));
         assert!(output.contains("1. Weights Found"));
         assert!(output.contains("2. Matchup to Input Frequencies"));
+    }
+
+    #[test]
+    fn test_gla_maxent_gaussian_prior_runs() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, true, 1.0);
+
+        let nc = tableau.constraint_count();
+        for c in 0..nc {
+            assert!(result.get_ranking_value(c).is_finite(), "weight {} should be finite with prior", c);
+        }
+        assert!(result.log_likelihood().is_finite());
+        assert!(result.gaussian_prior(), "gaussian_prior() should be true");
+        assert_eq!(result.sigma(), 1.0, "sigma() should be 1.0");
+    }
+
+    #[test]
+    fn test_gla_maxent_prior_output_format() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(true, 200, 2.0, 0.001, 0, false, true, 1.0);
+        let output = result.format_output(&tableau, "test.txt");
+
+        assert!(output.contains("A Gaussian prior for MaxEnt learning was in effect."));
+        assert!(output.contains("Sigma:"));
     }
 }

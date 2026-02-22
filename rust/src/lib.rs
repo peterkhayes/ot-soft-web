@@ -69,6 +69,9 @@ pub struct GlaOptions {
     pub final_plasticity: f64,
     pub test_trials: usize,
     pub negative_weights_ok: bool,
+    /// Gaussian prior for online MaxEnt (mu=0, per-constraint sigma)
+    pub gaussian_prior: bool,
+    pub sigma: f64,
 }
 
 impl Default for GlaOptions {
@@ -86,6 +89,8 @@ impl GlaOptions {
             final_plasticity: 0.001,
             test_trials: 10000,
             negative_weights_ok: false,
+            gaussian_prior: false,
+            sigma: 1.0,
         }
     }
 }
@@ -96,6 +101,9 @@ pub struct MaxEntOptions {
     pub iterations: usize,
     pub weight_min: f64,
     pub weight_max: f64,
+    /// Gaussian prior regularization (L2, mu=0)
+    pub use_prior: bool,
+    pub sigma_squared: f64,
 }
 
 impl Default for MaxEntOptions {
@@ -110,6 +118,8 @@ impl MaxEntOptions {
             iterations: 100,
             weight_min: 0.0,
             weight_max: 50.0,
+            use_prior: false,
+            sigma_squared: 1.0,
         }
     }
 }
@@ -293,14 +303,14 @@ pub fn run_bcd(text: &str, specific: bool) -> Result<RCDResult, String> {
 #[wasm_bindgen]
 pub fn run_maxent(text: &str, opts: &MaxEntOptions) -> Result<MaxEntResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max))
+    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared))
 }
 
 /// Format MaxEnt results as text for download
 #[wasm_bindgen]
 pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max);
+    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -395,7 +405,7 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
     let tableau = Tableau::parse(text)?;
     Ok(tableau.run_gla(
         opts.maxent_mode, opts.cycles, opts.initial_plasticity, opts.final_plasticity,
-        opts.test_trials, opts.negative_weights_ok,
+        opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
     ))
 }
 
@@ -405,7 +415,7 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
     let tableau = Tableau::parse(text)?;
     let result = tableau.run_gla(
         opts.maxent_mode, opts.cycles, opts.initial_plasticity, opts.final_plasticity,
-        opts.test_trials, opts.negative_weights_ok,
+        opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
     );
     Ok(result.format_output(&tableau, filename))
 }

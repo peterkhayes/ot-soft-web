@@ -49,7 +49,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [ ] Learning schedule (multi-stage plasticity interpolation)
 - [ ] Custom learning schedule from file
 - [ ] Magri update rule (Stochastic OT)
-- [ ] Gaussian prior (MaxEnt)
+- [x] Gaussian prior (MaxEnt)
 - [ ] Exact proportions data presentation
 - [ ] Multiple runs with collated results
 - [ ] Pairwise ranking probabilities

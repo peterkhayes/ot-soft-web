@@ -32,12 +32,12 @@ interface MaxEntErrorState {
 
 type MaxEntState = MaxEntResultState | MaxEntErrorState
 
-interface MaxEntParams { iterations: number; weightMin: number; weightMax: number }
-const MAXENT_DEFAULTS: MaxEntParams = { iterations: 100, weightMin: 0, weightMax: 50 }
+interface MaxEntParams { iterations: number; weightMin: number; weightMax: number; usePrior: boolean; sigmaSquared: number }
+const MAXENT_DEFAULTS: MaxEntParams = { iterations: 100, weightMin: 0, weightMax: 50, usePrior: false, sigmaSquared: 1 }
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
   const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', MAXENT_DEFAULTS)
-  const { iterations, weightMin, weightMax } = params
+  const { iterations, weightMin, weightMax, usePrior, sigmaSquared } = params
   const [result, setResult] = useState<MaxEntState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -49,6 +49,8 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       opts.iterations = iterations
       opts.weight_min = weightMin
       opts.weight_max = weightMax
+      opts.use_prior = usePrior
+      opts.sigma_squared = sigmaSquared
       const r = run_maxent(tableauText, opts)
       const constraintCount = tableau.constraint_count()
       const formCount = tableau.form_count()
@@ -97,6 +99,8 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       opts.iterations = iterations
       opts.weight_min = weightMin
       opts.weight_max = weightMax
+      opts.use_prior = usePrior
+      opts.sigma_squared = sigmaSquared
       const formattedOutput = format_maxent_output(tableauText, inputFilename || 'tableau.txt', opts)
       downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'MaxEntOutput'))
     } catch (err) {
@@ -152,6 +156,31 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             onChange={e => setParams({ weightMax: Math.max(0.1, parseFloat(e.target.value) || 50) })}
           />
         </label>
+      </div>
+
+      <div className="nhg-options">
+        <div className="nhg-options-label">Prior:</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={usePrior}
+            onChange={e => setParams({ usePrior: e.target.checked })}
+          />
+          Gaussian prior (L2 regularization)
+        </label>
+        {usePrior && (
+          <label className="param-label" style={{ marginLeft: '1.5rem' }}>
+            σ²
+            <input
+              type="number"
+              className="param-input"
+              value={sigmaSquared}
+              min={0.0001}
+              step={0.1}
+              onChange={e => setParams({ sigmaSquared: Math.max(0.0001, parseFloat(e.target.value) || 1) })}
+            />
+          </label>
+        )}
       </div>
 
       <div className="action-bar">

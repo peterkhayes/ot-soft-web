@@ -28,12 +28,12 @@ interface GlaErrorState {
 
 type GlaState = GlaResultState | GlaErrorState
 
-interface GlaParams { maxentMode: boolean; cycles: number; initialPlasticity: number; finalPlasticity: number; testTrials: number; negativeWeightsOk: boolean }
-const GLA_DEFAULTS: GlaParams = { maxentMode: false, cycles: 1000000, initialPlasticity: 2.0, finalPlasticity: 0.001, testTrials: 10000, negativeWeightsOk: false }
+interface GlaParams { maxentMode: boolean; cycles: number; initialPlasticity: number; finalPlasticity: number; testTrials: number; negativeWeightsOk: boolean; gaussianPrior: boolean; sigma: number }
+const GLA_DEFAULTS: GlaParams = { maxentMode: false, cycles: 1000000, initialPlasticity: 2.0, finalPlasticity: 0.001, testTrials: 10000, negativeWeightsOk: false, gaussianPrior: false, sigma: 1.0 }
 
 function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   const [params, setParams] = useLocalStorage<GlaParams>('otsoft:params:gla', GLA_DEFAULTS)
-  const { maxentMode, cycles, initialPlasticity, finalPlasticity, testTrials, negativeWeightsOk } = params
+  const { maxentMode, cycles, initialPlasticity, finalPlasticity, testTrials, negativeWeightsOk, gaussianPrior, sigma } = params
 
   const [result, setResult] = useState<GlaState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -49,6 +49,8 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       opts.final_plasticity = finalPlasticity
       opts.test_trials = maxentMode ? 0 : testTrials
       opts.negative_weights_ok = negativeWeightsOk
+      opts.gaussian_prior = maxentMode && gaussianPrior
+      opts.sigma = sigma
       const r = run_gla(tableauText, opts)
 
       const constraintCount = tableau.constraint_count()
@@ -96,6 +98,8 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       opts.final_plasticity = finalPlasticity
       opts.test_trials = maxentMode ? 0 : testTrials
       opts.negative_weights_ok = negativeWeightsOk
+      opts.gaussian_prior = maxentMode && gaussianPrior
+      opts.sigma = sigma
       const output = format_gla_output(tableauText, inputFilename || 'tableau.txt', opts)
       const suffix = maxentMode ? 'GLA-MaxEntOutput' : 'GLA-StochasticOTOutput'
       downloadTextFile(output, makeOutputFilename(inputFilename, suffix))
@@ -198,6 +202,27 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             />
             Allow constraint weights to go negative
           </label>
+          <label className="nhg-checkbox">
+            <input
+              type="checkbox"
+              checked={gaussianPrior}
+              onChange={e => setParams({ gaussianPrior: e.target.checked })}
+            />
+            Gaussian prior (L2 regularization)
+          </label>
+          {gaussianPrior && (
+            <label className="param-label" style={{ marginLeft: '1.5rem' }}>
+              σ
+              <input
+                type="number"
+                className="param-input"
+                value={sigma}
+                min={0.0001}
+                step={0.1}
+                onChange={e => setParams({ sigma: Math.max(0.0001, parseFloat(e.target.value) || 1) })}
+              />
+            </label>
+          )}
         </div>
       )}
 
