@@ -38,7 +38,8 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] FRed integrated into RCD/BCD/LFCD Section 4 output
 - [x] Standalone `run_fred` and `format_fred_output` WASM exports
 - [x] Detailed argumentation output (verbose recursion tree)
-- [ ] Hasse diagram generation (GraphViz DOT output)
+- [ ] Hasse diagram DOT generation in Rust (`rust/src/hasse.rs`, WASM export `fred_hasse_dot`)
+- [ ] Hasse diagram DOT generation for GLA/Stochastic OT (`gla_hasse_dot`, probability-labeled edges)
 
 ## Probabilistic Learning Algorithms
 
@@ -52,7 +53,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Gaussian prior (MaxEnt)
 - [ ] Exact proportions data presentation
 - [ ] Multiple runs with collated results
-- [ ] Pairwise ranking probabilities
+- [ ] Pairwise ranking probabilities (used internally by GLA Hasse diagram)
 - [ ] History file output (weights/ranking values over time)
 
 ## Factorial Typology
@@ -90,7 +91,9 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Parameter inputs for probabilistic algorithms
 - [x] Progress indicator for long computations
 - [ ] Tableau axis switching (for crowded tableaux)
-- [ ] Hasse diagram viewer
+- [ ] Hasse diagram viewer (`HasseDiagram.tsx` component using `@viz-js/viz`, SVG + PNG export)
+- [ ] Hasse diagram integrated into RcdPanel (FRed Hasse, shown when FRed is enabled)
+- [ ] Hasse diagram integrated into GlaPanel (Stochastic OT mode only)
 - [x] Settings persistence
 
 ## Testing & Examples
@@ -114,7 +117,19 @@ Roughly ordered by value and dependency:
 
 2. **FTSum / CompactSum output** — Generate the tab-delimited `FTSum.txt` (one row per pattern) and `CompactSum.txt` (collapsed by surface outputs, deduplicated) files.
 
-3. **Hasse diagrams** — Generate a visual ranking hierarchy from FRed output. Could use a JS graph library (e.g. D3, elkjs) rather than GraphViz DOT.
+3. **Hasse diagrams** — Generate and display visual ranking hierarchy from FRed and GLA output.
+   See `source/CHARTS.md` for full requirements and technology choice.
+   Technology: **`@viz-js/viz`** (GraphViz compiled to WASM; renders DOT → SVG in the browser).
+   Implementation steps:
+   - **Rust**: Add `rust/src/hasse.rs` with two WASM exports:
+     - `fred_hasse_dot(tableau_text, apriori_text, use_mib)` — DOT string from FRed Valhalla ERCs
+       (ports `Fred.bas:PrepareHasseDiagram`; certain edges solid, disjunctive edges dotted with "or" label)
+     - `gla_hasse_dot(tableau_text, ranking_values)` — DOT string from GLA ranking values
+       (ports `boersma.frm:PrintPairwiseRankingProbabilities`; edges labeled with probability, dotted if P < 0.95)
+   - **Web**: Add `@viz-js/viz` npm dependency; create `web/src/components/HasseDiagram.tsx`
+     (lazy-loads viz.js WASM, renders DOT → inline SVG, provides SVG and PNG download buttons)
+   - **Web**: Wire `HasseDiagram` into `RcdPanel.tsx` and `GlaPanel.tsx`
+   - **Tests**: `web/tests/flows/hasse.test.tsx` — verify SVG renders and export buttons work
 
 4. **Learning schedule** — Multi-stage plasticity interpolation for GLA/NHG. Allows the plasticity to follow a custom schedule rather than a simple linear interpolation.
 
