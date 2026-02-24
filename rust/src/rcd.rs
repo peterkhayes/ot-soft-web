@@ -8,6 +8,35 @@ use wasm_bindgen::prelude::*;
 use crate::tableau::Tableau;
 use crate::fred::FRedResult;
 
+/// Format a violation value centered in a column, matching VB6's centering formula.
+///
+/// VB6 centering: `leading = floor(col_width/2) - digit_count`, value, then
+/// `trailing = col_width - floor(col_width/2)` for non-fatal, or `-1` for fatal (to
+/// accommodate the `!`).
+fn format_violation(col_width: usize, viols: usize, is_fatal: bool) -> String {
+    if viols == 0 {
+        return " ".repeat(col_width);
+    }
+    let effective_width = col_width.max(2);
+    let half = effective_width / 2;
+    let viol_str = viols.to_string();
+    let digit_count = viol_str.len();
+    let leading = half.saturating_sub(digit_count);
+    let content = if is_fatal {
+        let trailing = effective_width.saturating_sub(half + 1);
+        format!("{}{viol_str}!{}", " ".repeat(leading), " ".repeat(trailing))
+    } else {
+        let trailing = effective_width - half;
+        format!("{}{viol_str}{}", " ".repeat(leading), " ".repeat(trailing))
+    };
+    // Ensure we hit exactly col_width (pad or truncate trailing if rounding differs)
+    if content.len() < col_width {
+        format!("{}{}", content, " ".repeat(col_width - content.len()))
+    } else {
+        content[..col_width].to_string()
+    }
+}
+
 /// Classification of constraint necessity
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ConstraintNecessity {
@@ -159,8 +188,8 @@ impl RCDResult {
                     let w_viol = winner.violations[c_idx];
                     let l_viol = loser.violations[c_idx];
 
-                    // Skip if neither violates OR both violate equally
-                    if w_viol == l_viol {
+                    // Include column if either candidate violates
+                    if w_viol == 0 && l_viol == 0 {
                         continue;
                     }
 
@@ -323,43 +352,22 @@ impl RCDResult {
 
                     // Mark violation as fatal only if it's the FIRST fatal violation
                     let is_fatal = first_fatal_idx == Some(c_idx);
-
-                    if viols == 0 {
-                        // Empty cell with proper width
-                        for _ in 0..col_width {
-                            output.push(' ');
-                        }
-                    } else {
-                        let viol_str = if is_fatal {
-                            format!("{}!", viols)
-                        } else {
-                            format!("{}", viols)
-                        };
-                        // Place violation - left-aligned with trailing spaces, except narrow columns
-                        if col_width <= 3 {
-                            // Narrow columns: no leading space
-                            output.push_str(&viol_str);
-                            for _ in viol_str.len()..col_width {
-                                output.push(' ');
-                            }
-                        } else {
-                            // Wider columns: add leading space
-                            output.push(' ');
-                            output.push_str(&viol_str);
-                            for _ in (1 + viol_str.len())..col_width {
-                                output.push(' ');
-                            }
-                        }
-                    }
+                    output.push_str(&format_violation(col_width, viols, is_fatal));
                 }
                 output.push('\n');
             }
             output.push('\n');
         }
+        output.push('\n');
 
         // Section 3: Status of Proposed Constraints
         if !self.constraint_necessity.is_empty() {
             output.push_str("3. Status of Proposed Constraints:  Necessary or Unnecessary\n\n");
+
+            let max_abbrev_width = tableau.constraints.iter()
+                .map(|c| c.abbrev().len())
+                .max()
+                .unwrap_or(0);
 
             for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
                 let constraint = &tableau.constraints[c_idx];
@@ -369,7 +377,12 @@ impl RCDResult {
                         "Not necessary (but included to show Faithfulness violations\n              of a winning candidate)",
                     ConstraintNecessity::CompletelyUnnecessary => "Not necessary",
                 };
-                output.push_str(&format!("   {}  {}\n", constraint.abbrev(), status));
+                output.push_str(&format!(
+                    "   {:<width$}  {}\n",
+                    constraint.abbrev(),
+                    status,
+                    width = max_abbrev_width,
+                ));
             }
 
             // Check if mass deletion is possible
@@ -494,26 +507,7 @@ impl RCDResult {
                 }
             }
 
-            let viols = winner.violations[c_idx];
-            if viols == 0 {
-                for _ in 0..col_width {
-                    output.push(' ');
-                }
-            } else {
-                let viol_str = format!("{}", viols);
-                if col_width <= 3 {
-                    output.push_str(&viol_str);
-                    for _ in viol_str.len()..col_width {
-                        output.push(' ');
-                    }
-                } else {
-                    output.push(' ');
-                    output.push_str(&viol_str);
-                    for _ in (1 + viol_str.len())..col_width {
-                        output.push(' ');
-                    }
-                }
-            }
+            output.push_str(&format_violation(col_width, winner.violations[c_idx], false));
         }
         output.push('\n');
 
@@ -536,27 +530,7 @@ impl RCDResult {
                 }
             }
 
-            let viols = loser.violations[c_idx];
-
-            if viols == 0 {
-                for _ in 0..col_width {
-                    output.push(' ');
-                }
-            } else {
-                let viol_str = format!("{}", viols);
-                if col_width <= 3 {
-                    output.push_str(&viol_str);
-                    for _ in viol_str.len()..col_width {
-                        output.push(' ');
-                    }
-                } else {
-                    output.push(' ');
-                    output.push_str(&viol_str);
-                    for _ in (1 + viol_str.len())..col_width {
-                        output.push(' ');
-                    }
-                }
-            }
+            output.push_str(&format_violation(col_width, loser.violations[c_idx], false));
         }
         output.push_str("\n\n");
     }

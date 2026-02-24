@@ -191,7 +191,7 @@ impl FredOptions {
         Self {
             include_fred: true,
             use_mib: false,
-            show_details: true,
+            show_details: false,
             include_mini_tableaux: true,
         }
     }

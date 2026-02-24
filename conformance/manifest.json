@@ -12,7 +12,7 @@
       "params": {
         "include_fred": true,
         "use_mib": false,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/rcd_defaults.txt"
@@ -27,7 +27,7 @@
       "params": {
         "include_fred": false,
         "use_mib": false,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": false
       },
       "golden_file": "conformance/golden/tiny/rcd_no_fred.txt"
@@ -42,7 +42,7 @@
       "params": {
         "include_fred": true,
         "use_mib": true,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/rcd_mib.txt"
@@ -57,7 +57,7 @@
       "params": {
         "include_fred": true,
         "use_mib": false,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/rcd_apriori.txt"
@@ -73,7 +73,7 @@
         "specific": false,
         "include_fred": true,
         "use_mib": false,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/bcd_defaults.txt"
@@ -89,7 +89,7 @@
         "specific": true,
         "include_fred": true,
         "use_mib": false,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/bcd_specific.txt"
@@ -104,7 +104,7 @@
       "params": {
         "include_fred": true,
         "use_mib": false,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/lfcd_defaults.txt"
@@ -119,7 +119,7 @@
       "params": {
         "include_fred": true,
         "use_mib": false,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/lfcd_apriori.txt"
@@ -134,7 +134,7 @@
       "params": {
         "include_fred": true,
         "use_mib": true,
-        "show_details": true,
+        "show_details": false,
         "include_mini_tableaux": true
       },
       "golden_file": "conformance/golden/tiny/lfcd_mib.txt"

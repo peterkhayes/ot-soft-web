@@ -58,7 +58,7 @@ const RCD_DEFAULTS: RcdParams = {
   algorithm: 'rcd',
   includeFred: true,
   useMib: false,
-  showDetails: true,
+  showDetails: false,
   includeMiniTableaux: true,
 }
 
