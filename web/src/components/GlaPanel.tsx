@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import { run_gla, format_gla_output, GlaOptions } from '../../pkg/ot_soft.js'
+import { run_gla, format_gla_output, GlaOptions, gla_hasse_dot } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
+import HasseDiagram from './HasseDiagram.tsx'
 import { makeOutputFilename, isAtDefaults } from '../utils.ts'
 import { useDownload } from '../downloadContext.ts'
 
@@ -19,6 +20,7 @@ interface GlaResultState {
   }[]
   logLikelihood: number
   maxentMode: boolean
+  hasseDot?: string
   error?: undefined
 }
 
@@ -81,7 +83,17 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         return { input: form.input, candidates }
       })
 
-      setResult({ values, forms, logLikelihood: r.log_likelihood(), maxentMode: r.is_maxent_mode() })
+      let hasseDot: string | undefined
+      if (!maxentMode) {
+        try {
+          const rankingValues = new Float64Array(values.map(v => v.value))
+          hasseDot = gla_hasse_dot(tableauText, rankingValues)
+        } catch (e) {
+          console.warn('GLA Hasse diagram generation failed:', e)
+        }
+      }
+
+      setResult({ values, forms, logLikelihood: r.log_likelihood(), maxentMode: r.is_maxent_mode(), hasseDot })
     } catch (err) {
       console.error('GLA error:', err)
       setResult({ error: String(err) })
@@ -324,6 +336,12 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               </div>
             ))}
           </div>
+          {successResult.hasseDot && (
+            <HasseDiagram
+              dotString={successResult.hasseDot}
+              downloadName={`${inputFilename ? inputFilename.replace(/\.[^.]+$/, '') : 'tableau'}Hasse`}
+            />
+          )}
         </div>
       )}
     </section>

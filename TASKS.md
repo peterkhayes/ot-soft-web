@@ -39,7 +39,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Standalone `run_fred` and `format_fred_output` WASM exports
 - [x] Detailed argumentation output (verbose recursion tree)
 - [x] Hasse diagram DOT generation in Rust (`rust/src/hasse.rs`, WASM export `fred_hasse_dot`)
-- [ ] Hasse diagram DOT generation for GLA/Stochastic OT (`gla_hasse_dot`, probability-labeled edges)
+- [x] Hasse diagram DOT generation for GLA/Stochastic OT (`gla_hasse_dot`, probability-labeled edges)
 
 ## Probabilistic Learning Algorithms
 
@@ -93,7 +93,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [ ] Tableau axis switching (for crowded tableaux)
 - [x] Hasse diagram viewer (`HasseDiagram.tsx` component using `@viz-js/viz`, SVG + PNG export)
 - [x] Hasse diagram integrated into RcdPanel (FRed Hasse, shown when FRed is enabled)
-- [ ] Hasse diagram integrated into GlaPanel (Stochastic OT mode only)
+- [x] Hasse diagram integrated into GlaPanel (Stochastic OT mode only)
 - [x] Settings persistence
 
 ## Testing & Examples

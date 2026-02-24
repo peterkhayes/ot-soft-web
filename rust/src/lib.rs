@@ -459,6 +459,28 @@ pub fn format_factorial_typology_output(
     Ok(out)
 }
 
+/// Generate a GraphViz DOT string for a GLA (Stochastic OT) Hasse diagram.
+///
+/// `text`: tableau file contents (used to obtain constraint abbreviations).
+/// `ranking_values`: final ranking values from GLA, one per constraint in tableau order.
+///
+/// Returns a DOT-language string. Edges are labeled with pairwise ranking
+/// probabilities; edges with P < 0.95 are drawn dotted.
+#[wasm_bindgen]
+pub fn gla_hasse_dot(text: &str, ranking_values: Vec<f64>) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let abbrev_strings: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+    if abbrev_strings.len() != ranking_values.len() {
+        return Err(format!(
+            "ranking_values length {} != constraint count {}",
+            ranking_values.len(),
+            abbrev_strings.len()
+        ));
+    }
+    let abbrevs: Vec<&str> = abbrev_strings.iter().map(|s| s.as_str()).collect();
+    Ok(hasse::gla_hasse_dot(&ranking_values, &abbrevs))
+}
+
 /// Generate a GraphViz DOT string for a FRed Hasse diagram.
 ///
 /// Returns a DOT-language string suitable for rendering with GraphViz.

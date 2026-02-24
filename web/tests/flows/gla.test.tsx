@@ -26,6 +26,34 @@ test('GLA (Stochastic OT): load example, run, see results, download', { timeout:
   expect(downloads[0].content).toBeTruthy()
 })
 
+test('GLA (Stochastic OT): Hasse diagram appears after run', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+  await page.getByText('Run GLA').click()
+
+  // Hasse diagram section appears
+  await expect.element(page.getByText('Hasse Diagram')).toBeVisible()
+
+  // Export buttons are enabled once the SVG has rendered
+  await expect.element(page.getByRole('button', { name: /SVG/i })).toBeEnabled()
+  await expect.element(page.getByRole('button', { name: /PNG/i })).toBeEnabled()
+})
+
+test('GLA (Online MaxEnt): Hasse diagram not shown', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+  await page.getByRole('radio', { name: 'Online MaxEnt (weights)' }).click()
+  await page.getByText('Run GLA').click()
+
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+  // Hasse diagram should NOT appear in MaxEnt mode
+  await expect.element(page.getByText('Hasse Diagram')).not.toBeInTheDocument()
+})
+
 test('GLA (Online MaxEnt): switch mode, run, see results', async () => {
   renderApp() // downloads not needed for this test
   await loadExample()
