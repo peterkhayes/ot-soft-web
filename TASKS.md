@@ -48,7 +48,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Batch Maximum Entropy (GIS optimizer)
 - [x] Noisy Harmonic Grammar (NHG) — 8 noise variants
 - [x] Learning schedule (multi-stage plasticity interpolation)
-- [ ] Custom learning schedule from file
+- [x] Custom learning schedule from file
 - [ ] Magri update rule (Stochastic OT)
 - [x] Gaussian prior (MaxEnt)
 - [ ] Exact proportions data presentation
@@ -113,9 +113,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 Roughly ordered by value and dependency:
 
-1. **Custom learning schedule from file** — File upload UI for a custom learning schedule (`CustomLearningSchedule.txt`). The Rust parsing infrastructure (`LearningSchedule::parse`) is already in place; this task adds a file picker in the web UI.
-
-2. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
+1. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
 
 3. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
 
