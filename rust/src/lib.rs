@@ -200,6 +200,7 @@ mod maxent;
 mod nhg;
 mod gla;
 mod factorial_typology;
+mod hasse;
 
 // Re-export public types
 pub use tableau::{Tableau, Constraint, Candidate, InputForm};
@@ -456,4 +457,28 @@ pub fn format_factorial_typology_output(
         out.push_str(&result.format_full_listing(&tableau, &apriori));
     }
     Ok(out)
+}
+
+/// Generate a GraphViz DOT string for a FRed Hasse diagram.
+///
+/// Returns a DOT-language string suitable for rendering with GraphViz.
+/// Solid edges represent certain rankings (single W in ERC);
+/// dotted edges labeled "or" represent disjunctive rankings (multiple W's).
+#[wasm_bindgen]
+pub fn fred_hasse_dot(text: &str, apriori_text: &str, use_mib: bool) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let fred_result = if apriori.is_empty() {
+        tableau.run_fred(use_mib)
+    } else {
+        tableau.run_fred_with_apriori(use_mib, &apriori)
+    };
+    let valhalla: Vec<&str> = fred_result.valhalla.iter().map(|s| s.as_str()).collect();
+    let abbrevs: Vec<&str> = fred_result.constraint_abbrevs.iter().map(|s| s.as_str()).collect();
+    Ok(hasse::fred_hasse_dot(&valhalla, &abbrevs))
 }

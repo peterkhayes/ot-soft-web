@@ -17,6 +17,7 @@ src/
   nhg.rs        Noisy Harmonic Grammar
   gla.rs        Gradual Learning Algorithm (Stochastic OT + online MaxEnt)
   factorial_typology.rs  Factorial Typology (FastRCD, cross-classification, T-order)
+  hasse.rs      Hasse diagram DOT generation (FRed Hasse: fred_hasse_dot)
 ```
 
 ## Testing

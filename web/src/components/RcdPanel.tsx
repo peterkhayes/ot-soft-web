@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output, FredOptions } from '../../pkg/ot_soft.js'
+import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output, FredOptions, fred_hasse_dot } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
+import HasseDiagram from './HasseDiagram.tsx'
 import { makeOutputFilename, isAtDefaults } from '../utils.ts'
 import { useDownload } from '../downloadContext.ts'
 
@@ -19,6 +20,7 @@ interface RcdResultState {
   success: boolean
   strata: StratumData[]
   tieWarning: boolean
+  hasseDot?: string
   error?: undefined
 }
 
@@ -27,6 +29,7 @@ interface RcdErrorState {
   success?: undefined
   strata?: undefined
   tieWarning?: undefined
+  hasseDot?: undefined
 }
 
 type RcdState = RcdResultState | RcdErrorState
@@ -121,10 +124,20 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
         }
       }
 
+      let hasseDot: string | undefined
+      if (includeFred) {
+        try {
+          hasseDot = fred_hasse_dot(tableauText, apriori, useMib)
+        } catch (e) {
+          console.warn('Hasse diagram generation failed:', e)
+        }
+      }
+
       setRcdResult({
         success: result.success(),
         strata,
         tieWarning: result.tie_warning(),
+        hasseDot,
       })
     } catch (err) {
       console.error('Algorithm error:', err)
@@ -302,6 +315,12 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
                 </div>
               </div>
             ))}
+            {rcdResult.hasseDot && (
+              <HasseDiagram
+                dotString={rcdResult.hasseDot}
+                downloadName={`${inputFilename ? inputFilename.replace(/\.[^.]+$/, '') : 'tableau'}Hasse`}
+              />
+            )}
           </div>
         )
       )}

@@ -38,7 +38,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] FRed integrated into RCD/BCD/LFCD Section 4 output
 - [x] Standalone `run_fred` and `format_fred_output` WASM exports
 - [x] Detailed argumentation output (verbose recursion tree)
-- [ ] Hasse diagram DOT generation in Rust (`rust/src/hasse.rs`, WASM export `fred_hasse_dot`)
+- [x] Hasse diagram DOT generation in Rust (`rust/src/hasse.rs`, WASM export `fred_hasse_dot`)
 - [ ] Hasse diagram DOT generation for GLA/Stochastic OT (`gla_hasse_dot`, probability-labeled edges)
 
 ## Probabilistic Learning Algorithms
@@ -91,8 +91,8 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Parameter inputs for probabilistic algorithms
 - [x] Progress indicator for long computations
 - [ ] Tableau axis switching (for crowded tableaux)
-- [ ] Hasse diagram viewer (`HasseDiagram.tsx` component using `@viz-js/viz`, SVG + PNG export)
-- [ ] Hasse diagram integrated into RcdPanel (FRed Hasse, shown when FRed is enabled)
+- [x] Hasse diagram viewer (`HasseDiagram.tsx` component using `@viz-js/viz`, SVG + PNG export)
+- [x] Hasse diagram integrated into RcdPanel (FRed Hasse, shown when FRed is enabled)
 - [ ] Hasse diagram integrated into GlaPanel (Stochastic OT mode only)
 - [x] Settings persistence
 

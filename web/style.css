@@ -1457,3 +1457,91 @@ button:disabled {
 .nhg-checkbox-indent {
     margin-left: 1.6rem;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Hasse Diagram
+   ═══════════════════════════════════════════════════════════════ */
+
+.hasse-diagram {
+    margin-top: var(--space-lg);
+    border: 1px solid var(--taupe-light);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.hasse-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-xs) var(--space-md);
+    background: var(--parchment-dark);
+    border-bottom: 1px solid var(--taupe-light);
+}
+
+.hasse-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--charcoal);
+}
+
+.hasse-actions {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.hasse-export-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.75rem;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: var(--forest);
+    color: var(--cream);
+    border: none;
+    border-bottom: 2px solid var(--forest);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background var(--transition-quick), transform var(--transition-quick);
+}
+
+.hasse-export-button:hover:not(:disabled) {
+    background: var(--forest-light);
+    transform: translateY(-1px);
+}
+
+.hasse-export-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hasse-export-button .button-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.hasse-svg-container {
+    padding: var(--space-md);
+    background: var(--cream);
+    overflow: auto;
+    text-align: center;
+}
+
+.hasse-svg-container svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.hasse-loading,
+.hasse-error {
+    padding: var(--space-md);
+    text-align: center;
+    font-style: italic;
+    color: var(--charcoal-soft);
+}
+
+.hasse-error {
+    color: var(--burgundy);
+}
