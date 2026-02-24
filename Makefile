@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-install web-build web-test web-test-update lint
+.PHONY: build test serve dev clean help web-install web-build web-test web-test-update web-lint web-lint-fix web-fmt web-fmt-check lint
 
 # Default target
 .DEFAULT_GOAL := help
@@ -38,6 +38,26 @@ web-test: ## Run web frontend tests (Vitest + Playwright; requires make web-inst
 
 web-test-update: ## Run web tests and update inline snapshots
 	@cd web && npx vitest run -u
+
+web-lint: ## Lint web frontend with ESLint
+	@echo "Linting web frontend..."
+	@cd web && npm run lint
+	@echo "✓ Web lint complete"
+
+web-lint-fix: ## Auto-fix ESLint errors in web frontend
+	@echo "Auto-fixing web lint errors..."
+	@cd web && npm run lint -- --fix
+	@echo "✓ Web lint fix complete"
+
+web-fmt: ## Format web frontend source files with Prettier
+	@echo "Formatting web frontend..."
+	@cd web && npm run fmt
+	@echo "✓ Web format complete"
+
+web-fmt-check: ## Check web frontend formatting with Prettier (no writes)
+	@echo "Checking web frontend formatting..."
+	@cd web && npm run fmt:check
+	@echo "✓ Web format check complete"
 
 web-check: ## Type-check web frontend without building
 	@echo "Type-checking web frontend..."
