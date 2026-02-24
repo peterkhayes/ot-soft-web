@@ -61,8 +61,8 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Core factorial typology computation
 - [x] FastRCD (streamlined RCD for derivability testing)
 - [x] T-order computation (typological implications)
-- [ ] FTSum output file
-- [ ] CompactSum output file
+- [x] FTSum output file
+- [x] CompactSum output file
 - [x] Full listing with grammars per output pattern
 
 ## Output Formatting
