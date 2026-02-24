@@ -34,7 +34,7 @@ Follow these steps when porting a new feature from the VB6 source:
    a. Add any necessary UI elements (buttons, inputs, displays) to the web interface.
    b. All business logic must remain in Rust — the web layer only handles presentation and calls into Wasm.
    c. Write a test in `web/tests/flows/` for the new feature. For deterministic algorithms, use inline snapshots on download content. For stochastic algorithms, use structural assertions only (headings, labels, download filename). See `web/CLAUDE.md` for patterns.
-   d. Run `make web-lint` and `make web-test` to confirm the code is clean and tests pass.
+   d. Run `make web-lint`, `make web-check`, and `make web-test` to confirm the code is clean and tests pass.
 
 5. **Update documentation** — Update all relevant docs: mark completed items in `TASKS.md`, add any newly discovered tasks, and update any `CLAUDE.md` files whose descriptions have become inaccurate (e.g. new modules, changed file structure, new patterns).
 
@@ -43,7 +43,8 @@ Follow these steps when porting a new feature from the VB6 source:
    b. `make test` — run Rust tests
    c. `make build` — rebuild WASM
    d. `make web-lint` — check web style (ESLint + Prettier)
-   e. `make web-test` — run web tests
+   e. `make web-check` — TypeScript type-check web frontend
+   f. `make web-test` — run web tests
    f. `git commit` - write a descriptive message
    g. `git push` — push to remote
 
