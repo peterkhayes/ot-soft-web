@@ -2,6 +2,7 @@ import { expect } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page } from '@vitest/browser/context'
 import { DownloadProvider } from '../src/downloadContext'
+import { BlobDownloadProvider } from '../src/blobDownloadContext'
 import App from '../src/App'
 
 export interface CapturedDownload {
@@ -9,16 +10,28 @@ export interface CapturedDownload {
   filename: string
 }
 
-export function renderApp() {
+export interface CapturedBlobDownload {
+  blob: Blob
+  filename: string
+}
+
+export interface AppDownloads {
+  downloads: CapturedDownload[]
+  blobDownloads: CapturedBlobDownload[]
+}
+
+export function renderApp(): AppDownloads {
   localStorage.clear()
   const downloads: CapturedDownload[] = []
-  const onDownload = (content: string, filename: string) => downloads.push({ content, filename })
+  const blobDownloads: CapturedBlobDownload[] = []
   render(
-    <DownloadProvider value={onDownload}>
-      <App />
+    <DownloadProvider value={(content, filename) => downloads.push({ content, filename })}>
+      <BlobDownloadProvider value={(blob, filename) => blobDownloads.push({ blob, filename })}>
+        <App />
+      </BlobDownloadProvider>
     </DownloadProvider>
   )
-  return downloads
+  return { downloads, blobDownloads }
 }
 
 export async function loadExample() {

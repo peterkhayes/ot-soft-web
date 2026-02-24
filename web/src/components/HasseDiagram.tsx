@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Viz } from '@viz-js/viz'
+import { useBlobDownload } from '../blobDownloadContext.ts'
 
 interface HasseDiagramProps {
   dotString: string
@@ -20,6 +21,7 @@ function HasseDiagram({ dotString, downloadName = 'HasseDiagram' }: HasseDiagram
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const blobDownload = useBlobDownload()
 
   useEffect(() => {
     let cancelled = false
@@ -60,12 +62,7 @@ function HasseDiagram({ dotString, downloadName = 'HasseDiagram' }: HasseDiagram
     if (!svg) return
     const svgStr = new XMLSerializer().serializeToString(svg)
     const blob = new Blob([svgStr], { type: 'image/svg+xml' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${downloadName}.svg`
-    a.click()
-    URL.revokeObjectURL(url)
+    blobDownload(blob, `${downloadName}.svg`)
   }
 
   function handleDownloadPng() {
@@ -80,17 +77,18 @@ function HasseDiagram({ dotString, downloadName = 'HasseDiagram' }: HasseDiagram
     canvas.height = height
     const ctx = canvas.getContext('2d')!
     const img = new Image()
+    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' })
+    const svgUrl = URL.createObjectURL(svgBlob)
     img.onload = () => {
       ctx.fillStyle = 'white'
       ctx.fillRect(0, 0, width, height)
       ctx.drawImage(img, 0, 0, width, height)
-      const a = document.createElement('a')
-      a.href = canvas.toDataURL('image/png')
-      a.download = `${downloadName}.png`
-      a.click()
+      URL.revokeObjectURL(svgUrl)
+      canvas.toBlob(blob => {
+        if (blob) blobDownload(blob, `${downloadName}.png`)
+      }, 'image/png')
     }
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' })
-    img.src = URL.createObjectURL(blob)
+    img.src = svgUrl
   }
 
   return (

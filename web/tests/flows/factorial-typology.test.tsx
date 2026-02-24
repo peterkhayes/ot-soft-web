@@ -3,7 +3,7 @@ import { page } from '@vitest/browser/context'
 import { renderApp, loadExample, normalizeOutput } from '../helpers'
 
 test('Factorial Typology: load example, run, see results, download', async () => {
-  const downloads = renderApp()
+  const { downloads } = renderApp()
   await loadExample()
 
   // Classical OT is the default framework; FT panel is below RCD

@@ -3,7 +3,7 @@ import { page } from '@vitest/browser/context'
 import { renderApp, loadExample, normalizeOutput } from '../helpers'
 
 test('MaxEnt: load example, switch framework, run, see results, download', async () => {
-  const downloads = renderApp()
+  const { downloads } = renderApp()
   await loadExample()
 
   // Switch to Maximum Entropy framework — the radio input is display:none,

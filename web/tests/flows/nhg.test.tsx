@@ -3,7 +3,7 @@ import { page } from '@vitest/browser/context'
 import { renderApp, loadExample } from '../helpers'
 
 test('NHG: load example, run, see results, download', { timeout: 30000 }, async () => {
-  const downloads = renderApp()
+  const { downloads } = renderApp()
   await loadExample()
 
   // Switch to Noisy Harmonic Grammar framework — radio input is display:none, click label text
