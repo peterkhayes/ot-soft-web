@@ -8,6 +8,8 @@ interface TextFileEditorProps {
   /** Small descriptive text shown above the toolbar. */
   hint?: string
   rows?: number
+  /** Textarea placeholder shown when value is empty. */
+  placeholder?: string
   /** External error message (e.g. from algorithm validation) shown below the textarea. */
   error?: string | null
   /** data-testid placed on the hidden file input, for test targeting. */
@@ -20,6 +22,7 @@ function TextFileEditor({
   defaultValue,
   hint,
   rows = 6,
+  placeholder,
   error,
   testId,
 }: TextFileEditorProps) {
@@ -86,6 +89,7 @@ function TextFileEditor({
           setFilename(null)
         }}
         rows={rows}
+        placeholder={placeholder}
         spellCheck={false}
       />
       {error && (

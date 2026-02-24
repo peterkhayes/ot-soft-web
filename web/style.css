@@ -1464,7 +1464,7 @@ button:disabled {
 
 .text-file-editor-hint {
     font-size: 0.85em;
-    color: var(--color-text-muted);
+    color: var(--charcoal-soft);
     margin-bottom: 0.25rem;
 }
 
@@ -1478,10 +1478,10 @@ button:disabled {
 .text-file-editor-btn {
     font-size: 0.82rem;
     padding: 0.2rem 0.6rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--taupe);
     border-radius: 4px;
-    background: var(--color-bg-input);
-    color: var(--color-text);
+    background: var(--parchment-dark);
+    color: var(--charcoal);
     cursor: pointer;
     line-height: 1.4;
 }
@@ -1492,7 +1492,7 @@ button:disabled {
 }
 
 .text-file-editor-btn--muted {
-    color: var(--color-text-muted);
+    color: var(--charcoal-soft);
 }
 
 .schedule-textarea {
@@ -1501,12 +1501,18 @@ button:disabled {
     width: 100%;
     max-width: 36rem;
     padding: 0.5rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--taupe);
     border-radius: 4px;
-    background: var(--color-bg-input);
-    color: var(--color-text);
+    background: var(--parchment);
+    color: var(--charcoal);
     resize: vertical;
     tab-size: 8;
+}
+
+.schedule-textarea::placeholder {
+    color: var(--charcoal-soft);
+    opacity: 0.6;
+    font-style: italic;
 }
 
 /* ═══════════════════════════════════════════════════════════════

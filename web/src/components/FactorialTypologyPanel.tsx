@@ -240,6 +240,7 @@ function FactorialTypologyPanel({
           value={aprioriText}
           onChange={setAprioriText}
           hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+          placeholder="Load from file or paste content here…"
           testId="ft-apriori-file-input"
         />
       </div>
