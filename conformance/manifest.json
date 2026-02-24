@@ -1,0 +1,227 @@
+{
+  "description": "Conformance test cases for comparing Rust output against VB6 OTSoft golden files.",
+  "notes": "input_display_name is the filename VB6 embeds in output headers. Use it when loading files into VB6.",
+  "cases": [
+    {
+      "id": "tiny_rcd_defaults",
+      "description": "RCD with default settings (Skeletal Basis, FRed enabled, mini-tableaux)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "rcd",
+      "params": {
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/rcd_defaults.txt"
+    },
+    {
+      "id": "tiny_rcd_no_fred",
+      "description": "RCD with FRed disabled (sections 4 and 5 omitted)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "rcd",
+      "params": {
+        "include_fred": false,
+        "use_mib": false,
+        "show_details": true,
+        "include_mini_tableaux": false
+      },
+      "golden_file": "conformance/golden/tiny/rcd_no_fred.txt"
+    },
+    {
+      "id": "tiny_rcd_mib",
+      "description": "RCD with Most Informative Basis (MIB) instead of Skeletal",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "rcd",
+      "params": {
+        "include_fred": true,
+        "use_mib": true,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/rcd_mib.txt"
+    },
+    {
+      "id": "tiny_rcd_apriori",
+      "description": "RCD with a priori rankings (*NoOns >> Max)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": "examples/tiny/apriori.txt",
+      "algorithm": "rcd",
+      "params": {
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/rcd_apriori.txt"
+    },
+    {
+      "id": "tiny_bcd_defaults",
+      "description": "BCD with default settings (non-specific)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "bcd",
+      "params": {
+        "specific": false,
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/bcd_defaults.txt"
+    },
+    {
+      "id": "tiny_bcd_specific",
+      "description": "BCD with Favor Specificity heuristic enabled",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "bcd",
+      "params": {
+        "specific": true,
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/bcd_specific.txt"
+    },
+    {
+      "id": "tiny_lfcd_defaults",
+      "description": "LFCD with default settings",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "lfcd",
+      "params": {
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/lfcd_defaults.txt"
+    },
+    {
+      "id": "tiny_lfcd_apriori",
+      "description": "LFCD with a priori rankings (*NoOns >> Max)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": "examples/tiny/apriori.txt",
+      "algorithm": "lfcd",
+      "params": {
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/lfcd_apriori.txt"
+    },
+    {
+      "id": "tiny_lfcd_mib",
+      "description": "LFCD with Most Informative Basis",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "lfcd",
+      "params": {
+        "include_fred": true,
+        "use_mib": true,
+        "show_details": true,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/lfcd_mib.txt"
+    },
+    {
+      "id": "tiny_maxent_defaults",
+      "description": "MaxEnt with 5 GIS iterations (VB6 default 'precision'), no prior",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "maxent",
+      "params": {
+        "iterations": 5,
+        "weight_min": 0.0,
+        "weight_max": 50.0,
+        "use_prior": false,
+        "sigma_squared": 1.0
+      },
+      "golden_file": "conformance/golden/tiny/maxent_defaults.txt"
+    },
+    {
+      "id": "tiny_maxent_prior",
+      "description": "MaxEnt with Gaussian prior (sigma^2 = 1.0), 5 iterations",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "maxent",
+      "params": {
+        "iterations": 5,
+        "weight_min": 0.0,
+        "weight_max": 50.0,
+        "use_prior": true,
+        "sigma_squared": 1.0
+      },
+      "golden_file": "conformance/golden/tiny/maxent_prior.txt"
+    },
+    {
+      "id": "tiny_maxent_sigma10",
+      "description": "MaxEnt with Gaussian prior (sigma^2 = 10.0), 5 iterations",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "maxent",
+      "params": {
+        "iterations": 5,
+        "weight_min": 0.0,
+        "weight_max": 50.0,
+        "use_prior": true,
+        "sigma_squared": 10.0
+      },
+      "golden_file": "conformance/golden/tiny/maxent_sigma10.txt"
+    },
+    {
+      "id": "tiny_ft_defaults",
+      "description": "Factorial Typology with default settings (no full listing)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "factorial_typology",
+      "params": {
+        "include_full_listing": false
+      },
+      "golden_file": "conformance/golden/tiny/ft_defaults.txt"
+    },
+    {
+      "id": "tiny_ft_full_listing",
+      "description": "Factorial Typology with full listing enabled",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "factorial_typology",
+      "params": {
+        "include_full_listing": true
+      },
+      "golden_file": "conformance/golden/tiny/ft_full_listing.txt"
+    },
+    {
+      "id": "tiny_ft_apriori",
+      "description": "Factorial Typology with a priori rankings (*NoOns >> Max)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": "examples/tiny/apriori.txt",
+      "algorithm": "factorial_typology",
+      "params": {
+        "include_full_listing": false
+      },
+      "golden_file": "conformance/golden/tiny/ft_apriori.txt"
+    }
+  ]
+}

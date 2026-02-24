@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-install web-build web-test web-test-update web-lint web-lint-fix web-fmt web-fmt-check precommit lint
+.PHONY: build test serve dev clean help web-install web-build web-test web-test-update web-lint web-lint-fix web-fmt web-fmt-check precommit lint conformance-test
 
 # Default target
 .DEFAULT_GOAL := help
@@ -86,6 +86,11 @@ fmt: ## Format Rust code
 	@echo "Formatting Rust code..."
 	@cd rust && cargo fmt
 	@echo "✓ Format complete"
+
+conformance-test: ## Run conformance tests against VB6 golden files
+	@echo "Running conformance tests..."
+	@cd rust && cargo test conformance_tests -- --nocapture
+	@echo "✓ Conformance tests complete"
 
 watch: ## Watch for changes and rebuild (requires cargo-watch)
 	@echo "Watching for changes..."
