@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { format_nhg_output, NhgOptions, run_nhg } from '../../pkg/ot_soft.js'
-import { useDownload } from '../downloadContext.ts'
+import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 

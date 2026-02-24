@@ -3,8 +3,8 @@ import { expect } from 'vitest'
 import { render } from 'vitest-browser-react'
 
 import App from '../src/App'
-import { BlobDownloadProvider } from '../src/blobDownloadContext'
-import { DownloadProvider } from '../src/downloadContext'
+import { BlobDownloadProvider } from '../src/contexts/blobDownloadContext'
+import { DownloadProvider } from '../src/contexts/downloadContext'
 
 export interface CapturedDownload {
   content: string

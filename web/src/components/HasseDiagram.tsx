@@ -1,7 +1,7 @@
 import type { Viz } from '@viz-js/viz'
 import { useEffect, useRef, useState } from 'react'
 
-import { useBlobDownload } from '../blobDownloadContext.ts'
+import { useBlobDownload } from '../contexts/blobDownloadContext.ts'
 
 interface HasseDiagramProps {
   dotString: string

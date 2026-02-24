@@ -14,7 +14,9 @@ web/
 │   ├── App.tsx             # Layout, WASM init, framework routing
 │   ├── constants.ts        # TINY_EXAMPLE tableau
 │   ├── utils.ts            # Shared helpers (makeOutputFilename, isAtDefaults)
-│   ├── downloadContext.ts  # Injectable download function (DownloadProvider, useDownload)
+│   ├── contexts/
+│   │   ├── downloadContext.ts     # Injectable text download (DownloadProvider, useDownload)
+│   │   └── blobDownloadContext.ts # Injectable blob download (BlobDownloadProvider, useBlobDownload)
 │   ├── hooks/
 │   │   └── useLocalStorage.ts   # Persistent settings state
 │   └── components/

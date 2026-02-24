@@ -8,7 +8,7 @@ import {
   FtOptions,
   run_factorial_typology,
 } from '../../pkg/ot_soft.js'
-import { useDownload } from '../downloadContext.ts'
+import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { makeOutputFilename } from '../utils.ts'
 
