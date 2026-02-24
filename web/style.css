@@ -1426,9 +1426,7 @@ button:disabled {
     flex-direction: column;
     gap: 0.4rem;
     margin-bottom: var(--space-lg);
-    padding: var(--space-md);
-    background: var(--taupe-light);
-    border: 1px solid var(--taupe);
+    padding: var(--space-sm) 0;
 }
 
 .nhg-options-label {
