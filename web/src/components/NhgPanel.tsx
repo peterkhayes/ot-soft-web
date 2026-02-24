@@ -8,10 +8,10 @@ import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 
 const DEFAULT_SCHEDULE_TEMPLATE =
   'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
-  '1250\t2\t2\t2\t2\n' +
-  '1250\t0.2\t0.2\t2\t2\n' +
-  '1250\t0.02\t0.02\t2\t2\n' +
-  '1250\t0.002\t0.002\t2\t2'
+  '15000\t2\t2\t2\t2\n' +
+  '15000\t0.2\t0.2\t2\t2\n' +
+  '15000\t0.02\t0.02\t2\t2\n' +
+  '15000\t0.002\t0.002\t2\t2'
 
 interface NhgPanelProps {
   tableau: Tableau

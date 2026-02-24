@@ -160,10 +160,10 @@ impl LearningSchedule {
 /// Default template text for a 4-stage custom schedule (used in the web UI).
 pub const CUSTOM_SCHEDULE_TEMPLATE: &str =
     "Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n\
-     250000\t2\t2\t2\t2\n\
-     250000\t0.2\t0.2\t2\t2\n\
-     250000\t0.02\t0.02\t2\t2\n\
-     250000\t0.002\t0.002\t2\t2";
+     15000\t2\t2\t2\t2\n\
+     15000\t0.2\t0.2\t2\t2\n\
+     15000\t0.02\t0.02\t2\t2\n\
+     15000\t0.002\t0.002\t2\t2";
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -236,6 +236,6 @@ mod tests {
         // The built-in template should parse successfully
         let s = LearningSchedule::parse(CUSTOM_SCHEDULE_TEMPLATE).unwrap();
         assert_eq!(s.stages.len(), 4);
-        assert_eq!(s.total_cycles(), 1_000_000);
+        assert_eq!(s.total_cycles(), 60_000);
     }
 }
