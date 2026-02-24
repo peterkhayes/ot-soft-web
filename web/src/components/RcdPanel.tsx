@@ -176,20 +176,8 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
         <span className="panel-number">04</span>
       </div>
 
-      {supportsApriori && (
-        <div className="nhg-options">
-          <div className="nhg-options-label">A priori rankings:</div>
-          <TextFileEditor
-            value={aprioriText}
-            onChange={setAprioriText}
-            hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
-            placeholder="Load from file or paste content here…"
-            testId="rcd-apriori-file-input"
-          />
-        </div>
-      )}
-
-      <div className="action-bar">
+      <div className="nhg-options">
+        <div className="nhg-options-label">Algorithm</div>
         <select
           className="algorithm-select"
           value={algorithm}
@@ -201,6 +189,62 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           <option value="bcd-specific">BCD (Specific)</option>
           <option value="lfcd">LFCD</option>
         </select>
+      </div>
+
+      <div className="nhg-options">
+        <div className="nhg-options-label">Ranking argumentation</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={includeFred}
+            onChange={(e) => setParams({ includeFred: e.target.checked })}
+          />
+          Include ranking arguments
+        </label>
+        {includeFred && (
+          <>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={useMib}
+                onChange={(e) => setParams({ useMib: e.target.checked })}
+              />
+              Use Most Informative Basis
+            </label>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={showDetails}
+                onChange={(e) => setParams({ showDetails: e.target.checked })}
+              />
+              Show details of argumentation
+            </label>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={includeMiniTableaux}
+                onChange={(e) => setParams({ includeMiniTableaux: e.target.checked })}
+              />
+              Include illustrative mini-tableaux
+            </label>
+          </>
+        )}
+      </div>
+
+      {supportsApriori && (
+        <div className="nhg-options">
+          <div className="nhg-options-label">A priori rankings</div>
+          <TextFileEditor
+            value={aprioriText}
+            onChange={setAprioriText}
+            hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+            placeholder="Load from file or paste content here…"
+            testId="rcd-apriori-file-input"
+          />
+        </div>
+      )}
+
+      <div className="action-bar">
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
           onClick={handleRun}
@@ -267,46 +311,6 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           </svg>
           Reset to Defaults
         </button>
-      </div>
-
-      <div className="nhg-options">
-        <div className="nhg-options-label">Ranking Argumentation</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={includeFred}
-            onChange={(e) => setParams({ includeFred: e.target.checked })}
-          />
-          Include ranking arguments
-        </label>
-        {includeFred && (
-          <>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={useMib}
-                onChange={(e) => setParams({ useMib: e.target.checked })}
-              />
-              Use Most Informative Basis
-            </label>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={showDetails}
-                onChange={(e) => setParams({ showDetails: e.target.checked })}
-              />
-              Show details of argumentation
-            </label>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={includeMiniTableaux}
-                onChange={(e) => setParams({ includeMiniTableaux: e.target.checked })}
-              />
-              Include illustrative mini-tableaux
-            </label>
-          </>
-        )}
       </div>
 
       {rcdResult &&

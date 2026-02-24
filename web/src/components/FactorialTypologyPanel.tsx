@@ -235,17 +235,7 @@ function FactorialTypologyPanel({
       </div>
 
       <div className="nhg-options">
-        <div className="nhg-options-label">A priori rankings:</div>
-        <TextFileEditor
-          value={aprioriText}
-          onChange={setAprioriText}
-          hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
-          placeholder="Load from file or paste content here…"
-          testId="ft-apriori-file-input"
-        />
-      </div>
-
-      <div className="action-bar">
+        <div className="nhg-options-label">Output options</div>
         <label className="nhg-checkbox">
           <input
             type="checkbox"
@@ -272,7 +262,20 @@ function FactorialTypologyPanel({
           />
           Generate CompactSum file
         </label>
+      </div>
 
+      <div className="nhg-options">
+        <div className="nhg-options-label">A priori rankings</div>
+        <TextFileEditor
+          value={aprioriText}
+          onChange={setAprioriText}
+          hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+          placeholder="Load from file or paste content here…"
+          testId="ft-apriori-file-input"
+        />
+      </div>
+
+      <div className="action-bar">
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
           onClick={handleRun}

@@ -184,7 +184,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       </div>
 
       <div className="nhg-options">
-        <div className="nhg-options-label">Prior:</div>
+        <div className="nhg-options-label">Prior</div>
         <label className="nhg-checkbox">
           <input
             type="checkbox"

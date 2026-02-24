@@ -191,7 +191,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       </div>
 
       <div className="nhg-options" style={{ marginBottom: '1rem' }}>
-        <div className="nhg-options-label">Framework:</div>
+        <div className="nhg-options-label">Framework</div>
         <label className="nhg-checkbox">
           <input
             type="radio"
@@ -271,7 +271,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
       {maxentMode && (
         <div className="nhg-options">
-          <div className="nhg-options-label">MaxEnt options:</div>
+          <div className="nhg-options-label">MaxEnt options</div>
           <label className="nhg-checkbox">
             <input
               type="checkbox"
@@ -307,7 +307,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       )}
 
       <div className="nhg-options">
-        <div className="nhg-options-label">Learning schedule:</div>
+        <div className="nhg-options-label">Learning schedule</div>
         <label className="nhg-checkbox">
           <input
             type="checkbox"

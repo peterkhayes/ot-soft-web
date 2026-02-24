@@ -241,7 +241,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
       </div>
 
       <div className="nhg-options">
-        <div className="nhg-options-label">Noise variant options:</div>
+        <div className="nhg-options-label">Noise variant options</div>
         <label className="nhg-checkbox">
           <input
             type="checkbox"
@@ -317,7 +317,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
       </div>
 
       <div className="nhg-options">
-        <div className="nhg-options-label">Learning schedule:</div>
+        <div className="nhg-options-label">Learning schedule</div>
         <label className="nhg-checkbox">
           <input
             type="checkbox"
