@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import {
@@ -11,6 +11,7 @@ import {
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { makeOutputFilename } from '../utils.ts'
+import TextFileEditor from './TextFileEditor.tsx'
 
 interface FactorialTypologyPanelProps {
   tableau: Tableau
@@ -82,39 +83,6 @@ function FactorialTypologyPanel({
   const download = useDownload()
   const { includeFullListing, includeFtsum, includeCompactSum } = params
   const [aprioriText, setAprioriText] = useState('')
-  const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
-  const [isAprioriDragging, setIsAprioriDragging] = useState(false)
-  const aprioriInputRef = useRef<HTMLInputElement>(null)
-
-  function loadAprioriFile(file: File) {
-    file
-      .text()
-      .then((text) => {
-        setAprioriText(text)
-        setAprioriFilename(file.name)
-      })
-      .catch((err) => {
-        console.error('Error reading a priori file:', err)
-      })
-  }
-
-  function handleAprioriFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) loadAprioriFile(file)
-  }
-
-  function handleAprioriDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setIsAprioriDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) loadAprioriFile(file)
-  }
-
-  function handleAprioriClear() {
-    setAprioriText('')
-    setAprioriFilename(null)
-    if (aprioriInputRef.current) aprioriInputRef.current.value = ''
-  }
 
   function handleRun() {
     setIsLoading(true)
@@ -266,42 +234,17 @@ function FactorialTypologyPanel({
         <span className="panel-number">05</span>
       </div>
 
-      <div className="action-bar">
-        <div
-          className={`apriori-upload${isAprioriDragging ? ' apriori-upload--dragging' : ''}${aprioriFilename ? ' apriori-upload--loaded' : ''}`}
-          title="Optional: load an a priori rankings file"
-          onClick={() => aprioriInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault()
-            setIsAprioriDragging(true)
-          }}
-          onDragLeave={() => setIsAprioriDragging(false)}
-          onDrop={handleAprioriDrop}
-        >
-          <input
-            ref={aprioriInputRef}
-            type="file"
-            accept=".txt"
-            onChange={handleAprioriFile}
-            style={{ display: 'none' }}
-          />
-          <span className="apriori-upload-label">
-            {aprioriFilename ?? 'A priori rankings (optional)'}
-          </span>
-          {aprioriFilename && (
-            <button
-              className="apriori-clear"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleAprioriClear()
-              }}
-              title="Clear a priori rankings"
-            >
-              ×
-            </button>
-          )}
-        </div>
+      <div className="nhg-options">
+        <div className="nhg-options-label">A priori rankings:</div>
+        <TextFileEditor
+          value={aprioriText}
+          onChange={setAprioriText}
+          hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+          testId="ft-apriori-file-input"
+        />
+      </div>
 
+      <div className="action-bar">
         <label className="nhg-checkbox">
           <input
             type="checkbox"
