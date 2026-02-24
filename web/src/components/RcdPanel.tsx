@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import {
@@ -15,6 +15,7 @@ import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import HasseDiagram from './HasseDiagram.tsx'
+import TextFileEditor from './TextFileEditor.tsx'
 
 interface RcdPanelProps {
   tableau: Tableau
@@ -80,44 +81,11 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const [params, setParams] = useLocalStorage<RcdParams>('otsoft:params:rcd', RCD_DEFAULTS)
   const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux } = params
   const [aprioriText, setAprioriText] = useState<string>('')
-  const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
-  const [isAprioriDragging, setIsAprioriDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const aprioriInputRef = useRef<HTMLInputElement>(null)
   const download = useDownload()
 
   const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
   const atDefaults = isAtDefaults(params, RCD_DEFAULTS)
-
-  function loadAprioriFile(file: File) {
-    file
-      .text()
-      .then((text) => {
-        setAprioriText(text)
-        setAprioriFilename(file.name)
-      })
-      .catch((err) => {
-        console.error('Error reading a priori file:', err)
-      })
-  }
-
-  function handleAprioriFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) loadAprioriFile(file)
-  }
-
-  function handleAprioriDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setIsAprioriDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) loadAprioriFile(file)
-  }
-
-  function handleAprioriClear() {
-    setAprioriText('')
-    setAprioriFilename(null)
-    if (aprioriInputRef.current) aprioriInputRef.current.value = ''
-  }
 
   function handleRun() {
     setIsLoading(true)
@@ -208,6 +176,18 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
         <span className="panel-number">04</span>
       </div>
 
+      {supportsApriori && (
+        <div className="nhg-options">
+          <div className="nhg-options-label">A priori rankings:</div>
+          <TextFileEditor
+            value={aprioriText}
+            onChange={setAprioriText}
+            hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+            testId="rcd-apriori-file-input"
+          />
+        </div>
+      )}
+
       <div className="action-bar">
         <select
           className="algorithm-select"
@@ -220,42 +200,6 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           <option value="bcd-specific">BCD (Specific)</option>
           <option value="lfcd">LFCD</option>
         </select>
-        {supportsApriori && (
-          <div
-            className={`apriori-upload${isAprioriDragging ? ' apriori-upload--dragging' : ''}${aprioriFilename ? ' apriori-upload--loaded' : ''}`}
-            title="Optional: load an a priori rankings file"
-            onClick={() => aprioriInputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault()
-              setIsAprioriDragging(true)
-            }}
-            onDragLeave={() => setIsAprioriDragging(false)}
-            onDrop={handleAprioriDrop}
-          >
-            <input
-              ref={aprioriInputRef}
-              type="file"
-              accept=".txt"
-              onChange={handleAprioriFile}
-              style={{ display: 'none' }}
-            />
-            <span className="apriori-upload-label">
-              {aprioriFilename ?? 'A priori rankings (optional)'}
-            </span>
-            {aprioriFilename && (
-              <button
-                className="apriori-clear"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleAprioriClear()
-                }}
-                title="Clear a priori rankings"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        )}
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
           onClick={handleRun}

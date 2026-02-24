@@ -5,6 +5,7 @@ import { format_nhg_output, NhgOptions, run_nhg } from '../../pkg/ot_soft.js'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
+import TextFileEditor from './TextFileEditor.tsx'
 
 const DEFAULT_SCHEDULE_TEMPLATE =
   'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
@@ -326,32 +327,17 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
           Use custom learning schedule
         </label>
         {useCustomSchedule && (
-          <div style={{ marginTop: '0.5rem' }}>
-            <div
-              style={{
-                fontSize: '0.85em',
-                color: 'var(--color-text-muted)',
-                marginBottom: '0.25rem',
-              }}
-            >
-              Columns: Trials, PlastMark, PlastFaith, NoiseMark, NoiseFaith (tab or space separated)
-            </div>
-            <textarea
-              className="schedule-textarea"
-              value={customSchedule}
-              onChange={(e) => {
-                setParams({ customSchedule: e.target.value })
-                setScheduleError(null)
-              }}
-              rows={6}
-              spellCheck={false}
-            />
-            {scheduleError && (
-              <div className="rcd-status failure" style={{ marginTop: '0.25rem' }}>
-                {scheduleError}
-              </div>
-            )}
-          </div>
+          <TextFileEditor
+            value={customSchedule}
+            onChange={(text) => {
+              setParams({ customSchedule: text })
+              setScheduleError(null)
+            }}
+            defaultValue={DEFAULT_SCHEDULE_TEMPLATE}
+            hint="Columns: Trials, PlastMark, PlastFaith, NoiseMark, NoiseFaith (tab or space separated)"
+            error={scheduleError}
+            testId="nhg-schedule-file-input"
+          />
         )}
       </div>
 

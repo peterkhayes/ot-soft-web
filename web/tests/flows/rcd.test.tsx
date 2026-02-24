@@ -3,6 +3,13 @@ import { expect, test } from 'vitest'
 
 import { loadExample, normalizeOutput, renderApp } from '../helpers'
 
+/** Build a valid a priori rankings file for a given set of constraint abbreviations with no rankings set. */
+function emptyAprioriFile(abbrevs: string[]): string {
+  const header = '\t' + abbrevs.join('\t')
+  const rows = abbrevs.map((a) => a + '\t'.repeat(abbrevs.length))
+  return [header, ...rows].join('\n')
+}
+
 test('RCD: load example, run, see results, download', async () => {
   const { downloads } = renderApp()
   await loadExample()
@@ -174,4 +181,27 @@ test('RCD: load example, run, see results, download', async () => {
 
     "
   `)
+})
+
+test('RCD: a priori rankings file upload', async () => {
+  renderApp()
+  await loadExample()
+
+  // A priori editor is visible for RCD
+  await expect.element(page.getByTestId('rcd-apriori-file-input')).toBeInTheDocument()
+
+  // Upload an empty apriori file (no rankings enforced — same result as no file)
+  const abbrevs = ['*NoOns', '*Coda', 'Max', 'Dep']
+  const content = emptyAprioriFile(abbrevs)
+  const file = new File([content], 'APrioriRankings.txt', { type: 'text/plain' })
+  await page.getByTestId('rcd-apriori-file-input').upload(file)
+
+  // Filename appears in button label
+  await expect.element(page.getByText('Loaded: APrioriRankings.txt')).toBeVisible()
+
+  // RCD runs successfully with the apriori file
+  await page.getByText('Run RCD Algorithm').click()
+  await expect
+    .element(page.getByText('A ranking was found that generates the correct outputs'))
+    .toBeVisible()
 })

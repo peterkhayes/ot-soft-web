@@ -48,3 +48,26 @@ test('NHG: custom learning schedule runs successfully', { timeout: 30000 }, asyn
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
   await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
 })
+
+test('NHG: load custom schedule from file', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Noisy Harmonic Grammar', { exact: true }).click()
+  await page.getByText('Use custom learning schedule').click()
+
+  // Upload a schedule file
+  const content =
+    'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
+    '5000\t2\t2\t2\t2\n' +
+    '5000\t0.2\t0.2\t2\t2'
+  const file = new File([content], 'MySchedule.txt', { type: 'text/plain' })
+  await page.getByTestId('nhg-schedule-file-input').upload(file)
+
+  // Button label updates to show the filename
+  await expect.element(page.getByText('Loaded: MySchedule.txt')).toBeVisible()
+
+  // Run succeeds with the uploaded schedule
+  await page.getByText('Run Noisy HG').click()
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+})

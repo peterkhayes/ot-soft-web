@@ -1458,6 +1458,43 @@ button:disabled {
     margin-left: 1.6rem;
 }
 
+.text-file-editor {
+    margin-top: 0.5rem;
+}
+
+.text-file-editor-hint {
+    font-size: 0.85em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.text-file-editor-toolbar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.text-file-editor-btn {
+    font-size: 0.82rem;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-bg-input);
+    color: var(--color-text);
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.text-file-editor-btn:hover {
+    background: var(--taupe-light);
+    border-color: var(--charcoal-soft);
+}
+
+.text-file-editor-btn--muted {
+    color: var(--color-text-muted);
+}
+
 .schedule-textarea {
     font-family: var(--font-mono);
     font-size: 0.82rem;

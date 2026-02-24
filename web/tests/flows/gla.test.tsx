@@ -100,3 +100,28 @@ test('GLA: custom learning schedule runs successfully', { timeout: 30000 }, asyn
     .toBeVisible()
   await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
 })
+
+test('GLA: load custom schedule from file', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+  await page.getByText('Use custom learning schedule').click()
+
+  // Upload a schedule file
+  const content =
+    'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
+    '15000\t2\t2\t2\t2\n' +
+    '15000\t0.2\t0.2\t2\t2'
+  const file = new File([content], 'MySchedule.txt', { type: 'text/plain' })
+  await page.getByTestId('gla-schedule-file-input').upload(file)
+
+  // Button label updates to show the filename
+  await expect.element(page.getByText('Loaded: MySchedule.txt')).toBeVisible()
+
+  // Run succeeds with the uploaded schedule
+  await page.getByText('Run GLA').click()
+  await expect
+    .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
+    .toBeVisible()
+})
