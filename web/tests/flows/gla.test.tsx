@@ -2,7 +2,7 @@ import { test, expect } from 'vitest'
 import { page } from '@vitest/browser/context'
 import { renderApp, loadExample } from '../helpers'
 
-test('GLA (Stochastic OT): load example, run, see results, download', async () => {
+test('GLA (Stochastic OT): load example, run, see results, download', { timeout: 30000 }, async () => {
   const downloads = renderApp()
   await loadExample()
 
@@ -13,7 +13,7 @@ test('GLA (Stochastic OT): load example, run, see results, download', async () =
   await page.getByText('Run GLA').click()
 
   // Assert structural results appear (no content snapshot — stochastic output)
-  await expect.element(page.getByRole('heading', { name: 'Constraint Ranking Values' })).toBeVisible({ timeout: 15000 })
+  await expect.element(page.getByRole('heading', { name: 'Constraint Ranking Values' })).toBeVisible()
   await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
   await expect.element(page.getByRole('heading', { name: 'Matchup to Input Frequencies' })).toBeVisible()
 
@@ -38,6 +38,6 @@ test('GLA (Online MaxEnt): switch mode, run, see results', async () => {
 
   await page.getByText('Run GLA').click()
 
-  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible({ timeout: 15000 })
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
   await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
 })

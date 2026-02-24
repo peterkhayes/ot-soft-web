@@ -1,4 +1,3 @@
-import React from 'react'
 import { expect } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page } from '@vitest/browser/context'
@@ -29,8 +28,8 @@ export async function loadExample() {
 }
 
 export async function loadFile(filePath: string) {
-  await expect.element(page.locator('input[type=file]')).toBeAttached()
-  await page.locator('input[type=file]').setInputFiles(filePath)
+  await expect.element(page.getByTestId('file-input')).toBeInTheDocument()
+  await page.getByTestId('file-input').upload(filePath)
   await expect.element(page.getByText('Tableau Analysis')).toBeVisible()
 }
 

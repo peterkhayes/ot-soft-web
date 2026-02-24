@@ -1,5 +1,6 @@
 // In Vitest browser mode setupFiles, lifecycle globals (beforeEach etc.) are
 // injected automatically — do not import them from 'vitest'.
+/// <reference types="vitest/globals" />
 beforeEach(() => {
   localStorage.clear()
 })

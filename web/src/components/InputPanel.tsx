@@ -76,6 +76,7 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
           accept=".txt"
           className="file-input-hidden"
           id="fileInput"
+          data-testid="file-input"
           onChange={handleFileChange}
         />
         {loadedFilename ? (
