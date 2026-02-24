@@ -570,14 +570,4 @@ mod tests {
         assert_eq!(result.get_stratum(3).unwrap(), 2, "Dep should be in stratum 2");
     }
 
-    #[test]
-    fn test_bcd_output_format() {
-        let tiny = load_tiny_example();
-        let tableau = Tableau::parse(&tiny).unwrap();
-        let result = tableau.run_bcd(false);
-
-        let output = result.format_output_with_algorithm(&tableau, "test.txt", "Biased Constraint Demotion");
-        assert!(output.contains("Results of Applying Biased Constraint Demotion to test.txt"));
-        assert!(!output.contains("Caution")); // No tie warning
-    }
 }

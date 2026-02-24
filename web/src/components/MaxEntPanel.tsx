@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_maxent, format_maxent_output, MaxEntOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { useDownload } from '../downloadContext.ts'
 
 interface MaxEntPanelProps {
   tableau: Tableau
@@ -40,6 +41,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
   const { iterations, weightMin, weightMax, usePrior, sigmaSquared } = params
   const [result, setResult] = useState<MaxEntState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const download = useDownload()
 
   function handleRun() {
     setIsLoading(true)
@@ -102,7 +104,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       opts.use_prior = usePrior
       opts.sigma_squared = sigmaSquared
       const formattedOutput = format_maxent_output(tableauText, inputFilename || 'tableau.txt', opts)
-      downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'MaxEntOutput'))
+      download(formattedOutput, makeOutputFilename(inputFilename, 'MaxEntOutput'))
     } catch (err) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)

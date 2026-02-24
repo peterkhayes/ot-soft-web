@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import { run_factorial_typology, format_factorial_typology_output, FtOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename } from '../utils.ts'
+import { makeOutputFilename } from '../utils.ts'
+import { useDownload } from '../downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 
 interface FactorialTypologyPanelProps {
@@ -63,6 +64,7 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
   const [result, setResult] = useState<FtState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [params, setParams] = useLocalStorage<FtParams>('otsoft:params:ft', FT_DEFAULTS)
+  const download = useDownload()
   const { includeFullListing } = params
   const [aprioriText, setAprioriText] = useState('')
   const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
@@ -197,7 +199,7 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
       const opts = new FtOptions()
       opts.include_full_listing = includeFullListing
       const output = format_factorial_typology_output(tableauText, filename, aprioriText, opts)
-      downloadTextFile(output, makeOutputFilename(inputFilename, 'FactorialTypology'))
+      download(output, makeOutputFilename(inputFilename, 'FactorialTypology'))
     } catch (err) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)

@@ -397,20 +397,4 @@ mod tests {
         assert_eq!(result.get_stratum(3).unwrap(), 2, "Dep should be in stratum 2");
     }
 
-    #[test]
-    fn test_lfcd_output_format() {
-        let tiny = load_tiny_example();
-        let tableau = Tableau::parse(&tiny).unwrap();
-        let result = tableau.run_lfcd();
-
-        let output = result.format_output_with_algorithm(
-            &tableau,
-            "test.txt",
-            "Low Faithfulness Constraint Demotion",
-        );
-        assert!(output.contains(
-            "Results of Applying Low Faithfulness Constraint Demotion to test.txt"
-        ));
-        assert!(!output.contains("Caution"));
-    }
 }

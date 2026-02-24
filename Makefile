@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-build lint
+.PHONY: build test serve dev clean help web-build web-test lint
 
 # Default target
 .DEFAULT_GOAL := help
@@ -28,6 +28,9 @@ dev: build serve ## Build WASM and start Vite dev server
 
 web-build: ## Build web frontend for production
 	@cd web && npm run build
+
+web-test: ## Run web frontend tests (Vitest + Playwright)
+	@cd web && npm test
 
 web-check: ## Type-check web frontend without building
 	@echo "Type-checking web frontend..."

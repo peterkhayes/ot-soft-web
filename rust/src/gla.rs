@@ -594,29 +594,6 @@ mod tests {
     }
 
     #[test]
-    fn test_gla_sot_output_format() {
-        let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 200, 2.0, 0.001, 100, false, false, 1.0);
-        let output = result.format_output(&tableau, "test.txt");
-
-        assert!(output.contains("GLA-Stochastic OT"));
-        assert!(output.contains("1. Ranking Values Found"));
-        assert!(output.contains("2. Matchup to Input Frequencies"));
-        assert!(output.contains("/a/"));
-    }
-
-    #[test]
-    fn test_gla_maxent_output_format() {
-        let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 200, 2.0, 0.001, 0, false, false, 1.0);
-        let output = result.format_output(&tableau, "test.txt");
-
-        assert!(output.contains("GLA-MaxEnt"));
-        assert!(output.contains("1. Weights Found"));
-        assert!(output.contains("2. Matchup to Input Frequencies"));
-    }
-
-    #[test]
     fn test_gla_maxent_gaussian_prior_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, true, 1.0);
@@ -630,13 +607,4 @@ mod tests {
         assert_eq!(result.sigma(), 1.0, "sigma() should be 1.0");
     }
 
-    #[test]
-    fn test_gla_maxent_prior_output_format() {
-        let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 200, 2.0, 0.001, 0, false, true, 1.0);
-        let output = result.format_output(&tableau, "test.txt");
-
-        assert!(output.contains("A Gaussian prior for MaxEnt learning was in effect."));
-        assert!(output.contains("Sigma:"));
-    }
 }

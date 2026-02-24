@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_gla, format_gla_output, GlaOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { useDownload } from '../downloadContext.ts'
 
 interface GlaPanelProps {
   tableau: Tableau
@@ -37,6 +38,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
   const [result, setResult] = useState<GlaState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const download = useDownload()
 
   function handleRun() {
     setIsLoading(true)
@@ -102,7 +104,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       opts.sigma = sigma
       const output = format_gla_output(tableauText, inputFilename || 'tableau.txt', opts)
       const suffix = maxentMode ? 'GLA-MaxEntOutput' : 'GLA-StochasticOTOutput'
-      downloadTextFile(output, makeOutputFilename(inputFilename, suffix))
+      download(output, makeOutputFilename(inputFilename, suffix))
     } catch (err) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)

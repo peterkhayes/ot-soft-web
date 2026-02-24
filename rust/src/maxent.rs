@@ -408,22 +408,6 @@ mod tests {
     }
 
     #[test]
-    fn test_maxent_output_format() {
-        let text = load_tiny_example();
-        let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(5, 0.0, 50.0, false, 1.0);
-        let output = result.format_output(&tableau, "test.txt");
-
-        assert!(output.contains("Results of Applying Maximum Entropy to test.txt"));
-        assert!(output.contains("1. Constraint Weights"));
-        assert!(output.contains("2. Tableaux"));
-        assert!(output.contains("Log probability of data:"));
-        assert!(output.contains("/a/:"));
-        assert!(output.contains("/tat/:"));
-        assert!(output.contains("/at/:"));
-    }
-
-    #[test]
     fn test_maxent_weight_bounds() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
@@ -455,14 +439,4 @@ mod tests {
         assert_eq!(result.sigma_squared(), 1.0, "sigma_squared() should return 1.0");
     }
 
-    #[test]
-    fn test_maxent_prior_output_format() {
-        let text = load_tiny_example();
-        let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(5, 0.0, 50.0, true, 1.0);
-        let output = result.format_output(&tableau, "test.txt");
-
-        assert!(output.contains("A Gaussian prior for MaxEnt learning was in effect."));
-        assert!(output.contains("Sigma squared:"));
-    }
 }

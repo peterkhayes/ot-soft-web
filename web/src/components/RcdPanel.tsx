@@ -2,7 +2,8 @@ import { useState, useRef } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output, FredOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { useDownload } from '../downloadContext.ts'
 
 interface RcdPanelProps {
   tableau: Tableau
@@ -58,6 +59,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const [isAprioriDragging, setIsAprioriDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const aprioriInputRef = useRef<HTMLInputElement>(null)
+  const download = useDownload()
 
   const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
   const atDefaults = isAtDefaults(params, RCD_DEFAULTS)
@@ -147,7 +149,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
           : format_bcd_output(tableauText, inputFilename || 'tableau.txt', algorithm === 'bcd-specific', fredOpts)
 
-      downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'Output'))
+      download(formattedOutput, makeOutputFilename(inputFilename, 'Output'))
     } catch (err) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)

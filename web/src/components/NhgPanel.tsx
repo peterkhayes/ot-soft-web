@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { run_nhg, format_nhg_output, NhgOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { downloadTextFile, makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { useDownload } from '../downloadContext.ts'
 
 interface NhgPanelProps {
   tableau: Tableau
@@ -46,6 +47,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
 
   const [result, setResult] = useState<NhgState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const download = useDownload()
 
   function handleRun() {
     setIsLoading(true)
@@ -118,7 +120,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
       opts.negative_weights_ok = negativeWeightsOk
       opts.resolve_ties_by_skipping = resolveTiesBySkipping
       const formattedOutput = format_nhg_output(tableauText, inputFilename || 'tableau.txt', opts)
-      downloadTextFile(formattedOutput, makeOutputFilename(inputFilename, 'NHGOutput'))
+      download(formattedOutput, makeOutputFilename(inputFilename, 'NHGOutput'))
     } catch (err) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)

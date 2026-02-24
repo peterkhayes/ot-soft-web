@@ -723,24 +723,6 @@ mod tests {
     }
 
     #[test]
-    fn test_nhg_output_format() {
-        let text = load_tiny_example();
-        let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_nhg(
-            200, 2.0, 0.002, 100, false, false, false, false, false, false, false, false,
-        );
-        let output = result.format_output(&tableau, "test.txt");
-
-        assert!(output.contains("Result of Applying Noisy Harmonic Grammar to test.txt"));
-        assert!(output.contains("1. Weights Found"));
-        assert!(output.contains("2. Matchup to Input Frequencies"));
-        assert!(output.contains("Log likelihood of data:"));
-        assert!(output.contains("/a/"));
-        assert!(output.contains("/tat/"));
-        assert!(output.contains("/at/"));
-    }
-
-    #[test]
     fn test_nhg_exponential_variant() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
