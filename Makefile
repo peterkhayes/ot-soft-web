@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-install web-build web-test web-test-update web-lint web-lint-fix web-fmt web-fmt-check lint
+.PHONY: build test serve dev clean help web-install web-build web-test web-test-update web-lint web-lint-fix web-fmt web-fmt-check precommit lint
 
 # Default target
 .DEFAULT_GOAL := help
@@ -63,6 +63,8 @@ web-check: ## Type-check web frontend without building
 	@echo "Type-checking web frontend..."
 	@cd web && npx tsc -b
 	@echo "✓ Web check complete"
+
+precommit: lint test build web-lint web-fmt-check web-check web-test ## Run all checks (Rust + web lint, tests, build)
 
 clean: ## Clean build artifacts
 	@echo "Cleaning build artifacts..."
