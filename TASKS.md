@@ -113,29 +113,17 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 Roughly ordered by value and dependency:
 
-1. **FT full listing** — For each output pattern in the factorial typology, run RCD and show the ranking that produces it (plus optional tableaux and FRed arguments). Depends on factorial typology core (done).
+1. **Learning schedule** — Multi-stage plasticity interpolation for GLA/NHG. Allows the plasticity to follow a custom schedule rather than a simple linear interpolation.
 
-2. **FTSum / CompactSum output** — Generate the tab-delimited `FTSum.txt` (one row per pattern) and `CompactSum.txt` (collapsed by surface outputs, deduplicated) files.
+2. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
 
-3. **Hasse diagrams** — Generate and display visual ranking hierarchy from FRed and GLA output.
-   See `source/CHARTS.md` for full requirements and technology choice.
-   Technology: **`@viz-js/viz`** (GraphViz compiled to WASM; renders DOT → SVG in the browser).
-   Implementation steps:
-   - **Rust**: Add `rust/src/hasse.rs` with two WASM exports:
-     - `fred_hasse_dot(tableau_text, apriori_text, use_mib)` — DOT string from FRed Valhalla ERCs
-       (ports `Fred.bas:PrepareHasseDiagram`; certain edges solid, disjunctive edges dotted with "or" label)
-     - `gla_hasse_dot(tableau_text, ranking_values)` — DOT string from GLA ranking values
-       (ports `boersma.frm:PrintPairwiseRankingProbabilities`; edges labeled with probability, dotted if P < 0.95)
-   - **Web**: Add `@viz-js/viz` npm dependency; create `web/src/components/HasseDiagram.tsx`
-     (lazy-loads viz.js WASM, renders DOT → inline SVG, provides SVG and PNG download buttons)
-   - **Web**: Wire `HasseDiagram` into `RcdPanel.tsx` and `GlaPanel.tsx`
-   - **Tests**: `web/tests/flows/hasse.test.tsx` — verify SVG renders and export buttons work
+3. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
 
-4. **Learning schedule** — Multi-stage plasticity interpolation for GLA/NHG. Allows the plasticity to follow a custom schedule rather than a simple linear interpolation.
+4. **Pairwise ranking probabilities** — Compute and display pairwise ranking probabilities from GLA output (ports `boersma.frm:PrintPairwiseRankingProbabilities`). Currently stubbed; needed for complete GLA Hasse edge labeling.
 
-5. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
+5. **HTML tableaux** — Render tableaux as HTML with configurable shading, rather than plain text in the download.
 
-6. **HTML tableaux** — Render tableaux as HTML with configurable shading, rather than plain text in the download.
+6. **Sorted input file** — Reorder constraints/candidates by rank and write a sorted copy of the input file.
 
 7. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
 
