@@ -1,4 +1,5 @@
 import React from 'react'
+import { expect } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page } from '@vitest/browser/context'
 import { DownloadProvider } from '../src/downloadContext'
@@ -10,6 +11,7 @@ export interface CapturedDownload {
 }
 
 export function renderApp() {
+  localStorage.clear()
   const downloads: CapturedDownload[] = []
   const onDownload = (content: string, filename: string) => downloads.push({ content, filename })
   render(
@@ -30,4 +32,9 @@ export async function loadFile(filePath: string) {
   await expect.element(page.locator('input[type=file]')).toBeAttached()
   await page.locator('input[type=file]').setInputFiles(filePath)
   await expect.element(page.getByText('Tableau Analysis')).toBeVisible()
+}
+
+/** Strip the date/time stamp from formatter output so snapshots are stable. */
+export function normalizeOutput(content: string): string {
+  return content.replace(/\d+-\d+-\d+, \d+:\d+ (am|pm)/gi, '<TIMESTAMP>')
 }

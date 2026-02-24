@@ -5,12 +5,14 @@ import topLevelAwait from 'vite-plugin-top-level-await'
 
 export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait()],
+  optimizeDeps: {
+    include: ['react-dom/client'],
+  },
   test: {
     browser: {
       enabled: true,
       provider: 'playwright',
       instances: [{ browser: 'chromium' }],
     },
-    setupFiles: ['./tests/setup.ts'],
   },
 })

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import '../style.css'
 import type { Tableau } from '../pkg/ot_soft.js'
 import InputPanel from './components/InputPanel.tsx'
 import TableauPanel from './components/TableauPanel.tsx'

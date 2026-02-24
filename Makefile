@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-build web-test lint
+.PHONY: build test serve dev clean help web-install web-build web-test lint
 
 # Default target
 .DEFAULT_GOAL := help
@@ -26,10 +26,14 @@ serve: ## Start Vite dev server
 
 dev: build serve ## Build WASM and start Vite dev server
 
+web-install: ## Install web dependencies and Playwright browser (run once after checkout)
+	@cd web && npm install && npx playwright install chromium
+	@echo "✓ Web install complete"
+
 web-build: ## Build web frontend for production
 	@cd web && npm run build
 
-web-test: ## Run web frontend tests (Vitest + Playwright)
+web-test: ## Run web frontend tests (Vitest + Playwright; requires make web-install)
 	@cd web && npm test
 
 web-check: ## Type-check web frontend without building
