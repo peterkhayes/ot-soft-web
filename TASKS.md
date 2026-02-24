@@ -47,7 +47,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Gradual Learning Algorithm (GLA) — online MaxEnt mode
 - [x] Batch Maximum Entropy (GIS optimizer)
 - [x] Noisy Harmonic Grammar (NHG) — 8 noise variants
-- [ ] Learning schedule (multi-stage plasticity interpolation)
+- [x] Learning schedule (multi-stage plasticity interpolation)
 - [ ] Custom learning schedule from file
 - [ ] Magri update rule (Stochastic OT)
 - [x] Gaussian prior (MaxEnt)
@@ -113,7 +113,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 Roughly ordered by value and dependency:
 
-1. **Learning schedule** — Multi-stage plasticity interpolation for GLA/NHG. Allows the plasticity to follow a custom schedule rather than a simple linear interpolation.
+1. **Custom learning schedule from file** — File upload UI for a custom learning schedule (`CustomLearningSchedule.txt`). The Rust parsing infrastructure (`LearningSchedule::parse`) is already in place; this task adds a file picker in the web UI.
 
 2. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
 

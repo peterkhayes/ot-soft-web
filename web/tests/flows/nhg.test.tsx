@@ -28,3 +28,23 @@ test('NHG: load example, run, see results, download', { timeout: 30000 }, async 
   expect(downloads[0].filename).toBe('TinyIllustrativeFileNHGOutput.txt')
   expect(downloads[0].content).toBeTruthy()
 })
+
+test('NHG: custom learning schedule runs successfully', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Noisy Harmonic Grammar', { exact: true }).click()
+
+  // Enable custom schedule by clicking the label text
+  await page.getByText('Use custom learning schedule').click()
+
+  // The textarea should appear with a default schedule
+  await expect.element(page.getByRole('textbox')).toBeVisible()
+
+  // Run with the default template schedule
+  await page.getByText('Run Noisy HG').click()
+
+  // Results should still appear
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+  await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
+})

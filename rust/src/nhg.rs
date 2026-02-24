@@ -5,10 +5,12 @@
 //! constraint weights, and weights are adjusted if the generated form differs from
 //! the observed one.
 //!
-//! Implements 8 noise variants controlled by boolean flags. Reproduces
-//! VB6 NoisyHarmonicGrammar.frm.
+//! Implements 8 noise variants controlled by boolean flags. Supports separate
+//! plasticity for Markedness vs Faithfulness constraints via the learning schedule.
+//! Reproduces VB6 NoisyHarmonicGrammar.frm.
 
 use wasm_bindgen::prelude::*;
+use crate::schedule::LearningSchedule;
 use crate::tableau::Tableau;
 
 // ─── Gaussian RNG ────────────────────────────────────────────────────────────
@@ -283,10 +285,9 @@ pub struct NhgResult {
     test_probs: Vec<Vec<f64>>,
     /// Log likelihood of training data under the tested grammar
     log_likelihood: f64,
+    /// Pre-formatted schedule description for output
+    schedule_description: String,
     /// Parameters used (stored for output formatting)
-    cycles: usize,
-    initial_plasticity: f64,
-    final_plasticity: f64,
     test_trials: usize,
     exponential_nhg: bool,
 }
@@ -332,9 +333,7 @@ impl NhgResult {
 
         // Parameters
         out.push_str("Parameters:\n");
-        out.push_str(&format!("   Cycles: {}\n", self.cycles));
-        out.push_str(&format!("   Initial plasticity: {:.3}\n", self.initial_plasticity));
-        out.push_str(&format!("   Final plasticity: {:.3}\n", self.final_plasticity));
+        out.push_str(&self.schedule_description);
         out.push_str(&format!("   Times to test grammar: {}\n", self.test_trials));
         if self.exponential_nhg {
             out.push_str("   Exponential NHG: yes\n");
@@ -439,24 +438,10 @@ impl NhgResult {
 // ─── Main NHG algorithm ───────────────────────────────────────────────────────
 
 impl Tableau {
-    /// Run the Noisy Harmonic Grammar algorithm.
+    /// Run the Noisy Harmonic Grammar algorithm using the default 4-stage schedule.
     ///
-    /// Reproduces VB6 NoisyHarmonicGrammar.frm:NoisyHarmonicGrammarCore and
-    /// NHGTestGrammar.
-    ///
-    /// # Arguments
-    /// * `cycles` — total training iterations (default 5000)
-    /// * `initial_plasticity` — starting learning rate (default 2.0)
-    /// * `final_plasticity` — ending learning rate (default 0.002)
-    /// * `test_trials` — evaluation trials after learning (default 2000)
-    /// * `noise_by_cell` — if true, draw a fresh noise value per (candidate, constraint) cell
-    /// * `post_mult_noise` — if true, add noise after weight × violations product
-    /// * `noise_for_zero_cells` — if true, apply noise even in zero-violation cells
-    /// * `late_noise` — if true, add single noise term to total harmony (after all constraints)
-    /// * `exponential_nhg` — use exp(weight) instead of raw weight
-    /// * `demi_gaussians` — use positive-only (half-Gaussian) noise
-    /// * `negative_weights_ok` — allow weights to go below zero
-    /// * `resolve_ties_by_skipping` — skip trial on tie instead of random pick
+    /// This is a convenience wrapper around `run_nhg_with_schedule`.
+    /// Reproduces VB6 NoisyHarmonicGrammar.frm:NoisyHarmonicGrammarCore and NHGTestGrammar.
     #[allow(clippy::too_many_arguments)]
     pub fn run_nhg(
         &self,
@@ -473,10 +458,58 @@ impl Tableau {
         negative_weights_ok: bool,
         resolve_ties_by_skipping: bool,
     ) -> NhgResult {
+        let schedule = LearningSchedule::default_4stage(cycles, initial_plasticity, final_plasticity);
+        self.run_nhg_with_schedule(
+            &schedule,
+            test_trials,
+            noise_by_cell,
+            post_mult_noise,
+            noise_for_zero_cells,
+            late_noise,
+            exponential_nhg,
+            demi_gaussians,
+            negative_weights_ok,
+            resolve_ties_by_skipping,
+        )
+    }
+
+    /// Run the Noisy Harmonic Grammar algorithm with an explicit learning schedule.
+    ///
+    /// Supports separate plasticity for Markedness vs Faithfulness constraints
+    /// (PlastMark / PlastFaith per stage), matching VB6 behavior.
+    ///
+    /// # Arguments
+    /// * `schedule` — multi-stage plasticity schedule
+    /// * `test_trials` — evaluation trials after learning (default 2000)
+    /// * `noise_by_cell` — if true, draw a fresh noise value per (candidate, constraint) cell
+    /// * `post_mult_noise` — if true, add noise after weight × violations product
+    /// * `noise_for_zero_cells` — if true, apply noise even in zero-violation cells
+    /// * `late_noise` — if true, add single noise term to total harmony (after all constraints)
+    /// * `exponential_nhg` — use exp(weight) instead of raw weight
+    /// * `demi_gaussians` — use positive-only (half-Gaussian) noise
+    /// * `negative_weights_ok` — allow weights to go below zero
+    /// * `resolve_ties_by_skipping` — skip trial on tie instead of random pick
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_nhg_with_schedule(
+        &self,
+        schedule: &LearningSchedule,
+        test_trials: usize,
+        noise_by_cell: bool,
+        post_mult_noise: bool,
+        noise_for_zero_cells: bool,
+        late_noise: bool,
+        exponential_nhg: bool,
+        demi_gaussians: bool,
+        negative_weights_ok: bool,
+        resolve_ties_by_skipping: bool,
+    ) -> NhgResult {
         let nc = self.constraints.len();
 
         // Noise std deviation: 1.0 for normal NHG, 0.1 for exponential (matches VB6 SetTheNoise)
         let noise_std = if exponential_nhg { 0.1 } else { 1.0 };
+
+        // ── Faithfulness flags ────────────────────────────────────────────────
+        let is_faith: Vec<bool> = self.constraints.iter().map(|c| c.is_faithfulness()).collect();
 
         // ── Build training data pool ─────────────────────────────────────────────────────
         // All (form_idx, cand_idx) pairs where frequency > 0, repeated by frequency.
@@ -494,25 +527,16 @@ impl Tableau {
         // ── Initialize weights ───────────────────────────────────────────────────────────
         let mut weights = vec![0.0f64; nc];
 
-        // ── Learning schedule: 4 stages with geometric plasticity interpolation ──────────
-        // Matches VB6 DetermineLearningSchedule.
-        let p1 = initial_plasticity;
-        let p4 = final_plasticity;
-        let p2 = (p1 * p1 * p4).powf(1.0 / 3.0);
-        let p3 = (p1 * p4 * p4).powf(1.0 / 3.0);
-        let plasticities = [p1, p2, p3, p4];
-        let trials_per_stage = cycles / 4;
-
         let mut rng = Rng::new(demi_gaussians);
+        let total_cycles = schedule.total_cycles();
 
         crate::ot_log!("Starting NHG with {} constraints, {} training exemplars, {} cycles",
-            nc, pool_size, cycles);
+            nc, pool_size, total_cycles);
 
         // ── Main learning loop ───────────────────────────────────────────────────────────
         if pool_size > 0 {
-            for (stage, &plasticity) in plasticities.iter().enumerate() {
-
-                for _ in 0..trials_per_stage {
+            for (stage_idx, stage) in schedule.stages.iter().enumerate() {
+                for _ in 0..stage.trials {
                     // Select training exemplar (stochastic, weighted by frequency)
                     let r = rng.uniform();
                     let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
@@ -543,7 +567,9 @@ impl Tableau {
                             let tv = target_cand.violations[c] as f64;
                             if wv != tv {
                                 // VB6: weight += plasticity * (winner_viols - training_viols)
-                                *w += plasticity * (wv - tv);
+                                // Use PlastMark for Markedness, PlastFaith for Faithfulness.
+                                let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
+                                *w += plast * (wv - tv);
                                 if *w < 0.0 && !negative_weights_ok && !exponential_nhg {
                                     *w = 0.0;
                                 }
@@ -551,7 +577,8 @@ impl Tableau {
                         }
                     }
                 }
-                crate::ot_log!("NHG stage {}/4 complete (plasticity = {:.4})", stage + 1, plasticity);
+                crate::ot_log!("NHG stage {}/{} complete (plast_mark={:.4}, plast_faith={:.4})",
+                    stage_idx + 1, schedule.stages.len(), stage.plast_mark, stage.plast_faith);
             }
         }
 
@@ -624,9 +651,7 @@ impl Tableau {
             weights,
             test_probs,
             log_likelihood,
-            cycles,
-            initial_plasticity,
-            final_plasticity,
+            schedule_description: schedule.format_description(),
             test_trials,
             exponential_nhg,
         }
@@ -737,5 +762,41 @@ mod tests {
         for c_idx in 0..nc {
             assert!(result.get_weight(c_idx).is_finite(), "Weight should be finite");
         }
+    }
+
+    #[test]
+    fn test_nhg_custom_schedule_runs() {
+        // A custom schedule with separate M/F plasticity should run without errors.
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        let schedule_text = "Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n\
+                             250\t2\t0.5\t2\t2\n\
+                             250\t0.2\t0.05\t2\t2\n";
+        let schedule = crate::schedule::LearningSchedule::parse(schedule_text).unwrap();
+        let result = tableau.run_nhg_with_schedule(
+            &schedule,
+            200,   // test_trials
+            false, false, false, false, false, false, false, false,
+        );
+        let nc = tableau.constraint_count();
+        for c_idx in 0..nc {
+            assert!(result.get_weight(c_idx).is_finite());
+        }
+        assert!(result.log_likelihood().is_finite());
+    }
+
+    #[test]
+    fn test_nhg_custom_schedule_output_contains_stage_info() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        let schedule_text = "Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n\
+                             250\t2\t0.5\t2\t2\n\
+                             250\t0.2\t0.05\t2\t2\n";
+        let schedule = crate::schedule::LearningSchedule::parse(schedule_text).unwrap();
+        let result = tableau.run_nhg_with_schedule(
+            &schedule, 200, false, false, false, false, false, false, false, false,
+        );
+        let output = result.format_output(&tableau, "test.txt");
+        assert!(output.contains("Custom learning schedule"), "output should mention custom schedule");
     }
 }

@@ -78,3 +78,25 @@ test('GLA (Online MaxEnt): switch mode, run, see results', async () => {
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
   await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
 })
+
+test('GLA: custom learning schedule runs successfully', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+
+  // Enable custom schedule by clicking the label text
+  await page.getByText('Use custom learning schedule').click()
+
+  // The textarea should appear with a default schedule
+  await expect.element(page.getByRole('textbox')).toBeVisible()
+
+  // Run with the default template schedule
+  await page.getByText('Run GLA').click()
+
+  // Results should still appear
+  await expect
+    .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
+    .toBeVisible()
+  await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
+})

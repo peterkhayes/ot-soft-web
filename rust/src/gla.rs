@@ -3,8 +3,9 @@
 //! Online error-driven learner in two modes:
 //!
 //! **Stochastic OT** (Boersma 1997, Boersma & Hayes 2001): Each trial adds
-//! Gaussian noise (σ=2) to ranking values, sorts constraints, evaluates
-//! candidates by strict domination, then adjusts ranking values ±plasticity.
+//! Gaussian noise (σ=NoiseMark/NoiseFaith per schedule stage) to ranking values,
+//! sorts constraints, evaluates candidates by strict domination, then adjusts
+//! ranking values ±PlastMark/PlastFaith.
 //!
 //! **Online MaxEnt** (Jäger 2004): Each trial samples a candidate via
 //! exp(−H)/Z probabilities, then adjusts weights by `plasticity × (gen_viols − obs_viols)`.
@@ -13,6 +14,7 @@
 //! GLATestGrammar, GenerateMaxEntPredictions.
 
 use wasm_bindgen::prelude::*;
+use crate::schedule::LearningSchedule;
 use crate::tableau::Tableau;
 
 // ─── Gaussian RNG ─────────────────────────────────────────────────────────────
@@ -40,8 +42,7 @@ impl Rng {
         getrandom_uniform()
     }
 
-    /// Standard normal deviate (σ=1). For GLA StochasticOT, multiply by 2
-    /// to match VB6 Gaussian() which returns σ=2.
+    /// Standard normal deviate (σ=1). Scale by noise_sigma at call site.
     fn gaussian(&mut self) -> f64 {
         if let Some(stored) = self.stored.take() {
             return stored;
@@ -63,20 +64,28 @@ impl Rng {
 //
 // Reproduces VB6 DetermineSelectionPointsAndSort + GenerateAFormStochasticOT.
 //
-// Gaussian noise σ=2 is added to each ranking value (matching the VB6
-// Gaussian() function which returns 2 × standard normal deviate).
+// Gaussian noise is added to each ranking value, with separate sigma for
+// Markedness (noise_mark) and Faithfulness (noise_faith) constraints.
 
 fn ot_evaluate(
     candidates: &[crate::tableau::Candidate],
     ranking_values: &[f64],
+    is_faith: &[bool],
+    noise_mark: f64,
+    noise_faith: f64,
     rng: &mut Rng,
 ) -> usize {
     let nc = ranking_values.len();
     let n_cands = candidates.len();
 
-    // Add Gaussian noise (σ=2) to each ranking value
-    let noisy_rv: Vec<f64> = ranking_values.iter()
-        .map(|&rv| rv + 2.0 * rng.gaussian())
+    // Add Gaussian noise to each ranking value (σ = noise_mark or noise_faith)
+    let noisy_rv: Vec<f64> = ranking_values
+        .iter()
+        .zip(is_faith.iter())
+        .map(|(&rv, &faith)| {
+            let sigma = if faith { noise_faith } else { noise_mark };
+            rv + sigma * rng.gaussian()
+        })
         .collect();
 
     // Sort constraint indices descending by noisy ranking value (highest = most important)
@@ -169,10 +178,9 @@ pub struct GlaResult {
     log_likelihood: f64,
     /// Whether this is MaxEnt mode (false = StochasticOT)
     maxent_mode: bool,
+    /// Pre-formatted schedule description for output
+    schedule_description: String,
     /// Parameters stored for output formatting
-    cycles: usize,
-    initial_plasticity: f64,
-    final_plasticity: f64,
     test_trials: usize,
     /// Gaussian prior parameters (MaxEnt mode only)
     gaussian_prior: bool,
@@ -238,9 +246,7 @@ impl GlaResult {
 
         // Parameters
         out.push_str("Parameters:\n");
-        out.push_str(&format!("   Cycles: {}\n", self.cycles));
-        out.push_str(&format!("   Initial plasticity: {:.3}\n", self.initial_plasticity));
-        out.push_str(&format!("   Final plasticity: {:.3}\n", self.final_plasticity));
+        out.push_str(&self.schedule_description);
         out.push_str(&format!("   Times to test grammar: {}\n", self.test_trials));
         if self.maxent_mode && self.gaussian_prior {
             out.push_str(&format!("   Sigma: {}\n", self.sigma));
@@ -336,20 +342,10 @@ impl GlaResult {
 // ─── Main GLA Algorithm ───────────────────────────────────────────────────────
 
 impl Tableau {
-    /// Run the Gradual Learning Algorithm.
+    /// Run the Gradual Learning Algorithm using the default 4-stage schedule.
     ///
+    /// This is a convenience wrapper around `run_gla_with_schedule`.
     /// Reproduces VB6 boersma.frm:GLACore and related subroutines.
-    ///
-    /// # Arguments
-    /// * `maxent_mode` — if true, run MaxEnt online mode; if false, run Stochastic OT
-    /// * `cycles` — total training iterations (default 1,000,000)
-    /// * `initial_plasticity` — starting learning rate (default 2.0)
-    /// * `final_plasticity` — ending learning rate (default 0.001)
-    /// * `test_trials` — evaluation trials after learning; only used in StochasticOT mode
-    ///   (MaxEnt uses exact probabilities)
-    /// * `negative_weights_ok` — allow weights below 0 (MaxEnt mode only)
-    /// * `gaussian_prior` — if true (MaxEnt mode only), apply Gaussian L2 prior each update
-    /// * `sigma` — standard deviation of the Gaussian prior (default 1.0; mu=0 for all constraints)
     #[allow(clippy::too_many_arguments)]
     pub fn run_gla(
         &self,
@@ -362,7 +358,44 @@ impl Tableau {
         gaussian_prior: bool,
         sigma: f64,
     ) -> GlaResult {
+        let schedule = LearningSchedule::default_4stage(cycles, initial_plasticity, final_plasticity);
+        self.run_gla_with_schedule(
+            maxent_mode,
+            &schedule,
+            test_trials,
+            negative_weights_ok,
+            gaussian_prior,
+            sigma,
+        )
+    }
+
+    /// Run the Gradual Learning Algorithm with an explicit learning schedule.
+    ///
+    /// Supports separate plasticity for Markedness vs Faithfulness constraints
+    /// (PlastMark / PlastFaith per stage), matching VB6 behavior.
+    ///
+    /// # Arguments
+    /// * `maxent_mode` — if true, run online MaxEnt; if false, run Stochastic OT
+    /// * `schedule` — multi-stage plasticity schedule
+    /// * `test_trials` — evaluation trials after learning; only used in StochasticOT mode
+    /// * `negative_weights_ok` — allow weights below 0 (MaxEnt mode only)
+    /// * `gaussian_prior` — apply Gaussian L2 prior each update (MaxEnt mode only)
+    /// * `sigma` — standard deviation of the Gaussian prior (mu=0 for all constraints)
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_gla_with_schedule(
+        &self,
+        maxent_mode: bool,
+        schedule: &LearningSchedule,
+        test_trials: usize,
+        negative_weights_ok: bool,
+        gaussian_prior: bool,
+        sigma: f64,
+    ) -> GlaResult {
         let nc = self.constraints.len();
+
+        // ── Faithfulness flags ────────────────────────────────────────────────
+        // Precomputed to distinguish PlastMark vs PlastFaith in the update loop.
+        let is_faith: Vec<bool> = self.constraints.iter().map(|c| c.is_faithfulness()).collect();
 
         // ── Build training pool (weighted by frequency) ──────────────────────
         let mut training_pool: Vec<(usize, usize)> = Vec::new();
@@ -381,26 +414,17 @@ impl Tableau {
         let initial_value = if maxent_mode { 0.0 } else { 100.0 };
         let mut ranking_values = vec![initial_value; nc];
 
-        // ── Learning schedule: 4 stages, geometric interpolation ─────────────
-        // Reproduces VB6 DetermineLearningSchedule (default non-custom path).
-        let p1 = initial_plasticity;
-        let p4 = final_plasticity;
-        let p2 = (p1 * p1 * p4).powf(1.0 / 3.0);
-        let p3 = (p1 * p4 * p4).powf(1.0 / 3.0);
-        let plasticities = [p1, p2, p3, p4];
-        let trials_per_stage = cycles / 4;
-
         let mut rng = Rng::new();
 
         let mode_name = if maxent_mode { "MaxEnt" } else { "StochasticOT" };
+        let total_cycles = schedule.total_cycles();
         crate::ot_log!("Starting GLA ({}) with {} constraints, {} training exemplars, {} cycles",
-            mode_name, nc, pool_size, cycles);
+            mode_name, nc, pool_size, total_cycles);
 
         // ── Main learning loop ────────────────────────────────────────────────
         if pool_size > 0 {
-            for (stage, &plasticity) in plasticities.iter().enumerate() {
-
-                for _ in 0..trials_per_stage {
+            for (stage_idx, stage) in schedule.stages.iter().enumerate() {
+                for _ in 0..stage.trials {
                     // Select observed exemplar weighted by frequency
                     let r = rng.uniform();
                     let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
@@ -410,7 +434,14 @@ impl Tableau {
                     let generated = if maxent_mode {
                         maxent_sample(&self.forms[sel_form].candidates, &ranking_values, &mut rng)
                     } else {
-                        ot_evaluate(&self.forms[sel_form].candidates, &ranking_values, &mut rng)
+                        ot_evaluate(
+                            &self.forms[sel_form].candidates,
+                            &ranking_values,
+                            &is_faith,
+                            stage.noise_mark,
+                            stage.noise_faith,
+                            &mut rng,
+                        )
                     };
 
                     // Skip if the grammar already produced the correct form
@@ -423,17 +454,17 @@ impl Tableau {
 
                     // Update ranking values / weights
                     if maxent_mode {
-                        // MaxEnt update: reproduces VB6 RankingValueAdjustment (MaxEnt branch)
-                        // With optional Gaussian prior: reproduces VB6 boersma.frm lines 2719-2757.
+                        // MaxEnt update: reproduces VB6 RankingValueAdjustment (MaxEnt branch).
                         // PriorBasedChange = plasticity * (weight - mu) / sigma² / 2  (mu=0)
                         // The "/2" is "out of the blue" per the VB6 author's comment; reproduced for fidelity.
                         let sigma_sq = sigma * sigma;
                         for (c, rv) in ranking_values.iter_mut().enumerate() {
+                            let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
                             let gen_v = gen_cand.violations[c] as f64;
                             let obs_v = obs_cand.violations[c] as f64;
-                            let likelihood_change = plasticity * (gen_v - obs_v);
+                            let likelihood_change = plast * (gen_v - obs_v);
                             let prior_change = if gaussian_prior {
-                                plasticity * *rv / sigma_sq / 2.0
+                                plast * *rv / sigma_sq / 2.0
                             } else {
                                 0.0
                             };
@@ -443,22 +474,24 @@ impl Tableau {
                             }
                         }
                     } else {
-                        // StochasticOT update: binary ±plasticity per constraint
+                        // StochasticOT update: ±plasticity per constraint
                         // Reproduces VB6 RankingValueAdjustment (StochasticOT branch)
                         for (c, rv) in ranking_values.iter_mut().enumerate() {
+                            let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
                             let gen_v = gen_cand.violations[c];
                             let obs_v = obs_cand.violations[c];
                             if gen_v > obs_v {
                                 // Generated violates more: strengthen (raise)
-                                *rv += plasticity;
+                                *rv += plast;
                             } else if gen_v < obs_v {
                                 // Generated violates less: weaken (lower)
-                                *rv -= plasticity;
+                                *rv -= plast;
                             }
                         }
                     }
                 }
-                crate::ot_log!("GLA stage {}/4 complete (plasticity = {:.4})", stage + 1, plasticity);
+                crate::ot_log!("GLA stage {}/{} complete (plast_mark={:.4}, plast_faith={:.4})",
+                    stage_idx + 1, schedule.stages.len(), stage.plast_mark, stage.plast_faith);
             }
         }
 
@@ -467,13 +500,25 @@ impl Tableau {
             // MaxEnt: exact predicted probabilities (reproduces GenerateMaxEntPredictions)
             maxent_predictions(self, &ranking_values)
         } else {
-            // StochasticOT: stochastic test (reproduces GLATestGrammar)
+            // StochasticOT: stochastic test (reproduces GLATestGrammar).
+            // Use noise from the last stage (finest plasticity, lowest noise stage).
+            let last_stage = schedule.stages.last();
+            let noise_mark = last_stage.map(|s| s.noise_mark).unwrap_or(2.0);
+            let noise_faith = last_stage.map(|s| s.noise_faith).unwrap_or(2.0);
+
             let mut counts: Vec<Vec<usize>> = self.forms.iter()
                 .map(|f| vec![0usize; f.candidates.len()])
                 .collect();
             for _ in 0..test_trials {
                 for (fi, form) in self.forms.iter().enumerate() {
-                    let winner = ot_evaluate(&form.candidates, &ranking_values, &mut rng);
+                    let winner = ot_evaluate(
+                        &form.candidates,
+                        &ranking_values,
+                        &is_faith,
+                        noise_mark,
+                        noise_faith,
+                        &mut rng,
+                    );
                     counts[fi][winner] += 1;
                 }
             }
@@ -508,9 +553,7 @@ impl Tableau {
             test_probs,
             log_likelihood,
             maxent_mode,
-            cycles,
-            initial_plasticity,
-            final_plasticity,
+            schedule_description: schedule.format_description(),
             test_trials,
             gaussian_prior,
             sigma,
@@ -522,6 +565,7 @@ impl Tableau {
 
 #[cfg(test)]
 mod tests {
+    use crate::schedule::LearningSchedule;
     use crate::tableau::Tableau;
 
     fn load_tiny() -> String {
@@ -607,4 +651,34 @@ mod tests {
         assert_eq!(result.sigma(), 1.0, "sigma() should be 1.0");
     }
 
+    #[test]
+    fn test_gla_custom_schedule_runs() {
+        // A custom schedule with separate M/F plasticity should run without errors
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let schedule_text = "Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n\
+                             250\t2\t0.5\t2\t2\n\
+                             250\t0.2\t0.05\t2\t2\n";
+        let schedule = LearningSchedule::parse(schedule_text).unwrap();
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0);
+
+        let nc = tableau.constraint_count();
+        for c in 0..nc {
+            assert!(result.get_ranking_value(c).is_finite());
+        }
+    }
+
+    #[test]
+    fn test_gla_custom_schedule_output_contains_stage_info() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let schedule_text = "Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n\
+                             250\t2\t0.5\t2\t2\n\
+                             250\t0.2\t0.05\t2\t2\n";
+        let schedule = LearningSchedule::parse(schedule_text).unwrap();
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0);
+        let output = result.format_output(&tableau, "test.txt");
+
+        // Custom schedule should mention stages in the output
+        assert!(output.contains("Custom learning schedule"), "output should mention custom schedule");
+        assert!(output.contains("PlastMark"), "output should show PlastMark column");
+    }
 }

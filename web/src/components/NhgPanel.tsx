@@ -6,6 +6,13 @@ import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 
+const DEFAULT_SCHEDULE_TEMPLATE =
+  'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
+  '1250\t2\t2\t2\t2\n' +
+  '1250\t0.2\t0.2\t2\t2\n' +
+  '1250\t0.02\t0.02\t2\t2\n' +
+  '1250\t0.002\t0.002\t2\t2'
+
 interface NhgPanelProps {
   tableau: Tableau
   tableauText: string
@@ -42,6 +49,8 @@ interface NhgParams {
   demiGaussians: boolean
   negativeWeightsOk: boolean
   resolveTiesBySkipping: boolean
+  useCustomSchedule: boolean
+  customSchedule: string
 }
 const NHG_DEFAULTS: NhgParams = {
   cycles: 5000,
@@ -56,6 +65,8 @@ const NHG_DEFAULTS: NhgParams = {
   demiGaussians: false,
   negativeWeightsOk: false,
   resolveTiesBySkipping: false,
+  useCustomSchedule: false,
+  customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
 }
 
 function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
@@ -73,29 +84,41 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     demiGaussians,
     negativeWeightsOk,
     resolveTiesBySkipping,
+    useCustomSchedule,
+    customSchedule,
   } = params
 
   const [result, setResult] = useState<NhgState | null>(null)
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const download = useDownload()
 
+  function buildOpts(): NhgOptions {
+    const opts = new NhgOptions()
+    opts.cycles = cycles
+    opts.initial_plasticity = initialPlasticity
+    opts.final_plasticity = finalPlasticity
+    opts.test_trials = testTrials
+    opts.noise_by_cell = noiseByCell
+    opts.post_mult_noise = postMultNoise
+    opts.noise_for_zero_cells = noiseForZeroCells
+    opts.late_noise = lateNoise
+    opts.exponential_nhg = exponentialNhg
+    opts.demi_gaussians = demiGaussians
+    opts.negative_weights_ok = negativeWeightsOk
+    opts.resolve_ties_by_skipping = resolveTiesBySkipping
+    if (useCustomSchedule) {
+      opts.learning_schedule = customSchedule
+    }
+    return opts
+  }
+
   function handleRun() {
     setIsLoading(true)
+    setScheduleError(null)
     setTimeout(() => {
       try {
-        const opts = new NhgOptions()
-        opts.cycles = cycles
-        opts.initial_plasticity = initialPlasticity
-        opts.final_plasticity = finalPlasticity
-        opts.test_trials = testTrials
-        opts.noise_by_cell = noiseByCell
-        opts.post_mult_noise = postMultNoise
-        opts.noise_for_zero_cells = noiseForZeroCells
-        opts.late_noise = lateNoise
-        opts.exponential_nhg = exponentialNhg
-        opts.demi_gaussians = demiGaussians
-        opts.negative_weights_ok = negativeWeightsOk
-        opts.resolve_ties_by_skipping = resolveTiesBySkipping
+        const opts = buildOpts()
         const r = run_nhg(tableauText, opts)
 
         const constraintCount = tableau.constraint_count()
@@ -128,7 +151,11 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         setResult({ weights, forms, logLikelihood: r.log_likelihood() })
       } catch (err) {
         console.error('NHG error:', err)
-        setResult({ error: String(err) })
+        const msg = String(err)
+        if (msg.toLowerCase().includes('learning schedule')) {
+          setScheduleError(msg)
+        }
+        setResult({ error: msg })
       } finally {
         setIsLoading(false)
       }
@@ -137,19 +164,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
 
   function handleDownload() {
     try {
-      const opts = new NhgOptions()
-      opts.cycles = cycles
-      opts.initial_plasticity = initialPlasticity
-      opts.final_plasticity = finalPlasticity
-      opts.test_trials = testTrials
-      opts.noise_by_cell = noiseByCell
-      opts.post_mult_noise = postMultNoise
-      opts.noise_for_zero_cells = noiseForZeroCells
-      opts.late_noise = lateNoise
-      opts.exponential_nhg = exponentialNhg
-      opts.demi_gaussians = demiGaussians
-      opts.negative_weights_ok = negativeWeightsOk
-      opts.resolve_ties_by_skipping = resolveTiesBySkipping
+      const opts = buildOpts()
       const formattedOutput = format_nhg_output(tableauText, inputFilename || 'tableau.txt', opts)
       download(formattedOutput, makeOutputFilename(inputFilename, 'NHGOutput'))
     } catch (err) {
@@ -298,6 +313,46 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
           />
           Resolve ties by skipping trial
         </label>
+      </div>
+
+      <div className="nhg-options">
+        <div className="nhg-options-label">Learning schedule:</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={useCustomSchedule}
+            onChange={(e) => setParams({ useCustomSchedule: e.target.checked })}
+          />
+          Use custom learning schedule
+        </label>
+        {useCustomSchedule && (
+          <div style={{ marginTop: '0.5rem' }}>
+            <div
+              style={{
+                fontSize: '0.85em',
+                color: 'var(--color-text-muted)',
+                marginBottom: '0.25rem',
+              }}
+            >
+              Columns: Trials, PlastMark, PlastFaith, NoiseMark, NoiseFaith (tab or space separated)
+            </div>
+            <textarea
+              className="schedule-textarea"
+              value={customSchedule}
+              onChange={(e) => {
+                setParams({ customSchedule: e.target.value })
+                setScheduleError(null)
+              }}
+              rows={6}
+              spellCheck={false}
+            />
+            {scheduleError && (
+              <div className="rcd-status failure" style={{ marginTop: '0.25rem' }}>
+                {scheduleError}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="action-bar">

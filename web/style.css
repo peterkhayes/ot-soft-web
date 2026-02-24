@@ -1458,6 +1458,20 @@ button:disabled {
     margin-left: 1.6rem;
 }
 
+.schedule-textarea {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    width: 100%;
+    max-width: 36rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-bg-input);
+    color: var(--color-text);
+    resize: vertical;
+    tab-size: 8;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Hasse Diagram
    ═══════════════════════════════════════════════════════════════ */

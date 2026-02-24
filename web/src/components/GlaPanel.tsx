@@ -32,6 +32,13 @@ interface GlaErrorState {
 
 type GlaState = GlaResultState | GlaErrorState
 
+const DEFAULT_SCHEDULE_TEMPLATE =
+  'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
+  '250000\t2\t2\t2\t2\n' +
+  '250000\t0.2\t0.2\t2\t2\n' +
+  '250000\t0.02\t0.02\t2\t2\n' +
+  '250000\t0.002\t0.002\t2\t2'
+
 interface GlaParams {
   maxentMode: boolean
   cycles: number
@@ -41,6 +48,8 @@ interface GlaParams {
   negativeWeightsOk: boolean
   gaussianPrior: boolean
   sigma: number
+  useCustomSchedule: boolean
+  customSchedule: string
 }
 const GLA_DEFAULTS: GlaParams = {
   maxentMode: false,
@@ -51,6 +60,8 @@ const GLA_DEFAULTS: GlaParams = {
   negativeWeightsOk: false,
   gaussianPrior: false,
   sigma: 1.0,
+  useCustomSchedule: false,
+  customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
 }
 
 function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
@@ -64,25 +75,37 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     negativeWeightsOk,
     gaussianPrior,
     sigma,
+    useCustomSchedule,
+    customSchedule,
   } = params
 
   const [result, setResult] = useState<GlaState | null>(null)
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const download = useDownload()
 
+  function buildOpts(): GlaOptions {
+    const opts = new GlaOptions()
+    opts.maxent_mode = maxentMode
+    opts.cycles = cycles
+    opts.initial_plasticity = initialPlasticity
+    opts.final_plasticity = finalPlasticity
+    opts.test_trials = maxentMode ? 0 : testTrials
+    opts.negative_weights_ok = negativeWeightsOk
+    opts.gaussian_prior = maxentMode && gaussianPrior
+    opts.sigma = sigma
+    if (useCustomSchedule) {
+      opts.learning_schedule = customSchedule
+    }
+    return opts
+  }
+
   function handleRun() {
     setIsLoading(true)
+    setScheduleError(null)
     setTimeout(() => {
       try {
-        const opts = new GlaOptions()
-        opts.maxent_mode = maxentMode
-        opts.cycles = cycles
-        opts.initial_plasticity = initialPlasticity
-        opts.final_plasticity = finalPlasticity
-        opts.test_trials = maxentMode ? 0 : testTrials
-        opts.negative_weights_ok = negativeWeightsOk
-        opts.gaussian_prior = maxentMode && gaussianPrior
-        opts.sigma = sigma
+        const opts = buildOpts()
         const r = run_gla(tableauText, opts)
 
         const constraintCount = tableau.constraint_count()
@@ -131,7 +154,11 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         })
       } catch (err) {
         console.error('GLA error:', err)
-        setResult({ error: String(err) })
+        const msg = String(err)
+        if (msg.toLowerCase().includes('learning schedule')) {
+          setScheduleError(msg)
+        }
+        setResult({ error: msg })
       } finally {
         setIsLoading(false)
       }
@@ -140,15 +167,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
   function handleDownload() {
     try {
-      const opts = new GlaOptions()
-      opts.maxent_mode = maxentMode
-      opts.cycles = cycles
-      opts.initial_plasticity = initialPlasticity
-      opts.final_plasticity = finalPlasticity
-      opts.test_trials = maxentMode ? 0 : testTrials
-      opts.negative_weights_ok = negativeWeightsOk
-      opts.gaussian_prior = maxentMode && gaussianPrior
-      opts.sigma = sigma
+      const opts = buildOpts()
       const output = format_gla_output(tableauText, inputFilename || 'tableau.txt', opts)
       const suffix = maxentMode ? 'GLA-MaxEntOutput' : 'GLA-StochasticOTOutput'
       download(output, makeOutputFilename(inputFilename, suffix))
@@ -285,6 +304,46 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           )}
         </div>
       )}
+
+      <div className="nhg-options">
+        <div className="nhg-options-label">Learning schedule:</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={useCustomSchedule}
+            onChange={(e) => setParams({ useCustomSchedule: e.target.checked })}
+          />
+          Use custom learning schedule
+        </label>
+        {useCustomSchedule && (
+          <div style={{ marginTop: '0.5rem' }}>
+            <div
+              style={{
+                fontSize: '0.85em',
+                color: 'var(--color-text-muted)',
+                marginBottom: '0.25rem',
+              }}
+            >
+              Columns: Trials, PlastMark, PlastFaith, NoiseMark, NoiseFaith (tab or space separated)
+            </div>
+            <textarea
+              className="schedule-textarea"
+              value={customSchedule}
+              onChange={(e) => {
+                setParams({ customSchedule: e.target.value })
+                setScheduleError(null)
+              }}
+              rows={6}
+              spellCheck={false}
+            />
+            {scheduleError && (
+              <div className="rcd-status failure" style={{ marginTop: '0.25rem' }}>
+                {scheduleError}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="action-bar">
         <button

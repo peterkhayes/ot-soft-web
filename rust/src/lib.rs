@@ -33,6 +33,9 @@ pub struct NhgOptions {
     pub demi_gaussians: bool,
     pub negative_weights_ok: bool,
     pub resolve_ties_by_skipping: bool,
+    /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
+    /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
+    learning_schedule: String,
 }
 
 impl Default for NhgOptions {
@@ -56,7 +59,18 @@ impl NhgOptions {
             demi_gaussians: false,
             negative_weights_ok: false,
             resolve_ties_by_skipping: false,
+            learning_schedule: String::new(),
         }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn learning_schedule(&self) -> String {
+        self.learning_schedule.clone()
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_learning_schedule(&mut self, v: String) {
+        self.learning_schedule = v;
     }
 }
 
@@ -72,6 +86,9 @@ pub struct GlaOptions {
     /// Gaussian prior for online MaxEnt (mu=0, per-constraint sigma)
     pub gaussian_prior: bool,
     pub sigma: f64,
+    /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
+    /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
+    learning_schedule: String,
 }
 
 impl Default for GlaOptions {
@@ -91,7 +108,18 @@ impl GlaOptions {
             negative_weights_ok: false,
             gaussian_prior: false,
             sigma: 1.0,
+            learning_schedule: String::new(),
         }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn learning_schedule(&self) -> String {
+        self.learning_schedule.clone()
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_learning_schedule(&mut self, v: String) {
+        self.learning_schedule = v;
     }
 }
 
@@ -201,6 +229,7 @@ mod nhg;
 mod gla;
 mod factorial_typology;
 mod hasse;
+pub mod schedule;
 
 // Re-export public types
 pub use tableau::{Tableau, Constraint, Candidate, InputForm};
@@ -319,8 +348,10 @@ pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) ->
 #[wasm_bindgen]
 pub fn run_nhg(text: &str, opts: &NhgOptions) -> Result<NhgResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_nhg(
-        opts.cycles, opts.initial_plasticity, opts.final_plasticity, opts.test_trials,
+    let sched = build_nhg_schedule(opts)?;
+    Ok(tableau.run_nhg_with_schedule(
+        &sched,
+        opts.test_trials,
         opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
         opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
     ))
@@ -330,12 +361,24 @@ pub fn run_nhg(text: &str, opts: &NhgOptions) -> Result<NhgResult, String> {
 #[wasm_bindgen]
 pub fn format_nhg_output(text: &str, filename: &str, opts: &NhgOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_nhg(
-        opts.cycles, opts.initial_plasticity, opts.final_plasticity, opts.test_trials,
+    let sched = build_nhg_schedule(opts)?;
+    let result = tableau.run_nhg_with_schedule(
+        &sched,
+        opts.test_trials,
         opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
         opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
     );
     Ok(result.format_output(&tableau, filename))
+}
+
+fn build_nhg_schedule(opts: &NhgOptions) -> Result<schedule::LearningSchedule, String> {
+    if opts.learning_schedule.trim().is_empty() {
+        Ok(schedule::LearningSchedule::default_4stage(
+            opts.cycles, opts.initial_plasticity, opts.final_plasticity,
+        ))
+    } else {
+        schedule::LearningSchedule::parse(&opts.learning_schedule)
+    }
 }
 
 /// Format BCD results as text for download.
@@ -404,8 +447,9 @@ pub fn format_lfcd_output(
 #[wasm_bindgen]
 pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_gla(
-        opts.maxent_mode, opts.cycles, opts.initial_plasticity, opts.final_plasticity,
+    let sched = build_gla_schedule(opts)?;
+    Ok(tableau.run_gla_with_schedule(
+        opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
     ))
 }
@@ -414,11 +458,35 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
 #[wasm_bindgen]
 pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_gla(
-        opts.maxent_mode, opts.cycles, opts.initial_plasticity, opts.final_plasticity,
+    let sched = build_gla_schedule(opts)?;
+    let result = tableau.run_gla_with_schedule(
+        opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
     );
     Ok(result.format_output(&tableau, filename))
+}
+
+fn build_gla_schedule(opts: &GlaOptions) -> Result<schedule::LearningSchedule, String> {
+    if opts.learning_schedule.trim().is_empty() {
+        Ok(schedule::LearningSchedule::default_4stage(
+            opts.cycles, opts.initial_plasticity, opts.final_plasticity,
+        ))
+    } else {
+        schedule::LearningSchedule::parse(&opts.learning_schedule)
+    }
+}
+
+/// Validate a learning schedule text and return a formatted description, or an error message.
+///
+/// Useful for the web UI to give feedback before running the full algorithm.
+#[wasm_bindgen]
+pub fn validate_learning_schedule(text: &str) -> Result<String, String> {
+    let sched = schedule::LearningSchedule::parse(text)?;
+    Ok(format!(
+        "Valid: {} stage(s), {} total cycles",
+        sched.stages.len(),
+        sched.total_cycles()
+    ))
 }
 
 /// Run factorial typology on a tableau.
