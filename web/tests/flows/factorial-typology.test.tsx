@@ -1,6 +1,7 @@
-import { test, expect } from 'vitest'
 import { page } from '@vitest/browser/context'
-import { renderApp, loadExample, normalizeOutput } from '../helpers'
+import { expect, test } from 'vitest'
+
+import { loadExample, normalizeOutput, renderApp } from '../helpers'
 
 test('Factorial Typology: FTSum download', async () => {
   const { downloads } = renderApp()

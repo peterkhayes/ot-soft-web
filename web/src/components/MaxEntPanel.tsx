@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import { run_maxent, format_maxent_output, MaxEntOptions } from '../../pkg/ot_soft.js'
+
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { format_maxent_output, MaxEntOptions, run_maxent } from '../../pkg/ot_soft.js'
 import { useDownload } from '../downloadContext.ts'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 
 interface MaxEntPanelProps {
   tableau: Tableau
@@ -33,8 +34,20 @@ interface MaxEntErrorState {
 
 type MaxEntState = MaxEntResultState | MaxEntErrorState
 
-interface MaxEntParams { iterations: number; weightMin: number; weightMax: number; usePrior: boolean; sigmaSquared: number }
-const MAXENT_DEFAULTS: MaxEntParams = { iterations: 100, weightMin: 0, weightMax: 50, usePrior: false, sigmaSquared: 1 }
+interface MaxEntParams {
+  iterations: number
+  weightMin: number
+  weightMax: number
+  usePrior: boolean
+  sigmaSquared: number
+}
+const MAXENT_DEFAULTS: MaxEntParams = {
+  iterations: 100,
+  weightMin: 0,
+  weightMax: 50,
+  usePrior: false,
+  sigmaSquared: 1,
+}
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
   const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', MAXENT_DEFAULTS)
@@ -46,52 +59,54 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
   function handleRun() {
     setIsLoading(true)
     setTimeout(() => {
-    try {
-      const opts = new MaxEntOptions()
-      opts.iterations = iterations
-      opts.weight_min = weightMin
-      opts.weight_max = weightMax
-      opts.use_prior = usePrior
-      opts.sigma_squared = sigmaSquared
-      const r = run_maxent(tableauText, opts)
-      const constraintCount = tableau.constraint_count()
-      const formCount = tableau.form_count()
+      try {
+        const opts = new MaxEntOptions()
+        opts.iterations = iterations
+        opts.weight_min = weightMin
+        opts.weight_max = weightMax
+        opts.use_prior = usePrior
+        opts.sigma_squared = sigmaSquared
+        const r = run_maxent(tableauText, opts)
+        const constraintCount = tableau.constraint_count()
+        const formCount = tableau.form_count()
 
-      // Build weights array sorted by weight descending
-      const weights = Array.from({ length: constraintCount }, (_, i) => {
-        const c = tableau.get_constraint(i)!
-        return { abbrev: c.abbrev, fullName: c.full_name, weight: r.get_weight(i), index: i }
-      }).sort((a, b) => b.weight - a.weight)
+        // Build weights array sorted by weight descending
+        const weights = Array.from({ length: constraintCount }, (_, i) => {
+          const c = tableau.get_constraint(i)!
+          return { abbrev: c.abbrev, fullName: c.full_name, weight: r.get_weight(i), index: i }
+        }).sort((a, b) => b.weight - a.weight)
 
-      // Build forms with candidates
-      const forms = Array.from({ length: formCount }, (_, formIdx) => {
-        const form = tableau.get_form(formIdx)!
-        const totalFreq = Array.from({ length: form.candidate_count() }, (_, ci) =>
-          form.get_candidate(ci)!.frequency
-        ).reduce((a, b) => a + b, 0)
+        // Build forms with candidates
+        const forms = Array.from({ length: formCount }, (_, formIdx) => {
+          const form = tableau.get_form(formIdx)!
+          const totalFreq = Array.from(
+            { length: form.candidate_count() },
+            (_, ci) => form.get_candidate(ci)!.frequency,
+          ).reduce((a, b) => a + b, 0)
 
-        const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
-          const cand = form.get_candidate(candIdx)!
-          return {
-            form: cand.form,
-            obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
-            predPct: r.get_predicted_prob(formIdx, candIdx) * 100,
-            violations: Array.from({ length: constraintCount }, (_, ci) =>
-              cand.get_violation(ci) ?? 0
-            ),
-          }
+          const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
+            const cand = form.get_candidate(candIdx)!
+            return {
+              form: cand.form,
+              obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
+              predPct: r.get_predicted_prob(formIdx, candIdx) * 100,
+              violations: Array.from(
+                { length: constraintCount },
+                (_, ci) => cand.get_violation(ci) ?? 0,
+              ),
+            }
+          })
+
+          return { input: form.input, candidates }
         })
 
-        return { input: form.input, candidates }
-      })
-
-      setResult({ weights, forms, logProb: r.log_prob() })
-    } catch (err) {
-      console.error('MaxEnt error:', err)
-      setResult({ error: String(err) })
-    } finally {
-      setIsLoading(false)
-    }
+        setResult({ weights, forms, logProb: r.log_prob() })
+      } catch (err) {
+        console.error('MaxEnt error:', err)
+        setResult({ error: String(err) })
+      } finally {
+        setIsLoading(false)
+      }
     }, 0)
   }
 
@@ -103,7 +118,11 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       opts.weight_max = weightMax
       opts.use_prior = usePrior
       opts.sigma_squared = sigmaSquared
-      const formattedOutput = format_maxent_output(tableauText, inputFilename || 'tableau.txt', opts)
+      const formattedOutput = format_maxent_output(
+        tableauText,
+        inputFilename || 'tableau.txt',
+        opts,
+      )
       download(formattedOutput, makeOutputFilename(inputFilename, 'MaxEntOutput'))
     } catch (err) {
       console.error('Download error:', err)
@@ -113,10 +132,12 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
 
   const atDefaults = isAtDefaults(params, MAXENT_DEFAULTS)
   const constraintCount = tableau.constraint_count()
-  const constraintAbbrevs = Array.from({ length: constraintCount }, (_, i) =>
-    tableau.get_constraint(i)!.abbrev
+  const constraintAbbrevs = Array.from(
+    { length: constraintCount },
+    (_, i) => tableau.get_constraint(i)!.abbrev,
   )
-  const successResult: MaxEntResultState | null = result && !result.error ? result as MaxEntResultState : null
+  const successResult: MaxEntResultState | null =
+    result && !result.error ? (result as MaxEntResultState) : null
 
   return (
     <section className="analysis-panel">
@@ -134,7 +155,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             value={iterations}
             min={1}
             max={100000}
-            onChange={e => setParams({ iterations: Math.max(1, parseInt(e.target.value) || 1) })}
+            onChange={(e) => setParams({ iterations: Math.max(1, parseInt(e.target.value) || 1) })}
           />
         </label>
         <label className="param-label">
@@ -144,7 +165,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             className="param-input"
             value={weightMin}
             step={0.1}
-            onChange={e => setParams({ weightMin: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => setParams({ weightMin: parseFloat(e.target.value) || 0 })}
           />
         </label>
         <label className="param-label">
@@ -155,7 +176,9 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             value={weightMax}
             min={0.1}
             step={1}
-            onChange={e => setParams({ weightMax: Math.max(0.1, parseFloat(e.target.value) || 50) })}
+            onChange={(e) =>
+              setParams({ weightMax: Math.max(0.1, parseFloat(e.target.value) || 50) })
+            }
           />
         </label>
       </div>
@@ -166,7 +189,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
           <input
             type="checkbox"
             checked={usePrior}
-            onChange={e => setParams({ usePrior: e.target.checked })}
+            onChange={(e) => setParams({ usePrior: e.target.checked })}
           />
           Gaussian prior (L2 regularization)
         </label>
@@ -179,22 +202,43 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
               value={sigmaSquared}
               min={0.0001}
               step={0.1}
-              onChange={e => setParams({ sigmaSquared: Math.max(0.0001, parseFloat(e.target.value) || 1) })}
+              onChange={(e) =>
+                setParams({ sigmaSquared: Math.max(0.0001, parseFloat(e.target.value) || 1) })
+              }
             />
           </label>
         )}
       </div>
 
       <div className="action-bar">
-        <button className={`primary-button${isLoading ? ' primary-button--loading' : ''}`} onClick={handleRun} disabled={isLoading}>
+        <button
+          className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
+          onClick={handleRun}
+          disabled={isLoading}
+        >
           {isLoading ? (
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 22h14"/><path d="M5 2h14"/>
-              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
-              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 22h14" />
+              <path d="M5 2h14" />
+              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
             </svg>
           ) : (
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
           )}
@@ -202,7 +246,13 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         </button>
         {result && !result.error && (
           <button className="download-button" onClick={handleDownload}>
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -210,8 +260,18 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             Download Results
           </button>
         )}
-        <button className="reset-button" onClick={() => setParams(MAXENT_DEFAULTS)} disabled={atDefaults}>
-          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <button
+          className="reset-button"
+          onClick={() => setParams(MAXENT_DEFAULTS)}
+          disabled={atDefaults}
+        >
+          <svg
+            className="button-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="1 4 1 10 7 10"></polyline>
             <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
           </svg>
@@ -220,9 +280,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       </div>
 
       {result?.error && (
-        <div className="rcd-status failure">
-          Error running MaxEnt: {result.error}
-        </div>
+        <div className="rcd-status failure">Error running MaxEnt: {result.error}</div>
       )}
       {successResult && (
         <div className="maxent-results">
@@ -264,7 +322,9 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
                       <th className="pct-col">Obs%</th>
                       <th className="pct-col">Pred%</th>
                       {constraintAbbrevs.map((abbrev, ci) => (
-                        <th key={ci} className="viol-col">{abbrev}</th>
+                        <th key={ci} className="viol-col">
+                          {abbrev}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -278,7 +338,9 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
                         <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
                         <td className="pct-col">{cand.predPct.toFixed(1)}%</td>
                         {cand.violations.map((v, vi) => (
-                          <td key={vi} className="viol-col">{v > 0 ? v : ''}</td>
+                          <td key={vi} className="viol-col">
+                            {v > 0 ? v : ''}
+                          </td>
                         ))}
                       </tr>
                     ))}

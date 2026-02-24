@@ -1,6 +1,7 @@
-import { test, expect } from 'vitest'
 import { page } from '@vitest/browser/context'
-import { renderApp, loadExample, normalizeOutput } from '../helpers'
+import { expect, test } from 'vitest'
+
+import { loadExample, normalizeOutput, renderApp } from '../helpers'
 
 test('RCD: load example, run, see results, download', async () => {
   const { downloads } = renderApp()
@@ -10,7 +11,9 @@ test('RCD: load example, run, see results, download', async () => {
   await page.getByText('Run RCD Algorithm').click()
 
   // Assert results appear
-  await expect.element(page.getByText('A ranking was found that generates the correct outputs')).toBeVisible()
+  await expect
+    .element(page.getByText('A ranking was found that generates the correct outputs'))
+    .toBeVisible()
   await expect.element(page.getByText('Stratum 1')).toBeVisible()
 
   // Download button appears and works

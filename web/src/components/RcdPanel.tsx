@@ -1,10 +1,20 @@
-import { useState, useRef } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import { run_rcd, format_rcd_output, run_bcd, format_bcd_output, run_lfcd, format_lfcd_output, FredOptions, fred_hasse_dot } from '../../pkg/ot_soft.js'
+import { useRef, useState } from 'react'
+
 import type { Tableau } from '../../pkg/ot_soft.js'
-import HasseDiagram from './HasseDiagram.tsx'
-import { makeOutputFilename, isAtDefaults } from '../utils.ts'
+import {
+  format_bcd_output,
+  format_lfcd_output,
+  format_rcd_output,
+  fred_hasse_dot,
+  FredOptions,
+  run_bcd,
+  run_lfcd,
+  run_rcd,
+} from '../../pkg/ot_soft.js'
 import { useDownload } from '../downloadContext.ts'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import { isAtDefaults, makeOutputFilename } from '../utils.ts'
+import HasseDiagram from './HasseDiagram.tsx'
 
 interface RcdPanelProps {
   tableau: Tableau
@@ -36,21 +46,33 @@ type RcdState = RcdResultState | RcdErrorState
 
 type Algorithm = 'rcd' | 'bcd' | 'bcd-specific' | 'lfcd'
 
-interface RcdParams { algorithm: Algorithm; includeFred: boolean; useMib: boolean; showDetails: boolean; includeMiniTableaux: boolean }
-const RCD_DEFAULTS: RcdParams = { algorithm: 'rcd', includeFred: true, useMib: false, showDetails: true, includeMiniTableaux: true }
+interface RcdParams {
+  algorithm: Algorithm
+  includeFred: boolean
+  useMib: boolean
+  showDetails: boolean
+  includeMiniTableaux: boolean
+}
+const RCD_DEFAULTS: RcdParams = {
+  algorithm: 'rcd',
+  includeFred: true,
+  useMib: false,
+  showDetails: true,
+  includeMiniTableaux: true,
+}
 
 const ALGORITHM_LABELS: Record<Algorithm, string> = {
-  'rcd': 'RCD',
-  'bcd': 'BCD',
+  rcd: 'RCD',
+  bcd: 'BCD',
   'bcd-specific': 'BCD (Specific)',
-  'lfcd': 'LFCD',
+  lfcd: 'LFCD',
 }
 
 const ALGORITHM_DESCRIPTIONS: Record<Algorithm, string> = {
-  'rcd': 'Recursive Constraint Demotion',
-  'bcd': 'Biased Constraint Demotion',
+  rcd: 'Recursive Constraint Demotion',
+  bcd: 'Biased Constraint Demotion',
   'bcd-specific': 'Biased Constraint Demotion (favors specific faithfulness)',
-  'lfcd': 'Low Faithfulness Constraint Demotion',
+  lfcd: 'Low Faithfulness Constraint Demotion',
 }
 
 function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
@@ -68,12 +90,15 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   const atDefaults = isAtDefaults(params, RCD_DEFAULTS)
 
   function loadAprioriFile(file: File) {
-    file.text().then(text => {
-      setAprioriText(text)
-      setAprioriFilename(file.name)
-    }).catch(err => {
-      console.error('Error reading a priori file:', err)
-    })
+    file
+      .text()
+      .then((text) => {
+        setAprioriText(text)
+        setAprioriFilename(file.name)
+      })
+      .catch((err) => {
+        console.error('Error reading a priori file:', err)
+      })
   }
 
   function handleAprioriFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -97,54 +122,55 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
   function handleRun() {
     setIsLoading(true)
     setTimeout(() => {
-    try {
-      const apriori = supportsApriori ? aprioriText : ''
-      const result = algorithm === 'rcd'
-        ? run_rcd(tableauText, apriori)
-        : algorithm === 'lfcd'
-          ? run_lfcd(tableauText, apriori)
-          : run_bcd(tableauText, algorithm === 'bcd-specific')
+      try {
+        const apriori = supportsApriori ? aprioriText : ''
+        const result =
+          algorithm === 'rcd'
+            ? run_rcd(tableauText, apriori)
+            : algorithm === 'lfcd'
+              ? run_lfcd(tableauText, apriori)
+              : run_bcd(tableauText, algorithm === 'bcd-specific')
 
-      const numStrata = result.num_strata()
-      const constraintCount = tableau.constraint_count()
+        const numStrata = result.num_strata()
+        const constraintCount = tableau.constraint_count()
 
-      const strata: StratumData[] = []
-      for (let s = 0; s < numStrata; s++) {
-        strata.push({ constraints: [] })
-      }
-
-      for (let i = 0; i < constraintCount; i++) {
-        const stratum = result.get_stratum(i)
-        if (stratum !== undefined && stratum >= 1 && stratum <= numStrata) {
-          const constraint = tableau.get_constraint(i)!
-          strata[stratum - 1].constraints.push({
-            abbrev: constraint.abbrev,
-            fullName: constraint.full_name,
-          })
+        const strata: StratumData[] = []
+        for (let s = 0; s < numStrata; s++) {
+          strata.push({ constraints: [] })
         }
-      }
 
-      let hasseDot: string | undefined
-      if (includeFred) {
-        try {
-          hasseDot = fred_hasse_dot(tableauText, apriori, useMib)
-        } catch (e) {
-          console.warn('Hasse diagram generation failed:', e)
+        for (let i = 0; i < constraintCount; i++) {
+          const stratum = result.get_stratum(i)
+          if (stratum !== undefined && stratum >= 1 && stratum <= numStrata) {
+            const constraint = tableau.get_constraint(i)!
+            strata[stratum - 1].constraints.push({
+              abbrev: constraint.abbrev,
+              fullName: constraint.full_name,
+            })
+          }
         }
-      }
 
-      setRcdResult({
-        success: result.success(),
-        strata,
-        tieWarning: result.tie_warning(),
-        hasseDot,
-      })
-    } catch (err) {
-      console.error('Algorithm error:', err)
-      setRcdResult({ error: String(err) })
-    } finally {
-      setIsLoading(false)
-    }
+        let hasseDot: string | undefined
+        if (includeFred) {
+          try {
+            hasseDot = fred_hasse_dot(tableauText, apriori, useMib)
+          } catch (e) {
+            console.warn('Hasse diagram generation failed:', e)
+          }
+        }
+
+        setRcdResult({
+          success: result.success(),
+          strata,
+          tieWarning: result.tie_warning(),
+          hasseDot,
+        })
+      } catch (err) {
+        console.error('Algorithm error:', err)
+        setRcdResult({ error: String(err) })
+      } finally {
+        setIsLoading(false)
+      }
     }, 0)
   }
 
@@ -156,11 +182,17 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
       fredOpts.use_mib = useMib
       fredOpts.show_details = showDetails
       fredOpts.include_mini_tableaux = includeMiniTableaux
-      const formattedOutput = algorithm === 'rcd'
-        ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
-        : algorithm === 'lfcd'
-          ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
-          : format_bcd_output(tableauText, inputFilename || 'tableau.txt', algorithm === 'bcd-specific', fredOpts)
+      const formattedOutput =
+        algorithm === 'rcd'
+          ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
+          : algorithm === 'lfcd'
+            ? format_lfcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
+            : format_bcd_output(
+                tableauText,
+                inputFilename || 'tableau.txt',
+                algorithm === 'bcd-specific',
+                fredOpts,
+              )
 
       download(formattedOutput, makeOutputFilename(inputFilename, 'Output'))
     } catch (err) {
@@ -193,30 +225,65 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
             className={`apriori-upload${isAprioriDragging ? ' apriori-upload--dragging' : ''}${aprioriFilename ? ' apriori-upload--loaded' : ''}`}
             title="Optional: load an a priori rankings file"
             onClick={() => aprioriInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setIsAprioriDragging(true) }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setIsAprioriDragging(true)
+            }}
             onDragLeave={() => setIsAprioriDragging(false)}
             onDrop={handleAprioriDrop}
           >
-            <input ref={aprioriInputRef} type="file" accept=".txt" onChange={handleAprioriFile} style={{ display: 'none' }} />
-            <span className="apriori-upload-label">{aprioriFilename ?? 'A priori rankings (optional)'}</span>
+            <input
+              ref={aprioriInputRef}
+              type="file"
+              accept=".txt"
+              onChange={handleAprioriFile}
+              style={{ display: 'none' }}
+            />
+            <span className="apriori-upload-label">
+              {aprioriFilename ?? 'A priori rankings (optional)'}
+            </span>
             {aprioriFilename && (
               <button
                 className="apriori-clear"
-                onClick={(e) => { e.stopPropagation(); handleAprioriClear() }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleAprioriClear()
+                }}
                 title="Clear a priori rankings"
-              >×</button>
+              >
+                ×
+              </button>
             )}
           </div>
         )}
-        <button className={`primary-button${isLoading ? ' primary-button--loading' : ''}`} onClick={handleRun} disabled={isLoading}>
+        <button
+          className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
+          onClick={handleRun}
+          disabled={isLoading}
+        >
           {isLoading ? (
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 22h14"/><path d="M5 2h14"/>
-              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
-              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 22h14" />
+              <path d="M5 2h14" />
+              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
             </svg>
           ) : (
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
           )}
@@ -224,7 +291,13 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
         </button>
         {rcdResult && !rcdResult.error && (
           <button className="download-button" onClick={handleDownload}>
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -232,8 +305,18 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
             Download Results
           </button>
         )}
-        <button className="reset-button" onClick={() => setParams(RCD_DEFAULTS)} disabled={atDefaults}>
-          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <button
+          className="reset-button"
+          onClick={() => setParams(RCD_DEFAULTS)}
+          disabled={atDefaults}
+        >
+          <svg
+            className="button-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="1 4 1 10 7 10"></polyline>
             <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
           </svg>
@@ -281,11 +364,9 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
         )}
       </div>
 
-      {rcdResult && (
-        rcdResult.error ? (
-          <div className="rcd-status failure">
-            Error running algorithm: {rcdResult.error}
-          </div>
+      {rcdResult &&
+        (rcdResult.error ? (
+          <div className="rcd-status failure">Error running algorithm: {rcdResult.error}</div>
         ) : (
           <div className="rcd-results">
             <div className={`rcd-status ${rcdResult.success ? 'success' : 'failure'}`}>
@@ -296,9 +377,9 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
 
             {rcdResult.tieWarning && (
               <div className="rcd-status warning">
-                Caution: BCD selected arbitrarily among tied faithfulness constraint subsets.
-                Try changing the order of faithfulness constraints in the input file to see
-                whether this results in a different ranking.
+                Caution: BCD selected arbitrarily among tied faithfulness constraint subsets. Try
+                changing the order of faithfulness constraints in the input file to see whether this
+                results in a different ranking.
               </div>
             )}
 
@@ -322,8 +403,7 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
               />
             )}
           </div>
-        )
-      )}
+        ))}
     </section>
   )
 }

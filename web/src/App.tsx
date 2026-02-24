@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
 import '../style.css'
+
+import { useEffect, useRef, useState } from 'react'
+
 import type { Tableau } from '../pkg/ot_soft.js'
-import InputPanel from './components/InputPanel.tsx'
-import TableauPanel from './components/TableauPanel.tsx'
-import FrameworkPanel from './components/FrameworkPanel.tsx'
+import FactorialTypologyPanel from './components/FactorialTypologyPanel.tsx'
 import type { Framework } from './components/FrameworkPanel.tsx'
-import RcdPanel from './components/RcdPanel.tsx'
+import FrameworkPanel from './components/FrameworkPanel.tsx'
+import GlaPanel from './components/GlaPanel.tsx'
+import InputPanel from './components/InputPanel.tsx'
 import MaxEntPanel from './components/MaxEntPanel.tsx'
 import NhgPanel from './components/NhgPanel.tsx'
-import GlaPanel from './components/GlaPanel.tsx'
-import FactorialTypologyPanel from './components/FactorialTypologyPanel.tsx'
+import RcdPanel from './components/RcdPanel.tsx'
+import TableauPanel from './components/TableauPanel.tsx'
 
 const NOT_IMPLEMENTED: Record<string, string> = {}
 
@@ -40,15 +42,33 @@ function ExpandableSection({ children }: { children: React.ReactNode }) {
       </div>
       {overflows && (
         <div className="expand-bar">
-          <button className="expand-toggle" onClick={() => setExpanded(e => !e)}>
+          <button className="expand-toggle" onClick={() => setExpanded((e) => !e)}>
             {expanded ? (
               <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
                 Collapse
               </>
             ) : (
               <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
                 Expand
               </>
             )}
@@ -75,7 +95,9 @@ function App() {
     return 'classical-ot'
   })
   function setFramework(fw: Framework) {
-    try { localStorage.setItem('otsoft:framework', fw) } catch {}
+    try {
+      localStorage.setItem('otsoft:framework', fw)
+    } catch {}
     setFrameworkRaw(fw)
   }
   // loadCountRef is used as a React key on algorithm panels to force a full remount
@@ -125,7 +147,10 @@ function App() {
         <div className="container">
           <Header />
           <main>
-            <div className="status-message" style={{ background: '#ffe8e8', borderLeftColor: '#e74c3c' }}>
+            <div
+              className="status-message"
+              style={{ background: '#ffe8e8', borderLeftColor: '#e74c3c' }}
+            >
               <span>{wasmError}</span>
             </div>
           </main>
@@ -191,10 +216,7 @@ function App() {
 
             {currentTableau && !parseError && (
               <ExpandableSection>
-                <FrameworkPanel
-                  framework={framework}
-                  onFrameworkChange={setFramework}
-                />
+                <FrameworkPanel framework={framework} onFrameworkChange={setFramework} />
               </ExpandableSection>
             )}
 
@@ -289,7 +311,16 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-divider"></div>
-      <p>OTSoft &middot; Version 2.7 &middot; <a href="https://github.com/peterkhayes/ot-soft-web/blob/main/README.md" target="_blank" rel="noopener noreferrer">About</a></p>
+      <p>
+        OTSoft &middot; Version 2.7 &middot;{' '}
+        <a
+          href="https://github.com/peterkhayes/ot-soft-web/blob/main/README.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          About
+        </a>
+      </p>
     </footer>
   )
 }

@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import { run_gla, format_gla_output, GlaOptions, gla_hasse_dot } from '../../pkg/ot_soft.js'
+
 import type { Tableau } from '../../pkg/ot_soft.js'
-import HasseDiagram from './HasseDiagram.tsx'
-import { makeOutputFilename, isAtDefaults } from '../utils.ts'
+import { format_gla_output, gla_hasse_dot, GlaOptions, run_gla } from '../../pkg/ot_soft.js'
 import { useDownload } from '../downloadContext.ts'
+import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import { isAtDefaults, makeOutputFilename } from '../utils.ts'
+import HasseDiagram from './HasseDiagram.tsx'
 
 interface GlaPanelProps {
   tableau: Tableau
@@ -31,12 +32,39 @@ interface GlaErrorState {
 
 type GlaState = GlaResultState | GlaErrorState
 
-interface GlaParams { maxentMode: boolean; cycles: number; initialPlasticity: number; finalPlasticity: number; testTrials: number; negativeWeightsOk: boolean; gaussianPrior: boolean; sigma: number }
-const GLA_DEFAULTS: GlaParams = { maxentMode: false, cycles: 1000000, initialPlasticity: 2.0, finalPlasticity: 0.001, testTrials: 10000, negativeWeightsOk: false, gaussianPrior: false, sigma: 1.0 }
+interface GlaParams {
+  maxentMode: boolean
+  cycles: number
+  initialPlasticity: number
+  finalPlasticity: number
+  testTrials: number
+  negativeWeightsOk: boolean
+  gaussianPrior: boolean
+  sigma: number
+}
+const GLA_DEFAULTS: GlaParams = {
+  maxentMode: false,
+  cycles: 1000000,
+  initialPlasticity: 2.0,
+  finalPlasticity: 0.001,
+  testTrials: 10000,
+  negativeWeightsOk: false,
+  gaussianPrior: false,
+  sigma: 1.0,
+}
 
 function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   const [params, setParams] = useLocalStorage<GlaParams>('otsoft:params:gla', GLA_DEFAULTS)
-  const { maxentMode, cycles, initialPlasticity, finalPlasticity, testTrials, negativeWeightsOk, gaussianPrior, sigma } = params
+  const {
+    maxentMode,
+    cycles,
+    initialPlasticity,
+    finalPlasticity,
+    testTrials,
+    negativeWeightsOk,
+    gaussianPrior,
+    sigma,
+  } = params
 
   const [result, setResult] = useState<GlaState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -45,61 +73,68 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   function handleRun() {
     setIsLoading(true)
     setTimeout(() => {
-    try {
-      const opts = new GlaOptions()
-      opts.maxent_mode = maxentMode
-      opts.cycles = cycles
-      opts.initial_plasticity = initialPlasticity
-      opts.final_plasticity = finalPlasticity
-      opts.test_trials = maxentMode ? 0 : testTrials
-      opts.negative_weights_ok = negativeWeightsOk
-      opts.gaussian_prior = maxentMode && gaussianPrior
-      opts.sigma = sigma
-      const r = run_gla(tableauText, opts)
+      try {
+        const opts = new GlaOptions()
+        opts.maxent_mode = maxentMode
+        opts.cycles = cycles
+        opts.initial_plasticity = initialPlasticity
+        opts.final_plasticity = finalPlasticity
+        opts.test_trials = maxentMode ? 0 : testTrials
+        opts.negative_weights_ok = negativeWeightsOk
+        opts.gaussian_prior = maxentMode && gaussianPrior
+        opts.sigma = sigma
+        const r = run_gla(tableauText, opts)
 
-      const constraintCount = tableau.constraint_count()
-      const formCount = tableau.form_count()
+        const constraintCount = tableau.constraint_count()
+        const formCount = tableau.form_count()
 
-      const values = Array.from({ length: constraintCount }, (_, i) => {
-        const c = tableau.get_constraint(i)!
-        return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i) }
-      })
-
-      const forms = Array.from({ length: formCount }, (_, formIdx) => {
-        const form = tableau.get_form(formIdx)!
-        const totalFreq = Array.from({ length: form.candidate_count() }, (_, ci) =>
-          form.get_candidate(ci)!.frequency
-        ).reduce((a, b) => a + b, 0)
-
-        const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
-          const cand = form.get_candidate(candIdx)!
-          return {
-            form: cand.form,
-            obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
-            genPct: r.get_test_prob(formIdx, candIdx) * 100,
-          }
+        const values = Array.from({ length: constraintCount }, (_, i) => {
+          const c = tableau.get_constraint(i)!
+          return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i) }
         })
 
-        return { input: form.input, candidates }
-      })
+        const forms = Array.from({ length: formCount }, (_, formIdx) => {
+          const form = tableau.get_form(formIdx)!
+          const totalFreq = Array.from(
+            { length: form.candidate_count() },
+            (_, ci) => form.get_candidate(ci)!.frequency,
+          ).reduce((a, b) => a + b, 0)
 
-      let hasseDot: string | undefined
-      if (!maxentMode) {
-        try {
-          const rankingValues = new Float64Array(values.map(v => v.value))
-          hasseDot = gla_hasse_dot(tableauText, rankingValues)
-        } catch (e) {
-          console.warn('GLA Hasse diagram generation failed:', e)
+          const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
+            const cand = form.get_candidate(candIdx)!
+            return {
+              form: cand.form,
+              obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
+              genPct: r.get_test_prob(formIdx, candIdx) * 100,
+            }
+          })
+
+          return { input: form.input, candidates }
+        })
+
+        let hasseDot: string | undefined
+        if (!maxentMode) {
+          try {
+            const rankingValues = new Float64Array(values.map((v) => v.value))
+            hasseDot = gla_hasse_dot(tableauText, rankingValues)
+          } catch (e) {
+            console.warn('GLA Hasse diagram generation failed:', e)
+          }
         }
-      }
 
-      setResult({ values, forms, logLikelihood: r.log_likelihood(), maxentMode: r.is_maxent_mode(), hasseDot })
-    } catch (err) {
-      console.error('GLA error:', err)
-      setResult({ error: String(err) })
-    } finally {
-      setIsLoading(false)
-    }
+        setResult({
+          values,
+          forms,
+          logLikelihood: r.log_likelihood(),
+          maxentMode: r.is_maxent_mode(),
+          hasseDot,
+        })
+      } catch (err) {
+        console.error('GLA error:', err)
+        setResult({ error: String(err) })
+      } finally {
+        setIsLoading(false)
+      }
     }, 0)
   }
 
@@ -124,7 +159,8 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   }
 
   const atDefaults = isAtDefaults(params, GLA_DEFAULTS)
-  const successResult: GlaResultState | null = result && !result.error ? result as GlaResultState : null
+  const successResult: GlaResultState | null =
+    result && !result.error ? (result as GlaResultState) : null
   const valueLabel = successResult?.maxentMode ? 'Weight' : 'Ranking Value'
 
   return (
@@ -165,7 +201,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             value={cycles}
             min={1}
             max={10000000}
-            onChange={e => setParams({ cycles: Math.max(1, parseInt(e.target.value) || 1) })}
+            onChange={(e) => setParams({ cycles: Math.max(1, parseInt(e.target.value) || 1) })}
           />
         </label>
         <label className="param-label">
@@ -176,7 +212,9 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             value={initialPlasticity}
             min={0.0001}
             step={0.1}
-            onChange={e => setParams({ initialPlasticity: Math.max(0.0001, parseFloat(e.target.value) || 2) })}
+            onChange={(e) =>
+              setParams({ initialPlasticity: Math.max(0.0001, parseFloat(e.target.value) || 2) })
+            }
           />
         </label>
         <label className="param-label">
@@ -187,7 +225,11 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             value={finalPlasticity}
             min={0.000001}
             step={0.001}
-            onChange={e => setParams({ finalPlasticity: Math.max(0.000001, parseFloat(e.target.value) || 0.001) })}
+            onChange={(e) =>
+              setParams({
+                finalPlasticity: Math.max(0.000001, parseFloat(e.target.value) || 0.001),
+              })
+            }
           />
         </label>
         {!maxentMode && (
@@ -199,7 +241,9 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               value={testTrials}
               min={1}
               max={100000}
-              onChange={e => setParams({ testTrials: Math.max(1, parseInt(e.target.value) || 10000) })}
+              onChange={(e) =>
+                setParams({ testTrials: Math.max(1, parseInt(e.target.value) || 10000) })
+              }
             />
           </label>
         )}
@@ -212,7 +256,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             <input
               type="checkbox"
               checked={negativeWeightsOk}
-              onChange={e => setParams({ negativeWeightsOk: e.target.checked })}
+              onChange={(e) => setParams({ negativeWeightsOk: e.target.checked })}
             />
             Allow constraint weights to go negative
           </label>
@@ -220,7 +264,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             <input
               type="checkbox"
               checked={gaussianPrior}
-              onChange={e => setParams({ gaussianPrior: e.target.checked })}
+              onChange={(e) => setParams({ gaussianPrior: e.target.checked })}
             />
             Gaussian prior (L2 regularization)
           </label>
@@ -233,7 +277,9 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
                 value={sigma}
                 min={0.0001}
                 step={0.1}
-                onChange={e => setParams({ sigma: Math.max(0.0001, parseFloat(e.target.value) || 1) })}
+                onChange={(e) =>
+                  setParams({ sigma: Math.max(0.0001, parseFloat(e.target.value) || 1) })
+                }
               />
             </label>
           )}
@@ -241,15 +287,34 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       )}
 
       <div className="action-bar">
-        <button className={`primary-button${isLoading ? ' primary-button--loading' : ''}`} onClick={handleRun} disabled={isLoading}>
+        <button
+          className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
+          onClick={handleRun}
+          disabled={isLoading}
+        >
           {isLoading ? (
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 22h14"/><path d="M5 2h14"/>
-              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
-              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 22h14" />
+              <path d="M5 2h14" />
+              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
             </svg>
           ) : (
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
           )}
@@ -257,7 +322,13 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         </button>
         {result && !result.error && (
           <button className="download-button" onClick={handleDownload}>
-            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -265,8 +336,18 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             Download Results
           </button>
         )}
-        <button className="reset-button" onClick={() => setParams(GLA_DEFAULTS)} disabled={atDefaults}>
-          <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <button
+          className="reset-button"
+          onClick={() => setParams(GLA_DEFAULTS)}
+          disabled={atDefaults}
+        >
+          <svg
+            className="button-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="1 4 1 10 7 10"></polyline>
             <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
           </svg>
@@ -274,11 +355,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         </button>
       </div>
 
-      {result?.error && (
-        <div className="rcd-status failure">
-          Error running GLA: {result.error}
-        </div>
-      )}
+      {result?.error && <div className="rcd-status failure">Error running GLA: {result.error}</div>}
       {successResult && (
         <div className="maxent-results">
           <div className="maxent-weights">

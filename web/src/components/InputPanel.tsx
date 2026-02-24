@@ -1,6 +1,7 @@
-import { useRef, useCallback, useState } from 'react'
-import { parse_tableau } from '../../pkg/ot_soft.js'
+import { useCallback, useRef, useState } from 'react'
+
 import type { Tableau } from '../../pkg/ot_soft.js'
+import { parse_tableau } from '../../pkg/ot_soft.js'
 import { TINY_EXAMPLE } from '../constants.ts'
 
 interface InputPanelProps {
@@ -14,24 +15,30 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  const parseAndLoad = useCallback((text: string, filename: string) => {
-    try {
-      const tableau = parse_tableau(text)
-      onTableauLoaded(tableau, text, filename)
-    } catch (err) {
-      console.error('Parse error:', err)
-      onParseError(String(err))
-    }
-  }, [onTableauLoaded, onParseError])
+  const parseAndLoad = useCallback(
+    (text: string, filename: string) => {
+      try {
+        const tableau = parse_tableau(text)
+        onTableauLoaded(tableau, text, filename)
+      } catch (err) {
+        console.error('Parse error:', err)
+        onParseError(String(err))
+      }
+    },
+    [onTableauLoaded, onParseError],
+  )
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (file) {
-      file.text().then(text => {
-        parseAndLoad(text, file.name)
-      }).catch(err => {
-        onParseError('Error reading file: ' + err)
-      })
+      file
+        .text()
+        .then((text) => {
+          parseAndLoad(text, file.name)
+        })
+        .catch((err) => {
+          onParseError('Error reading file: ' + err)
+        })
     }
   }
 
@@ -53,11 +60,14 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
     setIsDragging(false)
     const file = event.dataTransfer.files?.[0]
     if (file) {
-      file.text().then(text => {
-        parseAndLoad(text, file.name)
-      }).catch(err => {
-        onParseError('Error reading file: ' + err)
-      })
+      file
+        .text()
+        .then((text) => {
+          parseAndLoad(text, file.name)
+        })
+        .catch((err) => {
+          onParseError('Error reading file: ' + err)
+        })
     }
   }
 
@@ -67,7 +77,9 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
         <h2>Tableau Input</h2>
         <span className="panel-number">01</span>
       </div>
-      <p className="input-instruction">Load a tab-delimited OT tableau file or begin with an example</p>
+      <p className="input-instruction">
+        Load a tab-delimited OT tableau file or begin with an example
+      </p>
 
       <div className="file-upload-area">
         <input
@@ -86,12 +98,20 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <svg className="file-loaded-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              className="file-loaded-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
             <span className="file-loaded-name">{loadedFilename}</span>
-            <button className="file-loaded-change" onClick={onReset}>Change file</button>
+            <button className="file-loaded-change" onClick={onReset}>
+              Change file
+            </button>
           </div>
         ) : (
           <label
@@ -101,7 +121,13 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              className="upload-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>

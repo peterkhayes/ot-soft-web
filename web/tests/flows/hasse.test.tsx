@@ -1,6 +1,7 @@
-import { test, expect } from 'vitest'
 import { page } from '@vitest/browser/context'
-import { renderApp, loadExample } from '../helpers'
+import { expect, test } from 'vitest'
+
+import { loadExample, renderApp } from '../helpers'
 
 test('Hasse diagram: appears after running RCD with FRed enabled', async () => {
   renderApp()
@@ -10,7 +11,9 @@ test('Hasse diagram: appears after running RCD with FRed enabled', async () => {
   await page.getByText('Run RCD Algorithm').click()
 
   // Results appear
-  await expect.element(page.getByText('A ranking was found that generates the correct outputs')).toBeVisible()
+  await expect
+    .element(page.getByText('A ranking was found that generates the correct outputs'))
+    .toBeVisible()
 
   // Hasse diagram section is shown
   await expect.element(page.getByText('Hasse Diagram')).toBeVisible()
@@ -66,7 +69,9 @@ test('Hasse diagram: hidden when FRed is disabled', async () => {
   await page.getByRole('checkbox', { name: /Include ranking arguments/i }).click()
 
   await page.getByText('Run RCD Algorithm').click()
-  await expect.element(page.getByText('A ranking was found that generates the correct outputs')).toBeVisible()
+  await expect
+    .element(page.getByText('A ranking was found that generates the correct outputs'))
+    .toBeVisible()
 
   // No Hasse diagram
   await expect.element(page.getByText('Hasse Diagram')).not.toBeInTheDocument()

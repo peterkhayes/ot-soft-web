@@ -1,4 +1,5 @@
-import { test, expect } from 'vitest'
+import { expect, test } from 'vitest'
+
 import { makeOutputFilename } from '../src/utils'
 
 test('makeOutputFilename: inserts label before extension', () => {
@@ -18,13 +19,19 @@ test('makeOutputFilename: handles null input', () => {
 })
 
 test('makeOutputFilename: example file with Output label', () => {
-  expect(makeOutputFilename('TinyIllustrativeFile.txt', 'Output')).toBe('TinyIllustrativeFileOutput.txt')
+  expect(makeOutputFilename('TinyIllustrativeFile.txt', 'Output')).toBe(
+    'TinyIllustrativeFileOutput.txt',
+  )
 })
 
 test('makeOutputFilename: example file with MaxEntOutput label', () => {
-  expect(makeOutputFilename('TinyIllustrativeFile.txt', 'MaxEntOutput')).toBe('TinyIllustrativeFileMaxEntOutput.txt')
+  expect(makeOutputFilename('TinyIllustrativeFile.txt', 'MaxEntOutput')).toBe(
+    'TinyIllustrativeFileMaxEntOutput.txt',
+  )
 })
 
 test('makeOutputFilename: example file with FactorialTypology label', () => {
-  expect(makeOutputFilename('TinyIllustrativeFile.txt', 'FactorialTypology')).toBe('TinyIllustrativeFileFactorialTypology.txt')
+  expect(makeOutputFilename('TinyIllustrativeFile.txt', 'FactorialTypology')).toBe(
+    'TinyIllustrativeFileFactorialTypology.txt',
+  )
 })

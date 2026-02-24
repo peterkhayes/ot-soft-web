@@ -1,4 +1,4 @@
-import type { Tableau, Constraint, InputForm } from '../../pkg/ot_soft.js'
+import type { Constraint, InputForm, Tableau } from '../../pkg/ot_soft.js'
 
 interface TableauPanelProps {
   tableau: Tableau
@@ -47,19 +47,20 @@ function TableauPanel({ tableau }: TableauPanelProps) {
               const candidate = form.get_candidate(j)!
               rows.push(
                 <tr className="data-row" key={`${formIdx}-${j}`}>
-                  <td className="input-cell">
-                    {j === 0 ? form.input : ''}
-                  </td>
+                  <td className="input-cell">{j === 0 ? form.input : ''}</td>
                   <td className="candidate-cell">{candidate.form}</td>
                   <td className="frequency-cell">{candidate.frequency}</td>
                   {constraints.map((_, k) => {
                     const violation = candidate.get_violation(k)
-                    const violationStr = (violation === 0 || violation === undefined) ? '' : String(violation)
+                    const violationStr =
+                      violation === 0 || violation === undefined ? '' : String(violation)
                     return (
-                      <td className="violation-cell" key={k}>{violationStr}</td>
+                      <td className="violation-cell" key={k}>
+                        {violationStr}
+                      </td>
                     )
                   })}
-                </tr>
+                </tr>,
               )
             }
             return rows

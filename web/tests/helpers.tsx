@@ -1,9 +1,10 @@
+import { page } from '@vitest/browser/context'
 import { expect } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { page } from '@vitest/browser/context'
-import { DownloadProvider } from '../src/downloadContext'
-import { BlobDownloadProvider } from '../src/blobDownloadContext'
+
 import App from '../src/App'
+import { BlobDownloadProvider } from '../src/blobDownloadContext'
+import { DownloadProvider } from '../src/downloadContext'
 
 export interface CapturedDownload {
   content: string
@@ -29,7 +30,7 @@ export function renderApp(): AppDownloads {
       <BlobDownloadProvider value={(blob, filename) => blobDownloads.push({ blob, filename })}>
         <App />
       </BlobDownloadProvider>
-    </DownloadProvider>
+    </DownloadProvider>,
   )
   return { downloads, blobDownloads }
 }

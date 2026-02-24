@@ -2,7 +2,7 @@
  * Returns true if every key in `params` matches the corresponding value in `defaults`.
  */
 export function isAtDefaults<T extends object>(params: T, defaults: T): boolean {
-  return (Object.keys(defaults) as (keyof T)[]).every(k => params[k] === defaults[k])
+  return (Object.keys(defaults) as (keyof T)[]).every((k) => params[k] === defaults[k])
 }
 
 /**

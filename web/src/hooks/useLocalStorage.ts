@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 export function useLocalStorage<T extends object>(
   key: string,
-  defaults: T
+  defaults: T,
 ): [T, (updater: Partial<T> | ((prev: T) => Partial<T>)) => void] {
   function read(): T {
     try {
@@ -27,9 +27,13 @@ export function useLocalStorage<T extends object>(
   const [value, setValue] = useState<T>(read)
 
   function set(updater: Partial<T> | ((prev: T) => Partial<T>)) {
-    setValue(prev => {
+    setValue((prev) => {
       const next = { ...prev, ...(typeof updater === 'function' ? updater(prev) : updater) }
-      try { localStorage.setItem(key, JSON.stringify(next)) } catch { /* quota exceeded */ }
+      try {
+        localStorage.setItem(key, JSON.stringify(next))
+      } catch {
+        /* quota exceeded */
+      }
       return next
     })
   }

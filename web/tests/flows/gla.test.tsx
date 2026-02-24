@@ -1,30 +1,39 @@
-import { test, expect } from 'vitest'
 import { page } from '@vitest/browser/context'
-import { renderApp, loadExample } from '../helpers'
+import { expect, test } from 'vitest'
 
-test('GLA (Stochastic OT): load example, run, see results, download', { timeout: 30000 }, async () => {
-  const { downloads } = renderApp()
-  await loadExample()
+import { loadExample, renderApp } from '../helpers'
 
-  // Switch to Stochastic OT framework — radio input is display:none, click label text
-  await page.getByText('Stochastic OT', { exact: true }).click()
+test(
+  'GLA (Stochastic OT): load example, run, see results, download',
+  { timeout: 30000 },
+  async () => {
+    const { downloads } = renderApp()
+    await loadExample()
 
-  // Run GLA
-  await page.getByText('Run GLA').click()
+    // Switch to Stochastic OT framework — radio input is display:none, click label text
+    await page.getByText('Stochastic OT', { exact: true }).click()
 
-  // Assert structural results appear (no content snapshot — stochastic output)
-  await expect.element(page.getByRole('heading', { name: 'Constraint Ranking Values' })).toBeVisible()
-  await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
-  await expect.element(page.getByRole('heading', { name: 'Matchup to Input Frequencies' })).toBeVisible()
+    // Run GLA
+    await page.getByText('Run GLA').click()
 
-  // Download button appears
-  await expect.element(page.getByText('Download Results')).toBeVisible()
-  await page.getByText('Download Results').click()
+    // Assert structural results appear (no content snapshot — stochastic output)
+    await expect
+      .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
+      .toBeVisible()
+    await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
+    await expect
+      .element(page.getByRole('heading', { name: 'Matchup to Input Frequencies' }))
+      .toBeVisible()
 
-  expect(downloads).toHaveLength(1)
-  expect(downloads[0].filename).toBe('TinyIllustrativeFileGLA-StochasticOTOutput.txt')
-  expect(downloads[0].content).toBeTruthy()
-})
+    // Download button appears
+    await expect.element(page.getByText('Download Results')).toBeVisible()
+    await page.getByText('Download Results').click()
+
+    expect(downloads).toHaveLength(1)
+    expect(downloads[0].filename).toBe('TinyIllustrativeFileGLA-StochasticOTOutput.txt')
+    expect(downloads[0].content).toBeTruthy()
+  },
+)
 
 test('GLA (Stochastic OT): Hasse diagram appears after run', { timeout: 30000 }, async () => {
   renderApp()

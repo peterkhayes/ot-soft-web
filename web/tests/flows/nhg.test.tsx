@@ -1,6 +1,7 @@
-import { test, expect } from 'vitest'
 import { page } from '@vitest/browser/context'
-import { renderApp, loadExample } from '../helpers'
+import { expect, test } from 'vitest'
+
+import { loadExample, renderApp } from '../helpers'
 
 test('NHG: load example, run, see results, download', { timeout: 30000 }, async () => {
   const { downloads } = renderApp()
@@ -15,7 +16,9 @@ test('NHG: load example, run, see results, download', { timeout: 30000 }, async 
   // Assert structural results appear (no content snapshot — stochastic output)
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
   await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
-  await expect.element(page.getByRole('heading', { name: 'Matchup to Input Frequencies' })).toBeVisible()
+  await expect
+    .element(page.getByRole('heading', { name: 'Matchup to Input Frequencies' }))
+    .toBeVisible()
 
   // Download button appears
   await expect.element(page.getByText('Download Results')).toBeVisible()
