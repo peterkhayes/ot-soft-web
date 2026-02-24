@@ -19,6 +19,10 @@ src/
   factorial_typology.rs  Factorial Typology (FastRCD, cross-classification, T-order)
 ```
 
-Tests live in each module's `#[cfg(test)]` section. Use `make test` to run them.
+## Testing
+
+Tests live in each module's `#[cfg(test)]` section. Every new algorithm or public function must have tests that validate correctness against expected outputs — use the example files in `examples/` where possible. Use `make test` to run the full test suite.
+
+## Linting
 
 Run `make lint` to check Clippy linting. All warnings are treated as errors (`-D warnings`). New code must pass lint before committing.

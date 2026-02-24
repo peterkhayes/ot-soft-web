@@ -53,6 +53,10 @@ Tests use **Vitest browser mode** (Playwright/Chromium provider). WASM runs in a
 
 Run with `make web-test`.
 
+### Adding tests for a new feature
+
+Every new algorithm panel must have a corresponding `web/tests/flows/<name>.test.tsx`. Use the existing flow tests as a template: load the example file, run the algorithm, and assert on the result.
+
 ### Snapshot strategy
 
 - **Deterministic algorithms** (RCD, MaxEnt, FT): inline text snapshots on download content — captured on first run, compared on future runs
