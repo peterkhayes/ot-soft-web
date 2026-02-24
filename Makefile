@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-install web-build web-test lint
+.PHONY: build test serve dev clean help web-install web-build web-test web-test-update lint
 
 # Default target
 .DEFAULT_GOAL := help
@@ -35,6 +35,9 @@ web-build: ## Build web frontend for production
 
 web-test: ## Run web frontend tests (Vitest + Playwright; requires make web-install)
 	@cd web && npm test
+
+web-test-update: ## Run web tests and update inline snapshots
+	@cd web && npx vitest run -u
 
 web-check: ## Type-check web frontend without building
 	@echo "Type-checking web frontend..."

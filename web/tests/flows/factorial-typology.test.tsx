@@ -2,6 +2,53 @@ import { test, expect } from 'vitest'
 import { page } from '@vitest/browser/context'
 import { renderApp, loadExample, normalizeOutput } from '../helpers'
 
+test('Factorial Typology: FTSum download', async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  // Enable the FTSum checkbox before running
+  await page.getByText('Generate FTSum file').click()
+  await page.getByText('Run Factorial Typology').click()
+  await expect.element(page.getByText(/\d+ output patterns? found/)).toBeVisible()
+
+  await expect.element(page.getByText('Download FTSum')).toBeVisible()
+  await page.getByText('Download FTSum').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileFTSum.txt')
+  expect(downloads[0].content).toMatchInlineSnapshot(`
+    "/a/	/tat/	/at/
+    ?a	ta	?a
+    ?a	tat	?at
+    a	ta	a
+    a	tat	at
+    "
+  `)
+})
+
+test('Factorial Typology: CompactSum download', async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  // Enable the CompactSum checkbox before running
+  await page.getByText('Generate CompactSum file').click()
+  await page.getByText('Run Factorial Typology').click()
+  await expect.element(page.getByText(/\d+ output patterns? found/)).toBeVisible()
+
+  await expect.element(page.getByText('Download CompactSum')).toBeVisible()
+  await page.getByText('Download CompactSum').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileCompactSum.txt')
+  expect(downloads[0].content).toMatchInlineSnapshot(`
+    "2	?a	ta	
+    3	?a	tat	?at	
+    2	a	ta	
+    3	a	tat	at	
+    "
+  `)
+})
+
 test('Factorial Typology: load example, run, see results, download', async () => {
   const { downloads } = renderApp()
   await loadExample()

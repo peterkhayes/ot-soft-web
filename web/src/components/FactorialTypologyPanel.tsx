@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { run_factorial_typology, format_factorial_typology_output, FtOptions } from '../../pkg/ot_soft.js'
+import { run_factorial_typology, format_factorial_typology_output, format_ft_sum, format_compact_sum_output, FtOptions } from '../../pkg/ot_soft.js'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { makeOutputFilename } from '../utils.ts'
 import { useDownload } from '../downloadContext.ts'
@@ -54,10 +54,14 @@ type FtState = FtResultState | FtErrorState
 
 interface FtParams {
   includeFullListing: boolean
+  includeFtsum: boolean
+  includeCompactSum: boolean
 }
 
 const FT_DEFAULTS: FtParams = {
   includeFullListing: false,
+  includeFtsum: false,
+  includeCompactSum: false,
 }
 
 function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: FactorialTypologyPanelProps) {
@@ -65,7 +69,7 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
   const [isLoading, setIsLoading] = useState(false)
   const [params, setParams] = useLocalStorage<FtParams>('otsoft:params:ft', FT_DEFAULTS)
   const download = useDownload()
-  const { includeFullListing } = params
+  const { includeFullListing, includeFtsum, includeCompactSum } = params
   const [aprioriText, setAprioriText] = useState('')
   const [aprioriFilename, setAprioriFilename] = useState<string | null>(null)
   const [isAprioriDragging, setIsAprioriDragging] = useState(false)
@@ -206,6 +210,26 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
     }
   }
 
+  function handleDownloadFtsum() {
+    try {
+      const output = format_ft_sum(tableauText, aprioriText)
+      download(output, makeOutputFilename(inputFilename, 'FTSum'))
+    } catch (err) {
+      console.error('FTSum download error:', err)
+      alert('Error generating FTSum download: ' + err)
+    }
+  }
+
+  function handleDownloadCompactSum() {
+    try {
+      const output = format_compact_sum_output(tableauText, aprioriText)
+      download(output, makeOutputFilename(inputFilename, 'CompactSum'))
+    } catch (err) {
+      console.error('CompactSum download error:', err)
+      alert('Error generating CompactSum download: ' + err)
+    }
+  }
+
   const successResult = result && !result.error ? result.data : null
 
   return (
@@ -244,6 +268,24 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
           Include grammar listing
         </label>
 
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={includeFtsum}
+            onChange={e => setParams({ includeFtsum: e.target.checked })}
+          />
+          Generate FTSum file
+        </label>
+
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={includeCompactSum}
+            onChange={e => setParams({ includeCompactSum: e.target.checked })}
+          />
+          Generate CompactSum file
+        </label>
+
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
           onClick={handleRun}
@@ -271,6 +313,28 @@ function FactorialTypologyPanel({ tableau, tableauText, inputFilename }: Factori
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             Download Results
+          </button>
+        )}
+
+        {successResult && includeFtsum && (
+          <button className="download-button" onClick={handleDownloadFtsum}>
+            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download FTSum
+          </button>
+        )}
+
+        {successResult && includeCompactSum && (
+          <button className="download-button" onClick={handleDownloadCompactSum}>
+            <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download CompactSum
           </button>
         )}
       </div>

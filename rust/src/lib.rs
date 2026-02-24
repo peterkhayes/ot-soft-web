@@ -459,6 +459,43 @@ pub fn format_factorial_typology_output(
     Ok(out)
 }
 
+/// Format factorial typology results as a tab-delimited FTSum file.
+///
+/// Returns a tab-delimited string: header row with `/input1/\t/input2/...`,
+/// then one row per derivable output pattern.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+#[wasm_bindgen]
+pub fn format_ft_sum(text: &str, apriori_text: &str) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let result = tableau.run_factorial_typology(&apriori);
+    Ok(result.format_ftsum(&tableau))
+}
+
+/// Format factorial typology results as a tab-delimited CompactSum file.
+///
+/// Collates patterns by distinct surface output sets (ignoring input assignment).
+/// Deduplicates rows with identical compact representations.
+/// Each row: `count\tout1\tout2\t...`.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+#[wasm_bindgen]
+pub fn format_compact_sum_output(text: &str, apriori_text: &str) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let result = tableau.run_factorial_typology(&apriori);
+    Ok(result.format_compact_sum(&tableau))
+}
+
 /// Generate a GraphViz DOT string for a GLA (Stochastic OT) Hasse diagram.
 ///
 /// `text`: tableau file contents (used to obtain constraint abbreviations).

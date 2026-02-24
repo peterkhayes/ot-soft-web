@@ -719,6 +719,81 @@ impl FactorialTypologyResult {
         out.push('\n');
         out
     }
+
+    /// Format the FTSum tab-delimited output.
+    ///
+    /// Matches VB6 `FSSummary`:
+    /// - Header row: `/input1/\t/input2/\t...` (no trailing tab)
+    /// - One row per pattern with candidate names (no trailing tab)
+    pub fn format_ftsum(&self, tableau: &Tableau) -> String {
+        let nf = tableau.forms.len();
+        let mut out = String::new();
+
+        // Header row
+        for (fi, form) in tableau.forms.iter().enumerate() {
+            out.push('/');
+            out.push_str(&form.input);
+            out.push('/');
+            if fi + 1 < nf {
+                out.push('\t');
+            }
+        }
+        out.push('\n');
+
+        // One row per pattern
+        for pattern in &self.patterns {
+            for (fi, &ci) in pattern.iter().enumerate() {
+                out.push_str(&tableau.forms[fi].candidates[ci].form);
+                if fi + 1 < nf {
+                    out.push('\t');
+                }
+            }
+            out.push('\n');
+        }
+
+        out
+    }
+
+    /// Format the CompactSum tab-delimited output.
+    ///
+    /// Matches VB6 `CompactFTFile`:
+    /// - Collates patterns by distinct surface output sets (ignoring which input each came from)
+    /// - Deduplicates rows with identical compact representations
+    /// - Each row: `count\tout1\tout2\t...` (trailing tab after each output, matching VB6)
+    pub fn format_compact_sum(&self, tableau: &Tableau) -> String {
+        let mut compact_valhalla: Vec<String> = Vec::new();
+
+        for pattern in &self.patterns {
+            let mut buffer = String::new();
+            let mut count = 0usize;
+
+            for (fi, &ci) in pattern.iter().enumerate() {
+                let cand_name = &tableau.forms[fi].candidates[ci].form;
+                // Check if this output was already recorded from an earlier form in this pattern
+                let already_recorded = (0..fi).any(|inner_fi| {
+                    let inner_ci = pattern[inner_fi];
+                    &tableau.forms[inner_fi].candidates[inner_ci].form == cand_name
+                });
+                if !already_recorded {
+                    buffer.push_str(cand_name);
+                    buffer.push('\t');
+                    count += 1;
+                }
+            }
+
+            let full_buffer = format!("{}\t{}", count, buffer);
+            if !compact_valhalla.contains(&full_buffer) {
+                compact_valhalla.push(full_buffer);
+            }
+        }
+
+        let mut out = String::new();
+        for entry in compact_valhalla {
+            out.push_str(&entry);
+            out.push('\n');
+        }
+        out
+    }
 }
 
 /// Compute n! returning None if overflow would occur (n > 20)
@@ -823,5 +898,78 @@ mod tests {
         // Tiny example has 4 constraints and several candidates per input.
         // We just check it runs without panicking and produces some patterns.
         assert!(!result.patterns.is_empty());
+    }
+
+    #[test]
+    fn test_format_ftsum_symmetric() {
+        // TINY_FT has 2 forms (A, B) and 2 patterns: {a1,b1} and {a2,b2}
+        let tableau = parse(TINY_FT);
+        let result = tableau.run_factorial_typology(&[]);
+        let ftsum = result.format_ftsum(&tableau);
+
+        let lines: Vec<&str> = ftsum.lines().collect();
+        assert_eq!(lines[0], "/A/\t/B/");
+        // Two patterns — order may vary but each line has tab-separated values
+        assert_eq!(lines.len(), 3); // header + 2 patterns
+        for line in &lines[1..] {
+            let parts: Vec<&str> = line.split('\t').collect();
+            assert_eq!(parts.len(), 2);
+        }
+    }
+
+    #[test]
+    fn test_format_compact_sum_deduplication() {
+        // Tableau where two different inputs both map to "x" in all patterns
+        // should collapse to 1 distinct output.
+        // Input A: winner=x, rival=y;  Input B: winner=x, rival=y
+        // Only pattern where both produce x is allowed (C1>>C2 or C2>>C1 same result).
+        // Use TINY_FT and check: patterns {a1,b1} → both distinct; {a2,b2} → both distinct.
+        let tableau = parse(TINY_FT);
+        let result = tableau.run_factorial_typology(&[]);
+        let compact = result.format_compact_sum(&tableau);
+
+        let lines: Vec<&str> = compact.lines().collect();
+        // Two patterns, both have 2 distinct outputs (a1 != b1, a2 != b2)
+        assert_eq!(lines.len(), 2);
+        for line in &lines {
+            assert!(line.starts_with("2\t"));
+        }
+    }
+
+    #[test]
+    fn test_format_ftsum_tiny_example() {
+        let text = include_str!("../../examples/tiny/input.txt");
+        let tableau = Tableau::parse(text).expect("parse failed");
+        let result = tableau.run_factorial_typology(&[]);
+        let ftsum = result.format_ftsum(&tableau);
+
+        let lines: Vec<&str> = ftsum.lines().collect();
+        // Header: /a/\t/tat/\t/at/
+        assert_eq!(lines[0], "/a/\t/tat/\t/at/");
+        // 4 patterns
+        assert_eq!(lines.len(), 5); // header + 4 patterns
+        for line in &lines[1..] {
+            let parts: Vec<&str> = line.split('\t').collect();
+            assert_eq!(parts.len(), 3);
+        }
+    }
+
+    #[test]
+    fn test_format_compact_sum_tiny_example() {
+        let text = include_str!("../../examples/tiny/input.txt");
+        let tableau = Tableau::parse(text).expect("parse failed");
+        let result = tableau.run_factorial_typology(&[]);
+        let compact = result.format_compact_sum(&tableau);
+
+        // Each line should start with a count and a tab
+        let lines: Vec<&str> = compact.lines().collect();
+        assert_eq!(lines.len(), 4); // 4 patterns, all distinct compact forms
+        for line in lines {
+            let mut parts = line.splitn(2, '\t');
+            let count_str = parts.next().unwrap();
+            let _rest = parts.next().unwrap();
+            let count: usize = count_str.parse().expect("count should be integer");
+            assert!(count >= 1);
+        }
     }
 }
