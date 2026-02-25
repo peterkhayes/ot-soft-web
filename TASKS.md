@@ -98,14 +98,14 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 ## Testing & Examples
 
-- [x] Tiny example (`examples/tiny/`) with expected RCD output
-- [ ] BCD example with expected output
-- [ ] LFCD example with expected output
-- [x] FRed example with expected output (tiny example verified)
-- [ ] GLA/MaxEnt example with expected output
-- [~] NHG example with expected output
-- [~] Factorial typology example with expected output
+- [x] Conformance test infrastructure (`conformance/manifest.json`, `rust/tests/conformance.rs`) — compares Rust output against VB6 golden files with skip-on-missing
+- [x] Tiny example conformance cases (RCD, BCD, LFCD, MaxEnt, FT — text + HTML)
+- [x] Ilokano Hiatus Resolution conformance cases (RCD, BCD, LFCD, MaxEnt, FT — text + HTML)
+- [x] HTML conformance: semantic cell-grid comparison (tolerates structural HTML differences between VB6 and Rust)
+- [x] Web flow tests (`web/tests/flows/`) for RCD, MaxEnt, GLA, NHG, Factorial Typology, Hasse diagrams
+- [ ] Collect remaining VB6 golden files (most conformance cases skip due to missing golden files)
 - [ ] Edge case examples (ranking failures, ties, large tableaux)
+- [ ] GLA/Stochastic OT conformance cases (stochastic — structural assertions only)
 
 ---
 
@@ -113,16 +113,20 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 Roughly ordered by value and dependency:
 
-1. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
+1. **Collect VB6 golden files** — Run VB6 OTSoft on Windows following `conformance/CHECKLIST.md` to populate the missing golden files. Most conformance test cases currently skip.
 
-3. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
+2. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
 
-4. **Pairwise ranking probabilities** — Compute and display pairwise ranking probabilities from GLA output (ports `boersma.frm:PrintPairwiseRankingProbabilities`). Currently stubbed; needed for complete GLA Hasse edge labeling.
+3. **Pairwise ranking probabilities** — Compute and display pairwise ranking probabilities from GLA output (ports `boersma.frm:PrintPairwiseRankingProbabilities`). Currently stubbed; needed for complete GLA Hasse edge labeling.
 
-5. **HTML tableaux** — Render tableaux as HTML with configurable shading, rather than plain text in the download.
+4. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
 
-6. **Sorted input file** — Reorder constraints/candidates by rank and write a sorted copy of the input file.
+5. **Sorted input file** — Reorder constraints/candidates by rank and write a sorted copy of the input file.
 
-7. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
+6. **Magri update rule** — Alternative update rule for Stochastic OT.
 
-8. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
+7. **Exact proportions data presentation** — Display data as exact proportions rather than frequency counts.
+
+8. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
+
+9. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
