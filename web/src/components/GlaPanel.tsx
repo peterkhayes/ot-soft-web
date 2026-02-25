@@ -49,6 +49,7 @@ interface GlaParams {
   negativeWeightsOk: boolean
   gaussianPrior: boolean
   sigma: number
+  magriUpdateRule: boolean
   useCustomSchedule: boolean
   customSchedule: string
 }
@@ -61,6 +62,7 @@ const GLA_DEFAULTS: GlaParams = {
   negativeWeightsOk: false,
   gaussianPrior: false,
   sigma: 1.0,
+  magriUpdateRule: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
 }
@@ -76,6 +78,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     negativeWeightsOk,
     gaussianPrior,
     sigma,
+    magriUpdateRule,
     useCustomSchedule,
     customSchedule,
   } = params
@@ -95,6 +98,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     opts.negative_weights_ok = negativeWeightsOk
     opts.gaussian_prior = maxentMode && gaussianPrior
     opts.sigma = sigma
+    opts.magri_update_rule = !maxentMode && magriUpdateRule
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -268,6 +272,20 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           </label>
         )}
       </div>
+
+      {!maxentMode && (
+        <div className="nhg-options">
+          <div className="nhg-options-label">Stochastic OT options</div>
+          <label className="nhg-checkbox">
+            <input
+              type="checkbox"
+              checked={magriUpdateRule}
+              onChange={(e) => setParams({ magriUpdateRule: e.target.checked })}
+            />
+            Use the Magri update rule
+          </label>
+        </div>
+      )}
 
       {maxentMode && (
         <div className="nhg-options">

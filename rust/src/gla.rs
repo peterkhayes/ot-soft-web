@@ -164,6 +164,34 @@ fn maxent_predictions(tableau: &Tableau, weights: &[f64]) -> Vec<Vec<f64>> {
     }).collect()
 }
 
+// ─── Magri Promotion Amount ───────────────────────────────────────────────────
+//
+// Reproduces VB6 boersma.frm:MagriPromotionAmount.
+//
+// Counts how many constraints prefer the generated form (would be promoted) and
+// how many prefer the observed form (would be demoted), then returns:
+//   NumberOfConstraintsDemoted / (NumberOfConstraintsPromoted + 1)
+//
+// Applied as a scalar multiplier on the promotion plasticity only (demotion is
+// unmodified). The +1 in the denominator avoids division by zero.
+
+fn magri_promotion_amount(
+    gen_cand: &crate::tableau::Candidate,
+    obs_cand: &crate::tableau::Candidate,
+    nc: usize,
+) -> f64 {
+    let mut promoted = 0u32;
+    let mut demoted = 0u32;
+    for c in 0..nc {
+        match gen_cand.violations[c].cmp(&obs_cand.violations[c]) {
+            std::cmp::Ordering::Greater => promoted += 1,
+            std::cmp::Ordering::Less => demoted += 1,
+            std::cmp::Ordering::Equal => {}
+        }
+    }
+    demoted as f64 / (promoted as f64 + 1.0)
+}
+
 // ─── GLA Result ──────────────────────────────────────────────────────────────
 
 /// Result of running the Gradual Learning Algorithm (GLA)
@@ -185,6 +213,8 @@ pub struct GlaResult {
     /// Gaussian prior parameters (MaxEnt mode only)
     gaussian_prior: bool,
     sigma: f64,
+    /// Whether the Magri update rule was active (StochasticOT only)
+    magri_update_rule: bool,
 }
 
 #[wasm_bindgen]
@@ -251,6 +281,9 @@ impl GlaResult {
         if self.maxent_mode && self.gaussian_prior {
             out.push_str(&format!("   Sigma: {}\n", self.sigma));
             out.push_str("   A Gaussian prior for MaxEnt learning was in effect.\n");
+        }
+        if !self.maxent_mode && self.magri_update_rule {
+            out.push_str("   The Magri update rule was employed.\n");
         }
         out.push_str("\n\n");
 
@@ -357,6 +390,7 @@ impl Tableau {
         negative_weights_ok: bool,
         gaussian_prior: bool,
         sigma: f64,
+        magri_update_rule: bool,
     ) -> GlaResult {
         let schedule = LearningSchedule::default_4stage(cycles, initial_plasticity, final_plasticity);
         self.run_gla_with_schedule(
@@ -366,6 +400,7 @@ impl Tableau {
             negative_weights_ok,
             gaussian_prior,
             sigma,
+            magri_update_rule,
         )
     }
 
@@ -381,6 +416,7 @@ impl Tableau {
     /// * `negative_weights_ok` — allow weights below 0 (MaxEnt mode only)
     /// * `gaussian_prior` — apply Gaussian L2 prior each update (MaxEnt mode only)
     /// * `sigma` — standard deviation of the Gaussian prior (mu=0 for all constraints)
+    /// * `magri_update_rule` — scale promotion plasticity by Magri's factor (StochasticOT only)
     #[allow(clippy::too_many_arguments)]
     pub fn run_gla_with_schedule(
         &self,
@@ -390,6 +426,7 @@ impl Tableau {
         negative_weights_ok: bool,
         gaussian_prior: bool,
         sigma: f64,
+        magri_update_rule: bool,
     ) -> GlaResult {
         let nc = self.constraints.len();
 
@@ -474,15 +511,24 @@ impl Tableau {
                             }
                         }
                     } else {
-                        // StochasticOT update: ±plasticity per constraint
-                        // Reproduces VB6 RankingValueAdjustment (StochasticOT branch)
+                        // StochasticOT update: ±plasticity per constraint.
+                        // Reproduces VB6 RankingValueAdjustment (StochasticOT branch).
+                        //
+                        // Magri update rule: promotion is scaled by
+                        //   NumberOfConstraintsDemoted / (NumberOfConstraintsPromoted + 1)
+                        // Demotion is unaffected (VB6 comment: "no special regime for demotion").
+                        let promo_scale = if magri_update_rule {
+                            magri_promotion_amount(gen_cand, obs_cand, nc)
+                        } else {
+                            1.0
+                        };
                         for (c, rv) in ranking_values.iter_mut().enumerate() {
                             let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
                             let gen_v = gen_cand.violations[c];
                             let obs_v = obs_cand.violations[c];
                             if gen_v > obs_v {
                                 // Generated violates more: strengthen (raise)
-                                *rv += plast;
+                                *rv += plast * promo_scale;
                             } else if gen_v < obs_v {
                                 // Generated violates less: weaken (lower)
                                 *rv -= plast;
@@ -557,6 +603,7 @@ impl Tableau {
             test_trials,
             gaussian_prior,
             sigma,
+            magri_update_rule,
         }
     }
 }
@@ -576,7 +623,7 @@ mod tests {
     #[test]
     fn test_gla_sot_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0);
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -588,7 +635,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -601,7 +648,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_probs_sum_to_one() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false);
 
         for fi in 0..tableau.form_count() {
             let form = tableau.get_form(fi).unwrap();
@@ -617,7 +664,7 @@ mod tests {
         // StochasticOT should start at 100 (Boersma's canonical value)
         // After 0 cycles, values should still be 100
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 0, 2.0, 0.001, 100, false, false, 1.0);
+        let result = tableau.run_gla(false, 0, 2.0, 0.001, 100, false, false, 1.0, false);
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 100.0,
@@ -629,7 +676,7 @@ mod tests {
     fn test_gla_maxent_initial_values_zero() {
         // MaxEnt should start at 0
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 0, 2.0, 0.001, 0, false, false, 1.0);
+        let result = tableau.run_gla(true, 0, 2.0, 0.001, 0, false, false, 1.0, false);
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 0.0,
@@ -640,7 +687,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_gaussian_prior_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, true, 1.0);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, true, 1.0, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -652,6 +699,23 @@ mod tests {
     }
 
     #[test]
+    fn test_gla_sot_magri_update_rule_runs() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, true);
+
+        let nc = tableau.constraint_count();
+        for c in 0..nc {
+            assert!(result.get_ranking_value(c).is_finite(),
+                "ranking value {} should be finite with Magri rule", c);
+        }
+        assert!(result.log_likelihood().is_finite());
+
+        let output = result.format_output(&tableau, "test.txt");
+        assert!(output.contains("The Magri update rule was employed."),
+            "output should mention Magri update rule");
+    }
+
+    #[test]
     fn test_gla_custom_schedule_runs() {
         // A custom schedule with separate M/F plasticity should run without errors
         let tableau = Tableau::parse(&load_tiny()).unwrap();
@@ -659,7 +723,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -674,7 +738,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false);
         let output = result.format_output(&tableau, "test.txt");
 
         // Custom schedule should mention stages in the output

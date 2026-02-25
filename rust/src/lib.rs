@@ -86,6 +86,8 @@ pub struct GlaOptions {
     /// Gaussian prior for online MaxEnt (mu=0, per-constraint sigma)
     pub gaussian_prior: bool,
     pub sigma: f64,
+    /// Magri update rule: scale promotion plasticity by demoted/(promoted+1) (StochasticOT only)
+    pub magri_update_rule: bool,
     /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
     /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
     learning_schedule: String,
@@ -108,6 +110,7 @@ impl GlaOptions {
             negative_weights_ok: false,
             gaussian_prior: false,
             sigma: 1.0,
+            magri_update_rule: false,
             learning_schedule: String::new(),
         }
     }
@@ -524,6 +527,7 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
     Ok(tableau.run_gla_with_schedule(
         opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
+        opts.magri_update_rule,
     ))
 }
 
@@ -535,6 +539,7 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
     let result = tableau.run_gla_with_schedule(
         opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
+        opts.magri_update_rule,
     );
     Ok(result.format_output(&tableau, filename))
 }
