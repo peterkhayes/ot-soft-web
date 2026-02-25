@@ -12,6 +12,17 @@ This checklist guides you through running each test case in VB6 OTSoft on Window
 
 For each test case, save the **draft output** text file to the path shown. All paths are relative to the repository root.
 
+### HTML output collection
+
+Some test cases also require the **HTML tableau output** (the `.htm` file VB6 generates alongside the draft text). To collect these:
+
+1. In VB6 OTSoft, ensure **HTML output** is enabled (check the menu option)
+2. Set the shading grayness to the default value
+3. Run the algorithm — VB6 writes a `.htm` file to the same output directory
+4. Save the `.htm` file to the golden path shown (e.g., `conformance/golden/tiny/rcd_defaults.htm`)
+
+The HTML conformance test compares tableaux **semantically** (cell content + CSS shading classes), not byte-for-byte, so minor formatting differences between VB6 versions are tolerated.
+
 ---
 
 ## RCD Tests
@@ -22,8 +33,9 @@ For each test case, save the **draft output** text file to the path shown. All p
 - [ ] Use default settings: FRed enabled, Skeletal Basis, show details, mini-tableaux
 - [ ] No a priori rankings
 - [ ] Run and save output → `conformance/golden/tiny/rcd_defaults.txt`
+- [ ] Also save the HTML output → `conformance/golden/tiny/rcd_defaults.htm`
 
-**Note:** This file is already collected. Verify it matches your VB6 version.
+**Note:** The text file is already collected. Verify it matches your VB6 version.
 
 ### tiny_rcd_no_fred
 - [ ] Open `TinyIllustrativeFile.txt`
@@ -57,6 +69,7 @@ For each test case, save the **draft output** text file to the path shown. All p
 - [ ] Use default settings (non-specific)
 - [ ] FRed enabled, Skeletal Basis, show details, mini-tableaux
 - [ ] Run and save output → `conformance/golden/tiny/bcd_defaults.txt`
+- [ ] Also save the HTML output → `conformance/golden/tiny/bcd_defaults.htm`
 
 ### tiny_bcd_specific
 - [ ] Open `TinyIllustrativeFile.txt`
@@ -75,6 +88,7 @@ For each test case, save the **draft output** text file to the path shown. All p
 - [ ] Default settings, FRed enabled, Skeletal Basis
 - [ ] No a priori rankings
 - [ ] Run and save output → `conformance/golden/tiny/lfcd_defaults.txt`
+- [ ] Also save the HTML output → `conformance/golden/tiny/lfcd_defaults.htm`
 
 ### tiny_lfcd_apriori
 - [ ] Open `TinyIllustrativeFile.txt`
@@ -145,3 +159,15 @@ For all MaxEnt tests, set **Precision** (GIS iterations) to **5**.
 - [ ] Default settings (no full listing)
 - [ ] Load a priori rankings from `apriori.txt` (*NoOns >> Max)
 - [ ] Run and save output → `conformance/golden/tiny/ft_apriori.txt`
+
+---
+
+## Ilokano Hiatus Resolution Tests
+
+Use `examples/IlokanoHiatusResolution/input.txt`, renamed to **`IlokanoHiatusResolution.txt`** on Windows.
+
+### ilokano_rcd_defaults (including HTML)
+- [ ] Open `IlokanoHiatusResolution.txt`
+- [ ] Select **RCD**, default settings (FRed enabled, Skeletal Basis, mini-tableaux)
+- [ ] Run and save output → `conformance/golden/IlokanoHiatusResolution/rcd_defaults.txt`
+- [ ] Also save the HTML output → `conformance/golden/IlokanoHiatusResolution/rcd_defaults.htm`

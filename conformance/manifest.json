@@ -401,6 +401,71 @@
         "include_full_listing": true
       },
       "golden_file": "conformance/golden/IlokanoHiatusResolution/ft_full_listing.txt"
+    },
+    {
+      "id": "tiny_rcd_defaults_html",
+      "description": "RCD with default settings — HTML tableaux (semantic cell comparison)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "rcd",
+      "format": "html",
+      "params": {
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": false,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/rcd_defaults.htm"
+    },
+    {
+      "id": "tiny_bcd_defaults_html",
+      "description": "BCD with default settings — HTML tableaux (semantic cell comparison)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "bcd",
+      "format": "html",
+      "params": {
+        "specific": false,
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": false,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/bcd_defaults.htm"
+    },
+    {
+      "id": "tiny_lfcd_defaults_html",
+      "description": "LFCD with default settings — HTML tableaux (semantic cell comparison)",
+      "input_file": "examples/tiny/input.txt",
+      "input_display_name": "TinyIllustrativeFile.txt",
+      "apriori_file": null,
+      "algorithm": "lfcd",
+      "format": "html",
+      "params": {
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": false,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/tiny/lfcd_defaults.htm"
+    },
+    {
+      "id": "ilokano_rcd_defaults_html",
+      "description": "RCD with default settings — HTML tableaux (Ilokano, semantic cell comparison)",
+      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_display_name": "IlokanoHiatusResolution.txt",
+      "apriori_file": null,
+      "algorithm": "rcd",
+      "format": "html",
+      "params": {
+        "include_fred": true,
+        "use_mib": false,
+        "show_details": false,
+        "include_mini_tableaux": true
+      },
+      "golden_file": "conformance/golden/IlokanoHiatusResolution/rcd_defaults.htm"
     }
   ]
 }
