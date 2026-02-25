@@ -49,7 +49,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Noisy Harmonic Grammar (NHG) — 8 noise variants
 - [x] Learning schedule (multi-stage plasticity interpolation)
 - [x] Custom learning schedule from file
-- [ ] Magri update rule (Stochastic OT)
+- [x] Magri update rule (Stochastic OT)
 - [x] Gaussian prior (MaxEnt)
 - [ ] Exact proportions data presentation
 - [ ] Multiple runs with collated results
