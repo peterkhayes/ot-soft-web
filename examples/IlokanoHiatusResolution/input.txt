@@ -1,0 +1,25 @@
+			Dep	Dep(h)	Dep(+cons)	Max	Max-stem	*VV	Ident(syllabic)	Ident(high)	Ident(low)	*Nonhigh glide
+			Dep	Dep(h)	Dep(+cons)	Max	Max-stem	*VV	Id(syl)	Id(hi)	Id(lo)	*Nonhigh glide
+babawi-en	i.e							1				
+	je	1							1			
+	i.?e		1									
+	i.te		1		1							
+	i.he		1	1								
+	e					1	1					
+	i					1						
+masahe-an	e.a							1				
+	Ea								1			1
+	ja	1							1	1		
+ 	e.?a		1									
+	e.ta		1		1							
+	e.ha		1	1								
+	a					1	1					
+	e					1						
+basa-en	a.e							1				
+	Ae								1			1
+	wa								1	1	1	
+	a.?e	1	1									
+	ate		1		1							
+	ahe		1	1								
+	e					1	1					
+	a					1						
