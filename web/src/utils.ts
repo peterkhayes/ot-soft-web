@@ -23,19 +23,29 @@ export function downloadTextFile(content: string, filename: string): void {
 /**
  * Build an output filename by inserting a label before the extension.
  *
+ * An optional `ext` parameter overrides the output extension (including the dot).
+ *
  * Examples:
- *   makeOutputFilename('data.txt', 'Output')    → 'dataOutput.txt'
- *   makeOutputFilename('data.old.txt', 'Output') → 'data.oldOutput.txt'
- *   makeOutputFilename('data', 'Output')         → 'dataOutput.txt'
- *   makeOutputFilename(null, 'Output')           → 'Output.txt'
+ *   makeOutputFilename('data.txt', 'Output')           → 'dataOutput.txt'
+ *   makeOutputFilename('data.old.txt', 'Output')       → 'data.oldOutput.txt'
+ *   makeOutputFilename('data', 'Output')               → 'dataOutput.txt'
+ *   makeOutputFilename(null, 'Output')                 → 'Output.txt'
+ *   makeOutputFilename('data.txt', 'Output', '.html')  → 'dataOutput.html'
+ *   makeOutputFilename(null, 'Output', '.html')        → 'Output.html'
  */
-export function makeOutputFilename(inputFilename: string | null, label: string): string {
+export function makeOutputFilename(
+  inputFilename: string | null,
+  label: string,
+  ext?: string,
+): string {
   if (!inputFilename) {
-    return label + '.txt'
+    return label + (ext ?? '.txt')
   }
   const lastDot = inputFilename.lastIndexOf('.')
   if (lastDot > 0) {
-    return inputFilename.substring(0, lastDot) + label + inputFilename.substring(lastDot)
+    const base = inputFilename.substring(0, lastDot)
+    const origExt = inputFilename.substring(lastDot)
+    return base + label + (ext ?? origExt)
   }
-  return inputFilename + label + '.txt'
+  return inputFilename + label + (ext ?? '.txt')
 }

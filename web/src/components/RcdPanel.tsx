@@ -2,8 +2,11 @@ import { useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import {
+  format_bcd_html_output,
   format_bcd_output,
+  format_lfcd_html_output,
   format_lfcd_output,
+  format_rcd_html_output,
   format_rcd_output,
   fred_hasse_dot,
   FredOptions,
@@ -169,6 +172,38 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
     }
   }
 
+  function handleDownloadHtml() {
+    try {
+      const apriori = supportsApriori ? aprioriText : ''
+      const fredOpts = new FredOptions()
+      fredOpts.include_fred = includeFred
+      fredOpts.use_mib = useMib
+      fredOpts.show_details = showDetails
+      fredOpts.include_mini_tableaux = includeMiniTableaux
+      const htmlContent =
+        algorithm === 'rcd'
+          ? format_rcd_html_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
+          : algorithm === 'lfcd'
+            ? format_lfcd_html_output(
+                tableauText,
+                inputFilename || 'tableau.txt',
+                apriori,
+                fredOpts,
+              )
+            : format_bcd_html_output(
+                tableauText,
+                inputFilename || 'tableau.txt',
+                algorithm === 'bcd-specific',
+                fredOpts,
+              )
+
+      download(htmlContent, makeOutputFilename(inputFilename, 'Output', '.html'))
+    } catch (err) {
+      console.error('HTML download error:', err)
+      alert('Error generating HTML download: ' + err)
+    }
+  }
+
   return (
     <section className="analysis-panel">
       <div className="panel-header">
@@ -279,20 +314,36 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
           Run {ALGORITHM_LABELS[algorithm]} Algorithm
         </button>
         {rcdResult && !rcdResult.error && (
-          <button className="download-button" onClick={handleDownload}>
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Download Results
-          </button>
+          <>
+            <button className="download-button" onClick={handleDownload}>
+              <svg
+                className="button-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download Results
+            </button>
+            <button className="download-button" onClick={handleDownloadHtml}>
+              <svg
+                className="button-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download HTML
+            </button>
+          </>
         )}
         <button
           className="reset-button"

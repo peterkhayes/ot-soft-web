@@ -35,3 +35,15 @@ test('makeOutputFilename: example file with FactorialTypology label', () => {
     'TinyIllustrativeFileFactorialTypology.txt',
   )
 })
+
+test('makeOutputFilename: ext override replaces extension', () => {
+  expect(makeOutputFilename('data.txt', 'Output', '.html')).toBe('dataOutput.html')
+})
+
+test('makeOutputFilename: ext override with null input', () => {
+  expect(makeOutputFilename(null, 'Output', '.html')).toBe('Output.html')
+})
+
+test('makeOutputFilename: ext override with no-extension input', () => {
+  expect(makeOutputFilename('data', 'Output', '.html')).toBe('dataOutput.html')
+})

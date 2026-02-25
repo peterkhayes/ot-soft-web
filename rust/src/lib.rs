@@ -381,6 +381,79 @@ fn build_nhg_schedule(opts: &NhgOptions) -> Result<schedule::LearningSchedule, S
     }
 }
 
+/// Format RCD results as an HTML document for download.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+#[wasm_bindgen]
+pub fn format_rcd_html_output(
+    text: &str,
+    filename: &str,
+    apriori_text: &str,
+    fred_opts: &FredOptions,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let mut result = if apriori.is_empty() {
+        tableau.run_rcd()
+    } else {
+        tableau.run_rcd_with_apriori(&apriori)
+    };
+    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    Ok(result.format_html_output(&tableau, filename))
+}
+
+/// Format BCD results as an HTML document for download.
+#[wasm_bindgen]
+pub fn format_bcd_html_output(
+    text: &str,
+    filename: &str,
+    specific: bool,
+    fred_opts: &FredOptions,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let mut result = tableau.run_bcd(specific);
+    let algorithm_name = if specific {
+        "Biased Constraint Demotion (Specific)"
+    } else {
+        "Biased Constraint Demotion"
+    };
+    result.apply_fred_options(&tableau, &[], fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    Ok(result.format_html_output_with_algorithm(&tableau, filename, algorithm_name))
+}
+
+/// Format LFCD results as an HTML document for download.
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+#[wasm_bindgen]
+pub fn format_lfcd_html_output(
+    text: &str,
+    filename: &str,
+    apriori_text: &str,
+    fred_opts: &FredOptions,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let mut result = if apriori.is_empty() {
+        tableau.run_lfcd()
+    } else {
+        tableau.run_lfcd_with_apriori(&apriori)
+    };
+    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    Ok(result.format_html_output_with_algorithm(
+        &tableau,
+        filename,
+        "Low Faithfulness Constraint Demotion",
+    ))
+}
+
 /// Format BCD results as text for download.
 #[wasm_bindgen]
 pub fn format_bcd_output(

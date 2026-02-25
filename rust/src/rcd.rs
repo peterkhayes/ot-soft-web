@@ -8,6 +8,79 @@ use wasm_bindgen::prelude::*;
 use crate::tableau::Tableau;
 use crate::fred::FRedResult;
 
+// ── HTML output constants ────────────────────────────────────────────────────
+
+/// Embedded CSS for the HTML tableau document.
+const HTML_STYLE: &str = r#"<style>
+body { font-family: sans-serif; padding: 1.5em; max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 1.1em; font-weight: bold; }
+h2 { font-size: 1em; font-weight: bold; margin-top: 1.5em; }
+pre { font-family: monospace; white-space: pre-wrap; font-size: 0.9em; }
+table { border-collapse: collapse; margin: 1em 0; }
+td, th { padding: 3px 10px; border: 1px solid #ddd; text-align: center;
+         font-family: monospace; white-space: nowrap; }
+th { font-weight: bold; background-color: #f5f5f5; }
+td:first-child, th:first-child { text-align: left; border: 1px solid #ddd; }
+.necessity-table td { border: none; padding: 1px 12px 1px 0; }
+.cl4 { border-right: 2px solid #888; background-color: #CCCCCC; }
+.cl8 { border-right: 2px solid #888; }
+.cl9 { background-color: #CCCCCC; }
+.cl10 { }
+.success { color: #2d7a2d; }
+.failure { color: #cc0000; }
+.warning { background: #fff8dc; border-left: 4px solid #f0c040; padding: 0.5em 1em; }
+</style>"#;
+
+/// Escape a string for safe inclusion in HTML content.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+     .replace('<', "&lt;")
+     .replace('>', "&gt;")
+     .replace('"', "&quot;")
+}
+
+/// Choose the CSS class for a violation cell based on position and shading state.
+///
+/// Mirrors VB6 classes cl4/cl8/cl9/cl10:
+/// - cl4: shaded + right border (stratum separator)
+/// - cl8: unshaded + right border (stratum separator)
+/// - cl9: shaded, no right border
+/// - cl10: unshaded, no right border
+fn html_cell_class(is_shaded: bool, is_last_col: bool, has_right_border: bool) -> &'static str {
+    match (is_last_col, is_shaded, has_right_border) {
+        (true, true, _)   => "cl9",
+        (true, false, _)  => "cl10",
+        (false, true, true)  => "cl4",
+        (false, false, true) => "cl8",
+        (false, true, false)  => "cl9",
+        (false, false, false) => "cl10",
+    }
+}
+
+/// Format a violation count as HTML content using VB6's asterisk notation.
+///
+/// - 0 violations → `&nbsp;`
+/// - 1–9 violations → repeated asterisks (e.g., `**` for 2)
+/// - ≥10 violations → the number
+/// - Fatal violations → asterisks up to `winner_viols + 1`, then `!`, then remaining
+fn format_html_viol(viols: usize, winner_viols: usize, is_fatal: bool) -> String {
+    if viols == 0 {
+        return "&nbsp;".to_string();
+    }
+    if viols >= 10 {
+        return if is_fatal { format!("{}!", viols) } else { viols.to_string() };
+    }
+    if is_fatal {
+        let before = winner_viols + 1;
+        let after = viols.saturating_sub(before);
+        format!("{}!{}", "*".repeat(before), "*".repeat(after))
+    } else {
+        "*".repeat(viols)
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 /// Format a violation value centered in a column, matching VB6's centering formula.
 ///
 /// VB6 centering: `leading = floor(col_width/2) - digit_count`, value, then
@@ -533,6 +606,326 @@ impl RCDResult {
             output.push_str(&format_violation(col_width, loser.violations[c_idx], false));
         }
         output.push_str("\n\n");
+    }
+
+    // ── HTML output ──────────────────────────────────────────────────────────
+
+    /// Generate an HTML document containing styled tableaux for this RCD result.
+    pub fn format_html_output(&self, tableau: &Tableau, filename: &str) -> String {
+        self.format_html_output_with_algorithm(tableau, filename, "Recursive Constraint Demotion")
+    }
+
+    /// Generate an HTML document with a configurable algorithm name.
+    pub(crate) fn format_html_output_with_algorithm(
+        &self,
+        tableau: &Tableau,
+        filename: &str,
+        algorithm_name: &str,
+    ) -> String {
+        let mut out = String::new();
+
+        // DOCTYPE, head, CSS
+        out.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
+        out.push_str("<meta charset=\"UTF-8\">\n");
+        out.push_str(&format!(
+            "<title>OTSoft 2.7 {}</title>\n",
+            html_escape(filename)
+        ));
+        out.push_str(HTML_STYLE);
+        out.push_str("\n</head>\n<body>\n");
+
+        // Document header
+        out.push_str(&format!(
+            "<h1>Results of Applying {} to {}</h1>\n",
+            html_escape(algorithm_name),
+            html_escape(filename),
+        ));
+        let now = chrono::Local::now();
+        let timestamp = now.format("%-m-%-d-%Y, %-I:%M %p").to_string().to_lowercase();
+        out.push_str(&format!("<p>{}</p>\n", html_escape(&timestamp)));
+        out.push_str("<p>OTSoft 2.7, release date 2/1/2026</p>\n");
+
+        if self.tie_warning {
+            out.push_str(
+                "<p class=\"warning\">Caution: The BCD algorithm has selected arbitrarily \
+                 among tied Faithfulness constraint subsets. You may wish to try changing \
+                 the order of the Faithfulness constraints in the input file, to see whether \
+                 this results in a different ranking.</p>\n",
+            );
+        }
+
+        // Section 1: Result
+        out.push_str("<h2>1. Result</h2>\n");
+        if self.success {
+            out.push_str("<p class=\"success\">A ranking was found that generates the correct outputs.</p>\n");
+        } else {
+            out.push_str("<p class=\"failure\">No ranking was found.</p>\n");
+        }
+        for stratum in 1..=self.num_strata {
+            out.push_str(&format!("<p><strong>Stratum #{stratum}</strong></p>\n<ul>\n"));
+            for (c_idx, &c_stratum) in self.constraint_strata.iter().enumerate() {
+                if c_stratum == stratum {
+                    if let Some(constraint) = tableau.get_constraint(c_idx) {
+                        out.push_str(&format!(
+                            "  <li>{} ({})</li>\n",
+                            html_escape(&constraint.full_name()),
+                            html_escape(&constraint.abbrev()),
+                        ));
+                    }
+                }
+            }
+            out.push_str("</ul>\n");
+        }
+
+        // Section 2: Tableaux as HTML tables
+        out.push_str("<h2>2. Tableaux</h2>\n");
+        for form in &tableau.forms {
+            let winner_idx = form.candidates.iter().position(|c| c.frequency > 0);
+            out.push_str(&self.format_html_form_table(tableau, form, winner_idx));
+        }
+
+        // Section 3: Constraint necessity
+        if !self.constraint_necessity.is_empty() {
+            out.push_str(
+                "<h2>3. Status of Proposed Constraints: Necessary or Unnecessary</h2>\n",
+            );
+            out.push_str("<table class=\"necessity-table\">\n<tbody>\n");
+            for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
+                let constraint = &tableau.constraints[c_idx];
+                let status = match necessity {
+                    ConstraintNecessity::Necessary => "Necessary",
+                    ConstraintNecessity::UnnecessaryButShownForFaithfulness =>
+                        "Not necessary (but included to show Faithfulness violations of a winning candidate)",
+                    ConstraintNecessity::CompletelyUnnecessary => "Not necessary",
+                };
+                out.push_str(&format!(
+                    "  <tr><td>{}</td><td>{}</td></tr>\n",
+                    html_escape(&constraint.abbrev()),
+                    html_escape(status),
+                ));
+            }
+            out.push_str("</tbody>\n</table>\n");
+            if self.check_mass_deletion(tableau) {
+                out.push_str(
+                    "<p>A check has determined that the grammar will still work even if the \
+                     constraints marked above as unnecessary are removed en masse.</p>\n",
+                );
+            }
+        }
+
+        // Section 4: Ranking Arguments (FRed)
+        if let Some(ref fred) = self.fred_result {
+            out.push_str(
+                "<h2>4. Ranking Arguments, based on the Fusional Reduction Algorithm</h2>\n",
+            );
+            out.push_str(&format!(
+                "<pre>{}</pre>\n",
+                html_escape(&fred.format_section4())
+            ));
+        }
+
+        // Section 5: Mini-Tableaux
+        if !self.mini_tableaux.is_empty() {
+            out.push_str("<h2>5. Mini-Tableaux</h2>\n");
+            out.push_str(
+                "<p>The following small tableaux may be useful in presenting ranking arguments. \
+                 They include all winner-rival comparisons in which there is just one \
+                 winner-preferring constraint and at least one loser-preferring constraint. \
+                 Constraints not violated by either candidate are omitted.</p>\n",
+            );
+            for mini in &self.mini_tableaux {
+                out.push_str(&self.format_html_mini_tableau(tableau, mini));
+            }
+        }
+
+        out.push_str("</body>\n</html>\n");
+        out
+    }
+
+    /// Render a single input form as an HTML tableau table.
+    fn format_html_form_table(
+        &self,
+        tableau: &Tableau,
+        form: &crate::tableau::InputForm,
+        winner_idx: Option<usize>,
+    ) -> String {
+        let num_constraints = tableau.constraints.len();
+        let mut out = String::new();
+
+        out.push_str("<table>\n");
+
+        // Header row: input form + constraint abbreviations
+        out.push_str("  <tr>\n");
+        out.push_str(&format!("    <th>/{}/</th>\n", html_escape(&form.input)));
+        for c_idx in 0..num_constraints {
+            let is_last = c_idx + 1 == num_constraints;
+            let has_border = !is_last
+                && self.constraint_strata[c_idx] != self.constraint_strata[c_idx + 1];
+            let class = html_cell_class(false, is_last, has_border);
+            out.push_str(&format!(
+                "    <th class=\"{}\">{}</th>\n",
+                class,
+                html_escape(&tableau.constraints[c_idx].abbrev()),
+            ));
+        }
+        out.push_str("  </tr>\n");
+
+        // Compute winner shading point (0-based constraint index where all losers are dead).
+        // Cells strictly after this index are shaded in the winner row.
+        let winner_shading_point: usize = if let Some(wi) = winner_idx {
+            let winner = &form.candidates[wi];
+            let losers: Vec<usize> = form.candidates.iter()
+                .enumerate()
+                .filter(|(i, c)| *i != wi && c.frequency == 0)
+                .map(|(i, _)| i)
+                .collect();
+            if losers.is_empty() {
+                usize::MAX
+            } else {
+                let mut dead = vec![false; losers.len()];
+                let mut found = usize::MAX;
+                for c_idx in 0..num_constraints {
+                    for (l_pos, &l_idx) in losers.iter().enumerate() {
+                        if form.candidates[l_idx].violations[c_idx] > winner.violations[c_idx] {
+                            dead[l_pos] = true;
+                        }
+                    }
+                    if dead.iter().all(|&d| d) {
+                        found = c_idx;
+                        break;
+                    }
+                }
+                found
+            }
+        } else {
+            usize::MAX
+        };
+
+        // Candidate rows
+        for (cand_idx, candidate) in form.candidates.iter().enumerate() {
+            let is_winner = Some(cand_idx) == winner_idx;
+            out.push_str("  <tr>\n");
+
+            // Candidate label cell
+            let label = if is_winner {
+                format!("&#x261E;&nbsp;{}", html_escape(&candidate.form))
+            } else {
+                format!("&nbsp;&nbsp;&nbsp;{}", html_escape(&candidate.form))
+            };
+            out.push_str(&format!("    <td>{label}</td>\n"));
+
+            if is_winner {
+                // Winner row: shade cells strictly after the winner shading point
+                for c_idx in 0..num_constraints {
+                    let is_shaded = c_idx > winner_shading_point;
+                    let is_last = c_idx + 1 == num_constraints;
+                    let has_border = !is_last
+                        && self.constraint_strata[c_idx] != self.constraint_strata[c_idx + 1];
+                    let class = html_cell_class(is_shaded, is_last, has_border);
+                    let content = format_html_viol(candidate.violations[c_idx], 0, false);
+                    out.push_str(&format!("    <td class=\"{class}\">{content}</td>\n"));
+                }
+            } else {
+                // Loser row: find first fatal violation, shade cells after it.
+                // The fatal cell itself is NOT shaded (style chosen before flag is set).
+                let first_fatal = if let Some(wi) = winner_idx {
+                    let winner = &form.candidates[wi];
+                    candidate.violations.iter()
+                        .enumerate()
+                        .position(|(i, &v)| v > winner.violations[i])
+                } else {
+                    None
+                };
+
+                let mut fatal_seen = false;
+                for c_idx in 0..num_constraints {
+                    let is_fatal = first_fatal == Some(c_idx);
+                    // Shade based on fatal_seen BEFORE updating it (matches VB6 behavior)
+                    let is_shaded = fatal_seen;
+                    let is_last = c_idx + 1 == num_constraints;
+                    let has_border = !is_last
+                        && self.constraint_strata[c_idx] != self.constraint_strata[c_idx + 1];
+                    let class = html_cell_class(is_shaded, is_last, has_border);
+                    let winner_viols = winner_idx
+                        .map(|wi| form.candidates[wi].violations[c_idx])
+                        .unwrap_or(0);
+                    let content =
+                        format_html_viol(candidate.violations[c_idx], winner_viols, is_fatal);
+                    out.push_str(&format!("    <td class=\"{class}\">{content}</td>\n"));
+                    if is_fatal {
+                        fatal_seen = true;
+                    }
+                }
+            }
+
+            out.push_str("  </tr>\n");
+        }
+
+        out.push_str("</table>\n\n");
+        out
+    }
+
+    /// Render a mini-tableau as an HTML table.
+    fn format_html_mini_tableau(&self, tableau: &Tableau, mini: &MiniTableau) -> String {
+        let form = &tableau.forms[mini.form_index];
+        let winner = &form.candidates[mini.winner_index];
+        let loser = &form.candidates[mini.loser_index];
+        let included = &mini.included_constraints;
+        let num_included = included.len();
+
+        let mut out = String::new();
+        out.push_str("<table>\n");
+
+        // Header row
+        out.push_str("  <tr>\n");
+        out.push_str(&format!("    <th>/{}/</th>\n", html_escape(&form.input)));
+        for (i, &c_idx) in included.iter().enumerate() {
+            let is_last = i + 1 == num_included;
+            let has_border = !is_last
+                && self.constraint_strata[c_idx] != self.constraint_strata[included[i + 1]];
+            let class = html_cell_class(false, is_last, has_border);
+            out.push_str(&format!(
+                "    <th class=\"{}\">{}</th>\n",
+                class,
+                html_escape(&tableau.constraints[c_idx].abbrev()),
+            ));
+        }
+        out.push_str("  </tr>\n");
+
+        // Winner row (no fatal markers in mini-tableaux, per text formatter)
+        out.push_str("  <tr>\n");
+        out.push_str(&format!(
+            "    <td>&#x261E;&nbsp;{}</td>\n",
+            html_escape(&winner.form)
+        ));
+        for (i, &c_idx) in included.iter().enumerate() {
+            let is_last = i + 1 == num_included;
+            let has_border = !is_last
+                && self.constraint_strata[c_idx] != self.constraint_strata[included[i + 1]];
+            let class = html_cell_class(false, is_last, has_border);
+            let content = format_html_viol(winner.violations[c_idx], 0, false);
+            out.push_str(&format!("    <td class=\"{class}\">{content}</td>\n"));
+        }
+        out.push_str("  </tr>\n");
+
+        // Loser row (no fatal markers in mini-tableaux)
+        out.push_str("  <tr>\n");
+        out.push_str(&format!(
+            "    <td>&nbsp;&nbsp;&nbsp;{}</td>\n",
+            html_escape(&loser.form)
+        ));
+        for (i, &c_idx) in included.iter().enumerate() {
+            let is_last = i + 1 == num_included;
+            let has_border = !is_last
+                && self.constraint_strata[c_idx] != self.constraint_strata[included[i + 1]];
+            let class = html_cell_class(false, is_last, has_border);
+            let content = format_html_viol(loser.violations[c_idx], 0, false);
+            out.push_str(&format!("    <td class=\"{class}\">{content}</td>\n"));
+        }
+        out.push_str("  </tr>\n");
+
+        out.push_str("</table>\n\n");
+        out
     }
 }
 

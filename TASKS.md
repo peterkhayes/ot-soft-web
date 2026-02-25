@@ -70,7 +70,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Formatted text output (matching VB6 draft output style)
 - [x] Tableaux with fatal violation markers
 - [x] Downloadable results file
-- [ ] HTML tableaux with configurable shading
+- [x] HTML tableaux with configurable shading
 - [ ] Sorted input file (constraints/candidates reordered by rank)
 - [ ] Praat export (`.OTGrammar`, `.PairDistribution`)
 - [ ] R export (logistic regression format)

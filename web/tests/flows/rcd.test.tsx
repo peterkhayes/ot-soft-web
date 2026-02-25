@@ -132,6 +132,42 @@ test('RCD: load example, run, see results, download', async () => {
   `)
 })
 
+test('RCD: download HTML tableaux', async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Run RCD Algorithm').click()
+  await expect
+    .element(page.getByText('A ranking was found that generates the correct outputs'))
+    .toBeVisible()
+
+  await page.getByText('Download HTML').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileOutput.html')
+  const html = normalizeOutput(downloads[0].content)
+  // Verify it's a complete HTML document with styled tableaux
+  expect(html).toContain('<!DOCTYPE html>')
+  expect(html).toContain('<title>OTSoft 2.7 TinyIllustrativeFile.txt</title>')
+  expect(html).toContain('<TIMESTAMP>')
+  expect(html).toContain('1. Result')
+  expect(html).toContain('A ranking was found that generates the correct outputs.')
+  expect(html).toContain('2. Tableaux')
+  expect(html).toContain('/a/')
+  expect(html).toContain('/tat/')
+  expect(html).toContain('/at/')
+  // Shading classes present
+  expect(html).toContain('class="cl4"')
+  expect(html).toContain('class="cl8"')
+  // Fatal violation markers
+  expect(html).toContain('*!')
+  // Winner marker
+  expect(html).toContain('&#x261E;')
+  expect(html).toContain('3. Status of Proposed Constraints')
+  expect(html).toContain('4. Ranking Arguments')
+  expect(html).toContain('5. Mini-Tableaux')
+})
+
 test('RCD: a priori rankings file upload', async () => {
   renderApp()
   await loadExample()
