@@ -101,6 +101,25 @@ test('GLA: custom learning schedule runs successfully', { timeout: 30000 }, asyn
   await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
 })
 
+test('GLA: multiple runs downloads CollateRuns.txt', { timeout: 60000 }, async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+
+  // Click "Run 10 times & Download" (default is 10 runs)
+  await page.getByText('Run 10 times & Download').click()
+
+  // Download should appear with CollateRuns filename
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toContain('CollateRuns')
+
+  // Content should have G and O records
+  const content = downloads[0].content
+  expect(content).toMatch(/^G\t/m)
+  expect(content).toMatch(/^O\t/m)
+})
+
 test('GLA: load custom schedule from file', { timeout: 30000 }, async () => {
   renderApp()
   await loadExample()

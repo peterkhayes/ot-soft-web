@@ -404,6 +404,77 @@ impl Tableau {
         )
     }
 
+    /// Run GLA `run_count` times and format results as `CollateRuns.txt` content.
+    ///
+    /// Reproduces VB6 `boersma.frm:MultipleRuns`. Each run appends:
+    ///   - **G records**: `G\t{run}\t{constraint_abbrev}\t{ranking_value}` (one per constraint)
+    ///   - **O records**: `O\t{run}\t{form_idx}\t{input}\t{rival_idx}\t{rival_form}\t{freq}\t{pct_gen}`
+    ///     (one per non-first candidate per form; VB6 skips candidate 0, the winner)
+    #[allow(clippy::too_many_arguments)]
+    pub fn format_collate_runs_output(
+        &self,
+        run_count: usize,
+        maxent_mode: bool,
+        schedule: &LearningSchedule,
+        test_trials: usize,
+        negative_weights_ok: bool,
+        gaussian_prior: bool,
+        sigma: f64,
+        magri_update_rule: bool,
+    ) -> String {
+        let nc = self.constraints.len();
+        let mut out = String::new();
+
+        for run_idx in 1..=run_count {
+            let result = self.run_gla_with_schedule(
+                maxent_mode,
+                schedule,
+                test_trials,
+                negative_weights_ok,
+                gaussian_prior,
+                sigma,
+                magri_update_rule,
+            );
+
+            // G records: constraint ranking values / weights
+            for ci in 0..nc {
+                out.push_str(&format!(
+                    "G\t{}\t{}\t{:.3}\n",
+                    run_idx,
+                    self.constraints[ci].abbrev(),
+                    result.ranking_values[ci],
+                ));
+            }
+
+            // O records: rival candidates with predicted probabilities.
+            // VB6 loops from RivalIndex=1, skipping candidate 0 (the winner).
+            for (fi, form) in self.forms.iter().enumerate() {
+                for ri in 1..form.candidates.len() {
+                    let cand = &form.candidates[ri];
+                    let pct_gen = result
+                        .test_probs
+                        .get(fi)
+                        .and_then(|f| f.get(ri))
+                        .copied()
+                        .unwrap_or(0.0)
+                        * 100.0;
+                    out.push_str(&format!(
+                        "O\t{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\n",
+                        run_idx,
+                        fi + 1,
+                        form.input,
+                        ri,
+                        cand.form,
+                        cand.frequency,
+                        pct_gen,
+                    ));
+                }
+            }
+        }
+
+        out
+    }
+
     /// Run the Gradual Learning Algorithm with an explicit learning schedule.
     ///
     /// Supports separate plasticity for Markedness vs Faithfulness constraints
@@ -728,6 +799,54 @@ mod tests {
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert!(result.get_ranking_value(c).is_finite());
+        }
+    }
+
+    #[test]
+    fn test_gla_multiple_runs_format() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
+        let output = tableau.format_collate_runs_output(
+            3,     // run_count
+            false, // maxent_mode
+            &schedule,
+            200,   // test_trials
+            false, // negative_weights_ok
+            false, // gaussian_prior
+            1.0,   // sigma
+            false, // magri_update_rule
+        );
+
+        let nc = tableau.constraint_count();
+        let lines: Vec<&str> = output.lines().collect();
+
+        // Count G records
+        let g_lines: Vec<&&str> = lines.iter().filter(|l| l.starts_with("G\t")).collect();
+        assert_eq!(g_lines.len(), 3 * nc, "should have run_count * nc G records");
+
+        // Count O records (one per rival per form across all runs)
+        let o_lines: Vec<&&str> = lines.iter().filter(|l| l.starts_with("O\t")).collect();
+        assert!(!o_lines.is_empty(), "should have O records");
+
+        // G records have 4 tab-separated fields
+        for line in &g_lines {
+            let fields: Vec<&str> = line.split('\t').collect();
+            assert_eq!(fields.len(), 4, "G record should have 4 fields: {}", line);
+        }
+
+        // O records have 8 tab-separated fields
+        for line in &o_lines {
+            let fields: Vec<&str> = line.split('\t').collect();
+            assert_eq!(fields.len(), 8, "O record should have 8 fields: {}", line);
+        }
+
+        // Run indices go from 1 to 3
+        for run_idx in 1..=3 {
+            let run_str = run_idx.to_string();
+            let has_run = lines
+                .iter()
+                .any(|l| l.starts_with("G\t") && l.split('\t').nth(1) == Some(&run_str));
+            assert!(has_run, "should have G records for run {}", run_idx);
         }
     }
 

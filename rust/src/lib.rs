@@ -544,6 +544,34 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
     Ok(result.format_output(&tableau, filename))
 }
 
+/// Run GLA `run_count` times and return the collated results as `CollateRuns.txt` content.
+///
+/// Reproduces VB6 `boersma.frm:MultipleRuns`. The output is a tab-delimited text file with
+/// two record types per run:
+///   - **G records**: grammar state — `G\t{run}\t{constraint}\t{ranking_value}`
+///   - **O records**: output predictions — `O\t{run}\t{form_idx}\t{input}\t{rival_idx}\t{rival}\t{freq}\t{pct_gen}`
+///
+/// `run_count` is typically 10, 100, or 1000.
+#[wasm_bindgen]
+pub fn format_gla_multiple_runs_output(
+    text: &str,
+    run_count: u32,
+    opts: &GlaOptions,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let sched = build_gla_schedule(opts)?;
+    Ok(tableau.format_collate_runs_output(
+        run_count as usize,
+        opts.maxent_mode,
+        &sched,
+        opts.test_trials,
+        opts.negative_weights_ok,
+        opts.gaussian_prior,
+        opts.sigma,
+        opts.magri_update_rule,
+    ))
+}
+
 fn build_gla_schedule(opts: &GlaOptions) -> Result<schedule::LearningSchedule, String> {
     if opts.learning_schedule.trim().is_empty() {
         Ok(schedule::LearningSchedule::default_4stage(

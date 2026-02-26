@@ -1,7 +1,13 @@
 import { useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { format_gla_output, gla_hasse_dot, GlaOptions, run_gla } from '../../pkg/ot_soft.js'
+import {
+  format_gla_multiple_runs_output,
+  format_gla_output,
+  gla_hasse_dot,
+  GlaOptions,
+  run_gla,
+} from '../../pkg/ot_soft.js'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
@@ -52,6 +58,7 @@ interface GlaParams {
   magriUpdateRule: boolean
   useCustomSchedule: boolean
   customSchedule: string
+  multipleRunsCount: 10 | 100 | 1000
 }
 const GLA_DEFAULTS: GlaParams = {
   maxentMode: false,
@@ -65,6 +72,7 @@ const GLA_DEFAULTS: GlaParams = {
   magriUpdateRule: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
+  multipleRunsCount: 10,
 }
 
 function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
@@ -81,11 +89,13 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     magriUpdateRule,
     useCustomSchedule,
     customSchedule,
+    multipleRunsCount,
   } = params
 
   const [result, setResult] = useState<GlaState | null>(null)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMultiple, setIsLoadingMultiple] = useState(false)
   const download = useDownload()
 
   function buildOpts(): GlaOptions {
@@ -180,6 +190,23 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)
     }
+  }
+
+  function handleMultipleRuns() {
+    setIsLoadingMultiple(true)
+    setScheduleError(null)
+    setTimeout(() => {
+      try {
+        const opts = buildOpts()
+        const output = format_gla_multiple_runs_output(tableauText, multipleRunsCount, opts)
+        download(output, makeOutputFilename(inputFilename, 'CollateRuns'))
+      } catch (err) {
+        console.error('Multiple runs error:', err)
+        alert('Error running multiple GLA runs: ' + err)
+      } finally {
+        setIsLoadingMultiple(false)
+      }
+    }, 0)
   }
 
   const atDefaults = isAtDefaults(params, GLA_DEFAULTS)
@@ -349,6 +376,23 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         )}
       </div>
 
+      <div className="nhg-options">
+        <div className="nhg-options-label">Multiple runs</div>
+        <label className="param-label">
+          Number of runs
+          <select
+            value={multipleRunsCount}
+            onChange={(e) =>
+              setParams({ multipleRunsCount: parseInt(e.target.value) as 10 | 100 | 1000 })
+            }
+          >
+            <option value={10}>10</option>
+            <option value={100}>100</option>
+            <option value={1000}>1000</option>
+          </select>
+        </label>
+      </div>
+
       <div className="action-bar">
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
@@ -399,6 +443,24 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             Download Results
           </button>
         )}
+        <button
+          className={`download-button${isLoadingMultiple ? ' primary-button--loading' : ''}`}
+          onClick={handleMultipleRuns}
+          disabled={isLoadingMultiple}
+        >
+          <svg
+            className="button-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          {isLoadingMultiple ? 'Running…' : `Run ${multipleRunsCount} times & Download`}
+        </button>
         <button
           className="reset-button"
           onClick={() => setParams(GLA_DEFAULTS)}
