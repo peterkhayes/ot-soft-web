@@ -1,4 +1,4 @@
-// Tiny example tableau data (exact copy of examples/tiny/input.txt)
+// Tiny example tableau data (exact copy of examples/TinyIllustrativeFile/input.txt)
 export const TINY_EXAMPLE = `\t\t\t*No Onset\t*Coda\tMax(t)\tDep(?)
 \t\t\t*NoOns\t*Coda\tMax\tDep
 a\t?a\t1\t\t\t\t1

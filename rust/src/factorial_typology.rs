@@ -892,7 +892,7 @@ mod tests {
     #[test]
     fn test_factorial_typology_tiny_example() {
         // Use the actual tiny example from examples/
-        let text = include_str!("../../examples/tiny/input.txt");
+        let text = include_str!("../../examples/TinyIllustrativeFile/input.txt");
         let tableau = Tableau::parse(text).expect("parse failed");
         let result = tableau.run_factorial_typology(&[]);
         // Tiny example has 4 constraints and several candidates per input.
@@ -938,7 +938,7 @@ mod tests {
 
     #[test]
     fn test_format_ftsum_tiny_example() {
-        let text = include_str!("../../examples/tiny/input.txt");
+        let text = include_str!("../../examples/TinyIllustrativeFile/input.txt");
         let tableau = Tableau::parse(text).expect("parse failed");
         let result = tableau.run_factorial_typology(&[]);
         let ftsum = result.format_ftsum(&tableau);
@@ -956,7 +956,7 @@ mod tests {
 
     #[test]
     fn test_format_compact_sum_tiny_example() {
-        let text = include_str!("../../examples/tiny/input.txt");
+        let text = include_str!("../../examples/TinyIllustrativeFile/input.txt");
         let tableau = Tableau::parse(text).expect("parse failed");
         let result = tableau.run_factorial_typology(&[]);
         let compact = result.format_compact_sum(&tableau);

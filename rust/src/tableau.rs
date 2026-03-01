@@ -272,8 +272,8 @@ mod tests {
     use super::*;
 
     fn load_tiny_example() -> String {
-        std::fs::read_to_string("../examples/tiny/input.txt")
-            .expect("Failed to load examples/tiny/input.txt")
+        std::fs::read_to_string("../examples/TinyIllustrativeFile/input.txt")
+            .expect("Failed to load examples/TinyIllustrativeFile/input.txt")
     }
 
     #[test]
