@@ -10,59 +10,9 @@
 //! Reproduces VB6 NoisyHarmonicGrammar.frm.
 
 use wasm_bindgen::prelude::*;
+use crate::rng::{Rng, GaussianMode};
 use crate::schedule::LearningSchedule;
 use crate::tableau::Tableau;
-
-// ─── Gaussian RNG ────────────────────────────────────────────────────────────
-//
-// Box-Muller transform, matching the VB6 Gaussian() function.
-// Uses `getrandom` for a WASM-compatible (js) and native-compatible uniform source.
-
-fn getrandom_uniform() -> f64 {
-    let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes).expect("getrandom failed");
-    let n = u64::from_le_bytes(bytes);
-    // Map to [0, 1) — use the ratio n / 2^64
-    (n as f64) * (1.0 / 18_446_744_073_709_551_616.0_f64)
-}
-
-/// State for the Gaussian RNG. Caches the second value from Box-Muller.
-struct Rng {
-    stored: Option<f64>,
-    demi_gaussians: bool,
-}
-
-impl Rng {
-    fn new(demi_gaussians: bool) -> Self {
-        Rng { stored: None, demi_gaussians }
-    }
-
-    /// Uniform sample in [0, 1)
-    fn uniform(&mut self) -> f64 {
-        getrandom_uniform()
-    }
-
-    /// Standard normal deviate (σ=1), with demi-Gaussian option.
-    fn gaussian(&mut self) -> f64 {
-        let val = if let Some(stored) = self.stored.take() {
-            stored
-        } else {
-            // Box-Muller rejection sampling (matches VB6)
-            loop {
-                let v1 = 2.0 * getrandom_uniform() - 1.0;
-                let v2 = 2.0 * getrandom_uniform() - 1.0;
-                let r = v1 * v1 + v2 * v2;
-                if r > 0.0 && r < 1.0 {
-                    let fac = (-2.0 * r.ln() / r).sqrt();
-                    // Cache one, return the other (matches VB6)
-                    self.stored = Some(v1 * fac);
-                    break v2 * fac;
-                }
-            }
-        };
-        if self.demi_gaussians { val.abs() } else { val }
-    }
-}
 
 // ─── Form generation ─────────────────────────────────────────────────────────
 
@@ -313,7 +263,6 @@ impl NhgResult {
     /// Format results as text output for download.
     /// Reproduces the structure of OTSoft's NHG text output.
     pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
-        let nc = tableau.constraints.len();
         let mut out = String::new();
 
         // Header
@@ -417,12 +366,7 @@ impl NhgResult {
 
         // Constraint violation tableaux (if desired — matches VB6 optional include)
         out.push_str("3. Constraint Weights (sorted)\n\n");
-        let mut sorted: Vec<usize> = (0..nc).collect();
-        sorted.sort_by(|&a, &b| {
-            self.weights[b]
-                .partial_cmp(&self.weights[a])
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        let sorted = crate::tableau::sorted_indices_descending(&self.weights);
         for &c_idx in &sorted {
             out.push_str(&format!(
                 "   {:<42}{:.3}\n",
@@ -527,7 +471,8 @@ impl Tableau {
         // ── Initialize weights ───────────────────────────────────────────────────────────
         let mut weights = vec![0.0f64; nc];
 
-        let mut rng = Rng::new(demi_gaussians);
+        let gaussian_mode = if demi_gaussians { GaussianMode::DemiGaussian } else { GaussianMode::Standard };
+        let mut rng = Rng::new(gaussian_mode);
         let total_cycles = schedule.total_cycles();
 
         crate::ot_log!("Starting NHG with {} constraints, {} training exemplars, {} cycles",

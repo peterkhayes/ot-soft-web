@@ -228,6 +228,7 @@ mod lfcd;
 mod fred;
 mod apriori;
 mod maxent;
+mod rng;
 mod nhg;
 mod gla;
 mod factorial_typology;

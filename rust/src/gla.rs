@@ -14,51 +14,9 @@
 //! GLATestGrammar, GenerateMaxEntPredictions.
 
 use wasm_bindgen::prelude::*;
+use crate::rng::{Rng, GaussianMode};
 use crate::schedule::LearningSchedule;
 use crate::tableau::Tableau;
-
-// ─── Gaussian RNG ─────────────────────────────────────────────────────────────
-// Box-Muller transform (matches the VB6 boersma.frm:Gaussian function).
-// Note: the VB6 function multiplies by 2 (giving σ=2), which is the noise level
-// used directly for StochasticOT ranking value perturbation.
-
-fn getrandom_uniform() -> f64 {
-    let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes).expect("getrandom failed");
-    let n = u64::from_le_bytes(bytes);
-    (n as f64) * (1.0 / 18_446_744_073_709_551_616.0_f64)
-}
-
-struct Rng {
-    stored: Option<f64>,
-}
-
-impl Rng {
-    fn new() -> Self {
-        Rng { stored: None }
-    }
-
-    fn uniform(&mut self) -> f64 {
-        getrandom_uniform()
-    }
-
-    /// Standard normal deviate (σ=1). Scale by noise_sigma at call site.
-    fn gaussian(&mut self) -> f64 {
-        if let Some(stored) = self.stored.take() {
-            return stored;
-        }
-        loop {
-            let v1 = 2.0 * getrandom_uniform() - 1.0;
-            let v2 = 2.0 * getrandom_uniform() - 1.0;
-            let r = v1 * v1 + v2 * v2;
-            if r > 0.0 && r < 1.0 {
-                let fac = (-2.0 * r.ln() / r).sqrt();
-                self.stored = Some(v1 * fac);
-                return v2 * fac;
-            }
-        }
-    }
-}
 
 // ─── OT Evaluation (Stochastic OT) ──────────────────────────────────────────
 //
@@ -250,7 +208,6 @@ impl GlaResult {
     /// Format results as text output for download.
     /// Reproduces the structure of OTSoft's GLA text output.
     pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
-        let nc = tableau.constraints.len();
         let mut out = String::new();
         let mode_name = if self.maxent_mode {
             "GLA-MaxEnt"
@@ -354,12 +311,7 @@ impl GlaResult {
 
         // Section 3: Sorted ranking values / weights
         out.push_str(&format!("3. {} (sorted)\n\n", value_label));
-        let mut sorted: Vec<usize> = (0..nc).collect();
-        sorted.sort_by(|&a, &b| {
-            self.ranking_values[b]
-                .partial_cmp(&self.ranking_values[a])
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
         for &c_idx in &sorted {
             out.push_str(&format!(
                 "   {:<42}{:.3}\n",
@@ -522,7 +474,7 @@ impl Tableau {
         let initial_value = if maxent_mode { 0.0 } else { 100.0 };
         let mut ranking_values = vec![initial_value; nc];
 
-        let mut rng = Rng::new();
+        let mut rng = Rng::new(GaussianMode::Standard);
 
         let mode_name = if maxent_mode { "MaxEnt" } else { "StochasticOT" };
         let total_cycles = schedule.total_cycles();
