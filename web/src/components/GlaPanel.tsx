@@ -8,6 +8,7 @@ import {
   GlaOptions,
   run_gla,
 } from '../../pkg/ot_soft.js'
+import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
@@ -38,13 +39,6 @@ interface GlaErrorState {
 }
 
 type GlaState = GlaResultState | GlaErrorState
-
-const DEFAULT_SCHEDULE_TEMPLATE =
-  'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
-  '15000\t2\t2\t2\t2\n' +
-  '15000\t0.2\t0.2\t2\t2\n' +
-  '15000\t0.02\t0.02\t2\t2\n' +
-  '15000\t0.002\t0.002\t2\t2'
 
 interface GlaParams {
   maxentMode: boolean

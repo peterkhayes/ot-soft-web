@@ -2,17 +2,11 @@ import { useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { format_nhg_output, NhgOptions, run_nhg } from '../../pkg/ot_soft.js'
+import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import TextFileEditor from './TextFileEditor.tsx'
-
-const DEFAULT_SCHEDULE_TEMPLATE =
-  'Trials\tPlastMark\tPlastFaith\tNoiseMark\tNoiseFaith\n' +
-  '15000\t2\t2\t2\t2\n' +
-  '15000\t0.2\t0.2\t2\t2\n' +
-  '15000\t0.02\t0.02\t2\t2\n' +
-  '15000\t0.002\t0.002\t2\t2'
 
 interface NhgPanelProps {
   tableau: Tableau
