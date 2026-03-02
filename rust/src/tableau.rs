@@ -267,6 +267,20 @@ impl Tableau {
     }
 }
 
+/// Return indices sorted by `values[i]` descending.
+///
+/// Used by output formatters to display constraints ranked by weight/ranking value.
+/// NaN values sort as equal (fallback to `Ordering::Equal`).
+pub fn sorted_indices_descending(values: &[f64]) -> Vec<usize> {
+    let mut indices: Vec<usize> = (0..values.len()).collect();
+    indices.sort_by(|&a, &b| {
+        values[b]
+            .partial_cmp(&values[a])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    indices
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

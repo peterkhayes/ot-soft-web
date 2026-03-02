@@ -9,6 +9,12 @@
 //!
 //! Reproduces VB6 `DetermineLearningSchedule` (boersma.frm / NoisyHarmonicGrammar.frm).
 
+/// Default noise sigma for all schedule stages (matches VB6 σ=2).
+const DEFAULT_NOISE_SIGMA: f64 = 2.0;
+
+/// Number of stages in the default geometric schedule.
+const DEFAULT_STAGE_COUNT: usize = 4;
+
 /// Parameters for one stage of the learning schedule.
 #[derive(Debug, Clone)]
 pub struct LearningStage {
@@ -43,7 +49,7 @@ impl LearningSchedule {
         let p4 = final_plasticity;
         let p2 = (p1 * p1 * p4).powf(1.0 / 3.0);
         let p3 = (p1 * p4 * p4).powf(1.0 / 3.0);
-        let trials_per_stage = cycles / 4;
+        let trials_per_stage = cycles / DEFAULT_STAGE_COUNT;
 
         let stages = [p1, p2, p3, p4]
             .iter()
@@ -51,8 +57,8 @@ impl LearningSchedule {
                 trials: trials_per_stage,
                 plast_mark: p,
                 plast_faith: p,
-                noise_mark: 2.0,
-                noise_faith: 2.0,
+                noise_mark: DEFAULT_NOISE_SIGMA,
+                noise_faith: DEFAULT_NOISE_SIGMA,
             })
             .collect();
 
@@ -119,7 +125,7 @@ impl LearningSchedule {
     /// True if this schedule was built from a custom text (non-default).
     /// Heuristic: stages > 4 or any stage has plast_mark != plast_faith.
     pub fn is_custom(&self) -> bool {
-        self.stages.len() != 4
+        self.stages.len() != DEFAULT_STAGE_COUNT
             || self.stages.iter().any(|s| (s.plast_mark - s.plast_faith).abs() > 1e-12)
     }
 

@@ -96,10 +96,7 @@ impl MaxEntResult {
         out.push_str("1. Constraint Weights\n\n");
 
         // Sort by weight descending for display
-        let mut sorted_constraints: Vec<usize> = (0..nc).collect();
-        sorted_constraints.sort_by(|&a, &b| {
-            self.weights[b].partial_cmp(&self.weights[a]).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        let sorted_constraints = crate::tableau::sorted_indices_descending(&self.weights);
 
         for &c_idx in &sorted_constraints {
             let constraint = &tableau.constraints[c_idx];
