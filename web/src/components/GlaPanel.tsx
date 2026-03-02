@@ -5,6 +5,7 @@ import {
   format_gla_multiple_runs_output,
   format_gla_output,
   gla_hasse_dot,
+  gla_pairwise_probabilities,
   GlaOptions,
   run_gla,
 } from '../../pkg/ot_soft.js'
@@ -30,6 +31,7 @@ interface GlaResultState {
   logLikelihood: number
   maxentMode: boolean
   hasseDot?: string
+  pairwiseTable?: string
   error?: undefined
 }
 
@@ -145,12 +147,18 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         })
 
         let hasseDot: string | undefined
+        let pairwiseTable: string | undefined
         if (!maxentMode) {
+          const rankingValues = new Float64Array(values.map((v) => v.value))
           try {
-            const rankingValues = new Float64Array(values.map((v) => v.value))
             hasseDot = gla_hasse_dot(tableauText, rankingValues)
           } catch (e) {
             console.warn('GLA Hasse diagram generation failed:', e)
+          }
+          try {
+            pairwiseTable = gla_pairwise_probabilities(tableauText, rankingValues)
+          } catch (e) {
+            console.warn('GLA pairwise probabilities generation failed:', e)
           }
         }
 
@@ -160,6 +168,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           logLikelihood: r.log_likelihood(),
           maxentMode: r.is_maxent_mode(),
           hasseDot,
+          pairwiseTable,
         })
       } catch (err) {
         console.error('GLA error:', err)
@@ -537,6 +546,12 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               dotString={successResult.hasseDot}
               downloadName={`${inputFilename ? inputFilename.replace(/\.[^.]+$/, '') : 'tableau'}Hasse`}
             />
+          )}
+          {successResult.pairwiseTable && (
+            <div className="pairwise-probabilities">
+              <h3 className="results-subheader">Pairwise Ranking Probabilities</h3>
+              <pre className="pairwise-table">{successResult.pairwiseTable}</pre>
+            </div>
           )}
         </div>
       )}

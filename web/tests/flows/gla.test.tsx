@@ -50,6 +50,23 @@ test('GLA (Stochastic OT): Hasse diagram appears after run', { timeout: 30000 },
   await expect.element(page.getByRole('button', { name: /PNG/i })).toBeEnabled()
 })
 
+test(
+  'GLA (Stochastic OT): pairwise ranking probabilities table appears',
+  { timeout: 30000 },
+  async () => {
+    renderApp()
+    await loadExample()
+
+    await page.getByText('Stochastic OT', { exact: true }).click()
+    await page.getByText('Run GLA').click()
+
+    // Pairwise ranking probabilities section appears
+    await expect
+      .element(page.getByRole('heading', { name: 'Pairwise Ranking Probabilities' }))
+      .toBeVisible()
+  },
+)
+
 test('GLA (Online MaxEnt): Hasse diagram not shown', { timeout: 30000 }, async () => {
   renderApp()
   await loadExample()
@@ -61,6 +78,8 @@ test('GLA (Online MaxEnt): Hasse diagram not shown', { timeout: 30000 }, async (
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
   // Hasse diagram should NOT appear in MaxEnt mode
   await expect.element(page.getByText('Hasse Diagram')).not.toBeInTheDocument()
+  // Pairwise ranking probabilities should NOT appear in MaxEnt mode
+  await expect.element(page.getByText('Pairwise Ranking Probabilities')).not.toBeInTheDocument()
 })
 
 test('GLA (Online MaxEnt): switch mode, run, see results', async () => {

@@ -53,7 +53,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Gaussian prior (MaxEnt)
 - [ ] Exact proportions data presentation
 - [x] Multiple runs with collated results
-- [ ] Pairwise ranking probabilities (used internally by GLA Hasse diagram)
+- [x] Pairwise ranking probabilities (used internally by GLA Hasse diagram)
 - [ ] History file output (weights/ranking values over time)
 
 ## Factorial Typology
@@ -115,18 +115,12 @@ Roughly ordered by value and dependency:
 
 1. **Collect VB6 golden files** — Run VB6 OTSoft on Windows following `conformance/CHECKLIST.md` to populate the missing golden files. Most conformance test cases currently skip.
 
-2. **Multiple runs with collated results** — Run probabilistic algorithms N times and aggregate weights/ranking values. Useful for assessing stability.
+2. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
 
-3. **Pairwise ranking probabilities** — Compute and display pairwise ranking probabilities from GLA output (ports `boersma.frm:PrintPairwiseRankingProbabilities`). Currently stubbed; needed for complete GLA Hasse edge labeling.
+3. **Sorted input file** — Reorder constraints/candidates by rank and write a sorted copy of the input file.
 
-4. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
+4. **Exact proportions data presentation** — Display data as exact proportions rather than frequency counts.
 
-5. **Sorted input file** — Reorder constraints/candidates by rank and write a sorted copy of the input file.
+6. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
 
-6. **Magri update rule** — Alternative update rule for Stochastic OT.
-
-7. **Exact proportions data presentation** — Display data as exact proportions rather than frequency counts.
-
-8. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
-
-9. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
+7. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.

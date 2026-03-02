@@ -160,6 +160,23 @@ fn lookup_gla_probability(diff: f64) -> Option<&'static str> {
     None
 }
 
+/// Look up the probability string using the full 481-entry table.
+///
+/// Used by the pairwise ranking probability matrix (which needs higher precision
+/// than the Hasse diagram). Returns `">.999999"` if `diff` exceeds all 481
+/// thresholds, matching VB6 `PrintPairwiseRankingProbabilities()` fallthrough.
+pub(crate) fn lookup_gla_probability_full(diff: f64) -> &'static str {
+    if let Some(prob) = lookup_gla_probability(diff) {
+        return prob;
+    }
+    for &(threshold, prob) in EXTENDED_PROBABILITY_TABLE {
+        if diff < threshold {
+            return prob;
+        }
+    }
+    ">.999999"
+}
+
 /// 443-entry threshold/probability table.
 ///
 /// Each entry is `(threshold, probability_string)`.  Find the first entry where
@@ -614,6 +631,53 @@ static PROBABILITY_TABLE: &[(f64, &str)] = &[
     (8.7, "0.999"),
 ];
 
+/// Extended probability table entries 444–481.
+///
+/// Used only by the pairwise ranking probability matrix output (which iterates
+/// up to entry 481 per VB6). The Hasse diagram uses only entries 1–443.
+///
+/// Ported verbatim from `boersma.frm:LookUpProbabilities()` (entries 444–481).
+static EXTENDED_PROBABILITY_TABLE: &[(f64, &str)] = &[
+    (8.79, "0.9991"),
+    (8.88, "0.9992"),
+    (8.98, "0.9993"),
+    (9.1, "0.9994"),
+    (9.24, "0.9995"),
+    (9.4, "0.9996"),
+    (9.59, "0.9997"),
+    (9.85, "0.9998"),
+    (10.23, "0.99985"),
+    (10.26, "0.99986"),
+    (10.31, "0.99987"),
+    (10.36, "0.99988"),
+    (10.42, "0.99989"),
+    (10.49, "0.9999"),
+    (10.56, "0.99991"),
+    (10.64, "0.99992"),
+    (10.73, "0.99993"),
+    (10.83, "0.99994"),
+    (10.94, "0.99995"),
+    (11.08, "0.99996"),
+    (11.25, "0.99997"),
+    (11.48, "0.99998"),
+    (11.81, "0.999985"),
+    (11.83, "0.999986"),
+    (11.88, "0.999987"),
+    (11.93, "0.999988"),
+    (11.98, "0.999989"),
+    (12.04, "0.99999"),
+    (12.1, "0.999991"),
+    (12.17, "0.999992"),
+    (12.25, "0.999993"),
+    (12.34, "0.999994"),
+    (12.44, "0.999995"),
+    (12.56, "0.999996"),
+    (12.72, "0.999997"),
+    (12.92, "0.999998"),
+    (13.22, "0.999999"),
+    (13.23, ">.999999"),
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -764,5 +828,36 @@ mod tests {
     #[test]
     fn test_probability_table_length() {
         assert_eq!(PROBABILITY_TABLE.len(), 443);
+    }
+
+    #[test]
+    fn test_extended_probability_table_length() {
+        assert_eq!(EXTENDED_PROBABILITY_TABLE.len(), 38);
+        assert_eq!(PROBABILITY_TABLE.len() + EXTENDED_PROBABILITY_TABLE.len(), 481);
+    }
+
+    #[test]
+    fn test_lookup_gla_probability_full_in_base_range() {
+        // A diff within the base 443-entry range should return the same result
+        assert_eq!(lookup_gla_probability_full(0.005), "0.501");
+        assert_eq!(lookup_gla_probability_full(5.0), "0.962");
+    }
+
+    #[test]
+    fn test_lookup_gla_probability_full_in_extended_range() {
+        // diff = 8.75 is >= 8.7 (end of base table) but < 8.79 (entry 444)
+        assert_eq!(lookup_gla_probability_full(8.75), "0.9991");
+        // diff = 9.5 is >= 9.4 but < 9.59
+        assert_eq!(lookup_gla_probability_full(9.5), "0.9997");
+        // diff = 13.0 is >= 12.92 but < 13.22
+        assert_eq!(lookup_gla_probability_full(13.0), "0.999999");
+        // diff = 13.22 is >= 13.22 but < 13.23
+        assert_eq!(lookup_gla_probability_full(13.22), ">.999999");
+    }
+
+    #[test]
+    fn test_lookup_gla_probability_full_beyond_all() {
+        // diff = 20.0 exceeds all 481 entries
+        assert_eq!(lookup_gla_probability_full(20.0), ">.999999");
     }
 }

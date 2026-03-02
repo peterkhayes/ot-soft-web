@@ -671,6 +671,27 @@ pub fn format_compact_sum_output(text: &str, apriori_text: &str) -> Result<Strin
     Ok(result.format_compact_sum(&tableau))
 }
 
+/// Generate the pairwise ranking probability table for GLA (Stochastic OT).
+///
+/// `text`: tableau file contents (used to obtain constraint names).
+/// `ranking_values`: final ranking values from GLA, one per constraint in tableau order.
+///
+/// Returns a formatted text table showing P(Ci >> Cj) for all constraint pairs.
+#[wasm_bindgen]
+pub fn gla_pairwise_probabilities(text: &str, ranking_values: Vec<f64>) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    if tableau.constraints.len() != ranking_values.len() {
+        return Err(format!(
+            "ranking_values length {} != constraint count {}",
+            ranking_values.len(),
+            tableau.constraints.len()
+        ));
+    }
+    // Build a minimal GlaResult just for formatting the pairwise table
+    let result = GlaResult::for_pairwise_table(ranking_values);
+    Ok(result.format_pairwise_probabilities(&tableau))
+}
+
 /// Generate a GraphViz DOT string for a GLA (Stochastic OT) Hasse diagram.
 ///
 /// `text`: tableau file contents (used to obtain constraint abbreviations).

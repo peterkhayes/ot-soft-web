@@ -175,6 +175,23 @@ pub struct GlaResult {
     magri_update_rule: bool,
 }
 
+impl GlaResult {
+    /// Create a minimal GlaResult for formatting the pairwise probability table.
+    pub(crate) fn for_pairwise_table(ranking_values: Vec<f64>) -> Self {
+        Self {
+            ranking_values,
+            test_probs: Vec::new(),
+            log_likelihood: 0.0,
+            maxent_mode: false,
+            schedule_description: String::new(),
+            test_trials: 0,
+            gaussian_prior: false,
+            sigma: 0.0,
+            magri_update_rule: false,
+        }
+    }
+}
+
 #[wasm_bindgen]
 impl GlaResult {
     pub fn get_ranking_value(&self, constraint_index: usize) -> f64 {
@@ -318,6 +335,61 @@ impl GlaResult {
                 tableau.constraints[c_idx].full_name(),
                 self.ranking_values[c_idx]
             ));
+        }
+
+        // Section 4: Pairwise ranking probabilities (Stochastic OT only)
+        if !self.maxent_mode {
+            out.push_str("\n\n");
+            out.push_str(&self.format_pairwise_probabilities(tableau));
+        }
+
+        out
+    }
+
+    /// Format pairwise ranking probability matrix.
+    ///
+    /// Produces the table from VB6 `boersma.frm:PrintPairwiseRankingProbabilities()`:
+    /// rows/columns are constraints sorted by descending ranking value, upper
+    /// triangle shows P(row >> col) from the full 481-entry lookup table, lower
+    /// triangle is empty (shaded in VB6).
+    ///
+    /// Only meaningful in Stochastic OT mode (not MaxEnt).
+    pub fn format_pairwise_probabilities(&self, tableau: &Tableau) -> String {
+        let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
+        let n = sorted.len();
+        let abbrevs: Vec<String> = sorted.iter().map(|&i| tableau.constraints[i].abbrev()).collect();
+
+        let mut out = String::new();
+        out.push_str("4. Ranking Value to Ranking Probability Conversion\n\n");
+        out.push_str("The computed ranking values imply the pairwise ranking probabilities given below.\n");
+        out.push_str("In the table, the probability given is that of the constraint in the row headings\n");
+        out.push_str("outranking the constraint in the column headings.\n\n");
+
+        // Determine column width: max abbreviation length, at least 8 for probability strings
+        let col_width = abbrevs.iter().map(|a| a.len()).max().unwrap_or(4).max(8);
+
+        // Column headers (skip first column since it's the row label area)
+        let label_width = col_width + 2; // row label column
+        out.push_str(&format!("{:width$}", "", width = label_width));
+        for abbrev in &abbrevs[1..] {
+            out.push_str(&format!("  {:>width$}", abbrev, width = col_width));
+        }
+        out.push('\n');
+
+        // Data rows
+        for (i, row_abbrev) in abbrevs[..n - 1].iter().enumerate() {
+            out.push_str(&format!("{:<width$}", row_abbrev, width = label_width));
+            for j in 1..n {
+                if j <= i {
+                    // Lower triangle: shaded/empty
+                    out.push_str(&format!("  {:>width$}", "", width = col_width));
+                } else {
+                    let diff = self.ranking_values[sorted[i]] - self.ranking_values[sorted[j]];
+                    let prob = crate::hasse::lookup_gla_probability_full(diff);
+                    out.push_str(&format!("  {:>width$}", prob, width = col_width));
+                }
+            }
+            out.push('\n');
         }
 
         out
@@ -800,6 +872,45 @@ mod tests {
                 .any(|l| l.starts_with("G\t") && l.split('\t').nth(1) == Some(&run_str));
             assert!(has_run, "should have G records for run {}", run_idx);
         }
+    }
+
+    #[test]
+    fn test_gla_sot_pairwise_probabilities_structure() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false);
+
+        let table = result.format_pairwise_probabilities(&tableau);
+        assert!(table.contains("4. Ranking Value to Ranking Probability Conversion"));
+        assert!(table.contains("outranking the constraint in the column headings"));
+
+        // Should contain constraint abbreviations
+        for c in &tableau.constraints {
+            assert!(table.contains(&c.abbrev()), "table should contain abbrev {}", c.abbrev());
+        }
+
+        // Should contain probability values (at least "0.5" somewhere)
+        assert!(table.contains("0.5") || table.contains("0.9") || table.contains(">.999999"),
+            "table should contain probability values");
+    }
+
+    #[test]
+    fn test_gla_sot_format_output_includes_pairwise() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false);
+
+        let output = result.format_output(&tableau, "test.txt");
+        assert!(output.contains("4. Ranking Value to Ranking Probability Conversion"),
+            "Stochastic OT output should include pairwise probability section");
+    }
+
+    #[test]
+    fn test_gla_maxent_format_output_excludes_pairwise() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false);
+
+        let output = result.format_output(&tableau, "test.txt");
+        assert!(!output.contains("Ranking Value to Ranking Probability Conversion"),
+            "MaxEnt output should NOT include pairwise probability section");
     }
 
     #[test]
