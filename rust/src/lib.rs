@@ -33,6 +33,8 @@ pub struct NhgOptions {
     pub demi_gaussians: bool,
     pub negative_weights_ok: bool,
     pub resolve_ties_by_skipping: bool,
+    /// Present data in exact proportions (shuffled-array selection instead of random sampling).
+    pub exact_proportions: bool,
     /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
     /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
     learning_schedule: String,
@@ -59,6 +61,7 @@ impl NhgOptions {
             demi_gaussians: false,
             negative_weights_ok: false,
             resolve_ties_by_skipping: false,
+            exact_proportions: false,
             learning_schedule: String::new(),
         }
     }
@@ -88,6 +91,8 @@ pub struct GlaOptions {
     pub sigma: f64,
     /// Magri update rule: scale promotion plasticity by demoted/(promoted+1) (StochasticOT only)
     pub magri_update_rule: bool,
+    /// Present data in exact proportions (shuffled-array selection instead of random sampling).
+    pub exact_proportions: bool,
     /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
     /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
     learning_schedule: String,
@@ -111,6 +116,7 @@ impl GlaOptions {
             gaussian_prior: false,
             sigma: 1.0,
             magri_update_rule: false,
+            exact_proportions: false,
             learning_schedule: String::new(),
         }
     }
@@ -358,6 +364,7 @@ pub fn run_nhg(text: &str, opts: &NhgOptions) -> Result<NhgResult, String> {
         opts.test_trials,
         opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
         opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
+        opts.exact_proportions,
     ))
 }
 
@@ -371,6 +378,7 @@ pub fn format_nhg_output(text: &str, filename: &str, opts: &NhgOptions) -> Resul
         opts.test_trials,
         opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
         opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
+        opts.exact_proportions,
     );
     Ok(result.format_output(&tableau, filename))
 }
@@ -528,7 +536,7 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
     Ok(tableau.run_gla_with_schedule(
         opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
-        opts.magri_update_rule,
+        opts.magri_update_rule, opts.exact_proportions,
     ))
 }
 
@@ -540,7 +548,7 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
     let result = tableau.run_gla_with_schedule(
         opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
-        opts.magri_update_rule,
+        opts.magri_update_rule, opts.exact_proportions,
     );
     Ok(result.format_output(&tableau, filename))
 }
@@ -570,6 +578,7 @@ pub fn format_gla_multiple_runs_output(
         opts.gaussian_prior,
         opts.sigma,
         opts.magri_update_rule,
+        opts.exact_proportions,
     ))
 }
 

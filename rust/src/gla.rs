@@ -415,6 +415,7 @@ impl Tableau {
         gaussian_prior: bool,
         sigma: f64,
         magri_update_rule: bool,
+        exact_proportions: bool,
     ) -> GlaResult {
         let schedule = LearningSchedule::default_4stage(cycles, initial_plasticity, final_plasticity);
         self.run_gla_with_schedule(
@@ -425,6 +426,7 @@ impl Tableau {
             gaussian_prior,
             sigma,
             magri_update_rule,
+            exact_proportions,
         )
     }
 
@@ -445,6 +447,7 @@ impl Tableau {
         gaussian_prior: bool,
         sigma: f64,
         magri_update_rule: bool,
+        exact_proportions: bool,
     ) -> String {
         let nc = self.constraints.len();
         let mut out = String::new();
@@ -458,6 +461,7 @@ impl Tableau {
                 gaussian_prior,
                 sigma,
                 magri_update_rule,
+                exact_proportions,
             );
 
             // G records: constraint ranking values / weights
@@ -522,6 +526,7 @@ impl Tableau {
         gaussian_prior: bool,
         sigma: f64,
         magri_update_rule: bool,
+        exact_proportions: bool,
     ) -> GlaResult {
         let nc = self.constraints.len();
 
@@ -540,6 +545,15 @@ impl Tableau {
         }
         let pool_size = training_pool.len();
 
+        // ── Round up schedule for exact proportions ──────────────────────────
+        let schedule = if exact_proportions && pool_size > 0 {
+            let mut s = schedule.clone();
+            s.round_stages_to_multiple(pool_size);
+            s
+        } else {
+            schedule.clone()
+        };
+
         // ── Initialize ranking values / weights ──────────────────────────────
         // StochasticOT starts at 100 (Boersma's canonical value)
         // MaxEnt starts at 0
@@ -553,14 +567,32 @@ impl Tableau {
         crate::ot_log!("Starting GLA ({}) with {} constraints, {} training exemplars, {} cycles",
             mode_name, nc, pool_size, total_cycles);
 
+        // ── Exact proportions cursor ─────────────────────────────────────────
+        // Start at pool_size so the first use triggers a shuffle.
+        let mut pool_cursor: usize = pool_size;
+
         // ── Main learning loop ────────────────────────────────────────────────
         if pool_size > 0 {
             for (stage_idx, stage) in schedule.stages.iter().enumerate() {
                 for _ in 0..stage.trials {
-                    // Select observed exemplar weighted by frequency
-                    let r = rng.uniform();
-                    let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
-                    let (sel_form, sel_cand) = training_pool[idx];
+                    // Select observed exemplar
+                    let (sel_form, sel_cand) = if exact_proportions {
+                        if pool_cursor >= pool_size {
+                            // Fisher-Yates shuffle
+                            for i in (1..pool_size).rev() {
+                                let j = (rng.uniform() * (i + 1) as f64) as usize;
+                                training_pool.swap(i, j);
+                            }
+                            pool_cursor = 0;
+                        }
+                        let pair = training_pool[pool_cursor];
+                        pool_cursor += 1;
+                        pair
+                    } else {
+                        let r = rng.uniform();
+                        let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
+                        training_pool[idx]
+                    };
 
                     // Generate a form using the current grammar
                     let generated = if maxent_mode {
@@ -718,7 +750,7 @@ mod tests {
     #[test]
     fn test_gla_sot_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false);
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -730,7 +762,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -743,7 +775,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_probs_sum_to_one() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, false);
 
         for fi in 0..tableau.form_count() {
             let form = tableau.get_form(fi).unwrap();
@@ -759,7 +791,7 @@ mod tests {
         // StochasticOT should start at 100 (Boersma's canonical value)
         // After 0 cycles, values should still be 100
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 0, 2.0, 0.001, 100, false, false, 1.0, false);
+        let result = tableau.run_gla(false, 0, 2.0, 0.001, 100, false, false, 1.0, false, false);
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 100.0,
@@ -771,7 +803,7 @@ mod tests {
     fn test_gla_maxent_initial_values_zero() {
         // MaxEnt should start at 0
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 0, 2.0, 0.001, 0, false, false, 1.0, false);
+        let result = tableau.run_gla(true, 0, 2.0, 0.001, 0, false, false, 1.0, false, false);
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 0.0,
@@ -782,7 +814,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_gaussian_prior_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, true, 1.0, false);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, true, 1.0, false, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -796,7 +828,7 @@ mod tests {
     #[test]
     fn test_gla_sot_magri_update_rule_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, true);
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, true, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -818,7 +850,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -839,6 +871,7 @@ mod tests {
             false, // gaussian_prior
             1.0,   // sigma
             false, // magri_update_rule
+            false, // exact_proportions
         );
 
         let nc = tableau.constraint_count();
@@ -877,7 +910,7 @@ mod tests {
     #[test]
     fn test_gla_sot_pairwise_probabilities_structure() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false);
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
 
         let table = result.format_pairwise_probabilities(&tableau);
         assert!(table.contains("4. Ranking Value to Ranking Probability Conversion"));
@@ -896,7 +929,7 @@ mod tests {
     #[test]
     fn test_gla_sot_format_output_includes_pairwise() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false);
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
 
         let output = result.format_output(&tableau, "test.txt");
         assert!(output.contains("4. Ranking Value to Ranking Probability Conversion"),
@@ -906,7 +939,7 @@ mod tests {
     #[test]
     fn test_gla_maxent_format_output_excludes_pairwise() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false);
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, false);
 
         let output = result.format_output(&tableau, "test.txt");
         assert!(!output.contains("Ranking Value to Ranking Probability Conversion"),
@@ -920,11 +953,37 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false);
         let output = result.format_output(&tableau, "test.txt");
 
         // Custom schedule should mention stages in the output
         assert!(output.contains("Custom learning schedule"), "output should mention custom schedule");
         assert!(output.contains("PlastMark"), "output should show PlastMark column");
+    }
+
+    #[test]
+    fn test_gla_sot_exact_proportions_runs() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, true);
+
+        let nc = tableau.constraint_count();
+        for c in 0..nc {
+            assert!(result.get_ranking_value(c).is_finite(),
+                "ranking value {} should be finite with exact proportions", c);
+        }
+        assert!(result.log_likelihood().is_finite());
+    }
+
+    #[test]
+    fn test_gla_maxent_exact_proportions_runs() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, true);
+
+        let nc = tableau.constraint_count();
+        for c in 0..nc {
+            assert!(result.get_ranking_value(c).is_finite(),
+                "weight {} should be finite with exact proportions", c);
+        }
+        assert!(result.log_likelihood().is_finite());
     }
 }

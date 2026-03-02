@@ -52,6 +52,7 @@ interface GlaParams {
   gaussianPrior: boolean
   sigma: number
   magriUpdateRule: boolean
+  exactProportions: boolean
   useCustomSchedule: boolean
   customSchedule: string
   multipleRunsCount: 10 | 100 | 1000
@@ -66,6 +67,7 @@ const GLA_DEFAULTS: GlaParams = {
   gaussianPrior: false,
   sigma: 1.0,
   magriUpdateRule: false,
+  exactProportions: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
   multipleRunsCount: 10,
@@ -83,6 +85,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     gaussianPrior,
     sigma,
     magriUpdateRule,
+    exactProportions,
     useCustomSchedule,
     customSchedule,
     multipleRunsCount,
@@ -105,6 +108,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     opts.gaussian_prior = maxentMode && gaussianPrior
     opts.sigma = sigma
     opts.magri_update_rule = !maxentMode && magriUpdateRule
+    opts.exact_proportions = exactProportions
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -359,8 +363,28 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         <label className="nhg-checkbox">
           <input
             type="checkbox"
+            checked={exactProportions}
+            onChange={(e) =>
+              setParams(
+                e.target.checked
+                  ? { exactProportions: true, useCustomSchedule: false }
+                  : { exactProportions: false },
+              )
+            }
+          />
+          Present data in exact proportions
+        </label>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
             checked={useCustomSchedule}
-            onChange={(e) => setParams({ useCustomSchedule: e.target.checked })}
+            onChange={(e) =>
+              setParams(
+                e.target.checked
+                  ? { useCustomSchedule: true, exactProportions: false }
+                  : { useCustomSchedule: false },
+              )
+            }
           />
           Use custom learning schedule
         </label>

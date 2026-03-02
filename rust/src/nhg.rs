@@ -401,6 +401,7 @@ impl Tableau {
         demi_gaussians: bool,
         negative_weights_ok: bool,
         resolve_ties_by_skipping: bool,
+        exact_proportions: bool,
     ) -> NhgResult {
         let schedule = LearningSchedule::default_4stage(cycles, initial_plasticity, final_plasticity);
         self.run_nhg_with_schedule(
@@ -414,6 +415,7 @@ impl Tableau {
             demi_gaussians,
             negative_weights_ok,
             resolve_ties_by_skipping,
+            exact_proportions,
         )
     }
 
@@ -446,6 +448,7 @@ impl Tableau {
         demi_gaussians: bool,
         negative_weights_ok: bool,
         resolve_ties_by_skipping: bool,
+        exact_proportions: bool,
     ) -> NhgResult {
         let nc = self.constraints.len();
 
@@ -468,6 +471,15 @@ impl Tableau {
         }
         let pool_size = training_pool.len();
 
+        // ── Round up schedule for exact proportions ──────────────────────────
+        let schedule = if exact_proportions && pool_size > 0 {
+            let mut s = schedule.clone();
+            s.round_stages_to_multiple(pool_size);
+            s
+        } else {
+            schedule.clone()
+        };
+
         // ── Initialize weights ───────────────────────────────────────────────────────────
         let mut weights = vec![0.0f64; nc];
 
@@ -478,14 +490,31 @@ impl Tableau {
         crate::ot_log!("Starting NHG with {} constraints, {} training exemplars, {} cycles",
             nc, pool_size, total_cycles);
 
+        // ── Exact proportions cursor ─────────────────────────────────────────
+        let mut pool_cursor: usize = pool_size;
+
         // ── Main learning loop ───────────────────────────────────────────────────────────
         if pool_size > 0 {
             for (stage_idx, stage) in schedule.stages.iter().enumerate() {
                 for _ in 0..stage.trials {
-                    // Select training exemplar (stochastic, weighted by frequency)
-                    let r = rng.uniform();
-                    let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
-                    let (selected_form, selected_cand) = training_pool[idx];
+                    // Select training exemplar
+                    let (selected_form, selected_cand) = if exact_proportions {
+                        if pool_cursor >= pool_size {
+                            // Fisher-Yates shuffle
+                            for i in (1..pool_size).rev() {
+                                let j = (rng.uniform() * (i + 1) as f64) as usize;
+                                training_pool.swap(i, j);
+                            }
+                            pool_cursor = 0;
+                        }
+                        let pair = training_pool[pool_cursor];
+                        pool_cursor += 1;
+                        pair
+                    } else {
+                        let r = rng.uniform();
+                        let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
+                        training_pool[idx]
+                    };
 
                     // Generate a form stochastically using the current grammar
                     let generated = generate_form(
@@ -623,7 +652,7 @@ mod tests {
             2.0,   // initial_plasticity
             0.002, // final_plasticity
             200,   // test_trials
-            false, false, false, false, false, false, false, false,
+            false, false, false, false, false, false, false, false, false,
         );
 
         // All weights should be finite
@@ -643,7 +672,7 @@ mod tests {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
         let result = tableau.run_nhg(
-            500, 2.0, 0.002, 500, false, false, false, false, false, false, false, false,
+            500, 2.0, 0.002, 500, false, false, false, false, false, false, false, false, false,
         );
 
         for form_idx in 0..tableau.form_count() {
@@ -670,7 +699,7 @@ mod tests {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
         let result = tableau.run_nhg(
-            2000, 2.0, 0.002, 1000, false, false, false, false, false, false, false, false,
+            2000, 2.0, 0.002, 1000, false, false, false, false, false, false, false, false, false,
         );
 
         for form_idx in 0..tableau.form_count() {
@@ -700,7 +729,7 @@ mod tests {
         let result = tableau.run_nhg(
             500, 0.05, 0.0002, 200, false, false, false, false,
             true,  // exponential_nhg
-            false, false, false,
+            false, false, false, false,
         );
         // Weights should remain finite (may be negative in exponential mode)
         let nc = tableau.constraint_count();
@@ -721,7 +750,7 @@ mod tests {
         let result = tableau.run_nhg_with_schedule(
             &schedule,
             200,   // test_trials
-            false, false, false, false, false, false, false, false,
+            false, false, false, false, false, false, false, false, false,
         );
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -739,7 +768,7 @@ mod tests {
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = crate::schedule::LearningSchedule::parse(schedule_text).unwrap();
         let result = tableau.run_nhg_with_schedule(
-            &schedule, 200, false, false, false, false, false, false, false, false,
+            &schedule, 200, false, false, false, false, false, false, false, false, false,
         );
         let output = result.format_output(&tableau, "test.txt");
         assert!(output.contains("Custom learning schedule"), "output should mention custom schedule");

@@ -139,6 +139,23 @@ test('GLA: multiple runs downloads CollateRuns.txt', { timeout: 60000 }, async (
   expect(content).toMatch(/^O\t/m)
 })
 
+test('GLA: exact proportions runs successfully', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+
+  // Enable exact proportions
+  await page.getByText('Present data in exact proportions').click()
+
+  await page.getByText('Run GLA').click()
+
+  await expect
+    .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
+    .toBeVisible()
+  await expect.element(page.getByText('Log likelihood of data:')).toBeVisible()
+})
+
 test('GLA: load custom schedule from file', { timeout: 30000 }, async () => {
   renderApp()
   await loadExample()

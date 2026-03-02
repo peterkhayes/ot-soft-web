@@ -44,6 +44,7 @@ interface NhgParams {
   demiGaussians: boolean
   negativeWeightsOk: boolean
   resolveTiesBySkipping: boolean
+  exactProportions: boolean
   useCustomSchedule: boolean
   customSchedule: string
 }
@@ -60,6 +61,7 @@ const NHG_DEFAULTS: NhgParams = {
   demiGaussians: false,
   negativeWeightsOk: false,
   resolveTiesBySkipping: false,
+  exactProportions: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
 }
@@ -79,6 +81,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     demiGaussians,
     negativeWeightsOk,
     resolveTiesBySkipping,
+    exactProportions,
     useCustomSchedule,
     customSchedule,
   } = params
@@ -102,6 +105,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     opts.demi_gaussians = demiGaussians
     opts.negative_weights_ok = negativeWeightsOk
     opts.resolve_ties_by_skipping = resolveTiesBySkipping
+    opts.exact_proportions = exactProportions
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -315,8 +319,28 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         <label className="nhg-checkbox">
           <input
             type="checkbox"
+            checked={exactProportions}
+            onChange={(e) =>
+              setParams(
+                e.target.checked
+                  ? { exactProportions: true, useCustomSchedule: false }
+                  : { exactProportions: false },
+              )
+            }
+          />
+          Present data in exact proportions
+        </label>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
             checked={useCustomSchedule}
-            onChange={(e) => setParams({ useCustomSchedule: e.target.checked })}
+            onChange={(e) =>
+              setParams(
+                e.target.checked
+                  ? { useCustomSchedule: true, exactProportions: false }
+                  : { useCustomSchedule: false },
+              )
+            }
           />
           Use custom learning schedule
         </label>

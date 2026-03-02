@@ -51,7 +51,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Custom learning schedule from file
 - [x] Magri update rule (Stochastic OT)
 - [x] Gaussian prior (MaxEnt)
-- [ ] Exact proportions data presentation
+- [x] Exact proportions data presentation
 - [x] Multiple runs with collated results
 - [x] Pairwise ranking probabilities (used internally by GLA Hasse diagram)
 - [ ] History file output (weights/ranking values over time)

@@ -122,6 +122,19 @@ impl LearningSchedule {
         self.stages.iter().map(|s| s.trials).sum()
     }
 
+    /// Round each stage's trial count up to the nearest multiple of `pool_size`.
+    ///
+    /// Ensures every cycle through the shuffled training pool completes fully.
+    /// Reproduces VB6: `MyFactor = Int(MyTrialsPerLearningStage / mTotalFrequency - 0.0001) + 1`.
+    pub fn round_stages_to_multiple(&mut self, pool_size: usize) {
+        if pool_size == 0 {
+            return;
+        }
+        for stage in &mut self.stages {
+            stage.trials = stage.trials.div_ceil(pool_size) * pool_size;
+        }
+    }
+
     /// True if this schedule was built from a custom text (non-default).
     /// Heuristic: stages > 4 or any stage has plast_mark != plast_faith.
     pub fn is_custom(&self) -> bool {
@@ -243,5 +256,36 @@ mod tests {
         let s = LearningSchedule::parse(CUSTOM_SCHEDULE_TEMPLATE).unwrap();
         assert_eq!(s.stages.len(), 4);
         assert_eq!(s.total_cycles(), 60_000);
+    }
+
+    #[test]
+    fn test_round_stages_to_multiple() {
+        let mut s = LearningSchedule::default_4stage(1000, 2.0, 0.001);
+        // 1000 / 4 = 250 trials per stage
+        assert_eq!(s.stages[0].trials, 250);
+
+        // Pool size 7: ceil(250/7)*7 = 36*7 = 252
+        s.round_stages_to_multiple(7);
+        for stage in &s.stages {
+            assert_eq!(stage.trials % 7, 0, "trials should be a multiple of pool_size");
+            assert!(stage.trials >= 250, "trials should be >= original");
+        }
+        assert_eq!(s.stages[0].trials, 252);
+    }
+
+    #[test]
+    fn test_round_stages_exact_multiple() {
+        let mut s = LearningSchedule::default_4stage(400, 2.0, 0.001);
+        // 400 / 4 = 100 trials per stage; pool_size=10 divides evenly
+        s.round_stages_to_multiple(10);
+        assert_eq!(s.stages[0].trials, 100);
+    }
+
+    #[test]
+    fn test_round_stages_zero_pool_size() {
+        let mut s = LearningSchedule::default_4stage(1000, 2.0, 0.001);
+        let original_trials = s.stages[0].trials;
+        s.round_stages_to_multiple(0);
+        assert_eq!(s.stages[0].trials, original_trials, "zero pool_size should be a no-op");
     }
 }
