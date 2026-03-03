@@ -24,6 +24,7 @@ interface MaxEntResultState {
     }[]
   }[]
   logProb: number
+  history?: string
   error?: undefined
 }
 
@@ -40,6 +41,7 @@ interface MaxEntParams {
   weightMax: number
   usePrior: boolean
   sigmaSquared: number
+  generateHistory: boolean
 }
 const MAXENT_DEFAULTS: MaxEntParams = {
   iterations: 100,
@@ -47,11 +49,12 @@ const MAXENT_DEFAULTS: MaxEntParams = {
   weightMax: 50,
   usePrior: false,
   sigmaSquared: 1,
+  generateHistory: false,
 }
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
   const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', MAXENT_DEFAULTS)
-  const { iterations, weightMin, weightMax, usePrior, sigmaSquared } = params
+  const { iterations, weightMin, weightMax, usePrior, sigmaSquared, generateHistory } = params
   const [result, setResult] = useState<MaxEntState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const download = useDownload()
@@ -66,6 +69,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         opts.weight_max = weightMax
         opts.use_prior = usePrior
         opts.sigma_squared = sigmaSquared
+        opts.generate_history = generateHistory
         const r = run_maxent(tableauText, opts)
         const constraintCount = tableau.constraint_count()
         const formCount = tableau.form_count()
@@ -100,7 +104,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
           return { input: form.input, candidates }
         })
 
-        setResult({ weights, forms, logProb: r.log_prob() })
+        setResult({ weights, forms, logProb: r.log_prob(), history: r.history() ?? undefined })
       } catch (err) {
         console.error('MaxEnt error:', err)
         setResult({ error: String(err) })
@@ -138,6 +142,12 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
   )
   const successResult: MaxEntResultState | null =
     result && !result.error ? (result as MaxEntResultState) : null
+
+  function handleDownloadHistory() {
+    if (successResult?.history) {
+      download(successResult.history, makeOutputFilename(inputFilename, 'HistoryOfWeights'))
+    }
+  }
 
   return (
     <section className="analysis-panel">
@@ -210,6 +220,18 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         )}
       </div>
 
+      <div className="nhg-options">
+        <div className="nhg-options-label">Output options</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={generateHistory}
+            onChange={(e) => setParams({ generateHistory: e.target.checked })}
+          />
+          Generate history of weights
+        </label>
+      </div>
+
       <div className="action-bar">
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
@@ -258,6 +280,22 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Download Results
+          </button>
+        )}
+        {successResult?.history && (
+          <button className="download-button" onClick={handleDownloadHistory}>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download History
           </button>
         )}
         <button

@@ -240,6 +240,8 @@ pub struct NhgResult {
     /// Parameters used (stored for output formatting)
     test_trials: usize,
     exponential_nhg: bool,
+    /// Optional history of weights recorded during learning.
+    history: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -258,6 +260,10 @@ impl NhgResult {
 
     pub fn log_likelihood(&self) -> f64 {
         self.log_likelihood
+    }
+
+    pub fn history(&self) -> Option<String> {
+        self.history.clone()
     }
 
     /// Format results as text output for download.
@@ -416,6 +422,7 @@ impl Tableau {
             negative_weights_ok,
             resolve_ties_by_skipping,
             exact_proportions,
+            false,
         )
     }
 
@@ -449,6 +456,7 @@ impl Tableau {
         negative_weights_ok: bool,
         resolve_ties_by_skipping: bool,
         exact_proportions: bool,
+        generate_history: bool,
     ) -> NhgResult {
         let nc = self.constraints.len();
 
@@ -489,6 +497,21 @@ impl Tableau {
 
         crate::ot_log!("Starting NHG with {} constraints, {} training exemplars, {} cycles",
             nc, pool_size, total_cycles);
+
+        // ── History buffer ──────────────────────────────────────────────────
+        const REPORTING_FREQUENCY: usize = 200;
+        let mut history_buf = if generate_history {
+            let mut header = String::new();
+            for (i, c) in self.constraints.iter().enumerate() {
+                if i > 0 { header.push('\t'); }
+                header.push_str(&c.abbrev());
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+        let mut report_counter: usize = 0;
 
         // ── Exact proportions cursor ─────────────────────────────────────────
         let mut pool_cursor: usize = pool_size;
@@ -548,6 +571,19 @@ impl Tableau {
                                     *w = 0.0;
                                 }
                             }
+                        }
+                    }
+
+                    // Record history every REPORTING_FREQUENCY trials (VB6: every 200)
+                    report_counter += 1;
+                    if let Some(ref mut buf) = history_buf {
+                        if report_counter.is_multiple_of(REPORTING_FREQUENCY) {
+                            use std::fmt::Write;
+                            for (i, w) in weights.iter().enumerate() {
+                                if i > 0 { buf.push('\t'); }
+                                write!(buf, "{w:.4}").unwrap();
+                            }
+                            buf.push('\n');
                         }
                     }
                 }
@@ -628,6 +664,7 @@ impl Tableau {
             schedule_description: schedule.format_description(),
             test_trials,
             exponential_nhg,
+            history: history_buf,
         }
     }
 }
@@ -750,7 +787,7 @@ mod tests {
         let result = tableau.run_nhg_with_schedule(
             &schedule,
             200,   // test_trials
-            false, false, false, false, false, false, false, false, false,
+            false, false, false, false, false, false, false, false, false, false,
         );
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -768,9 +805,45 @@ mod tests {
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = crate::schedule::LearningSchedule::parse(schedule_text).unwrap();
         let result = tableau.run_nhg_with_schedule(
-            &schedule, 200, false, false, false, false, false, false, false, false, false,
+            &schedule, 200, false, false, false, false, false, false, false, false, false, false,
         );
         let output = result.format_output(&tableau, "test.txt");
         assert!(output.contains("Custom learning schedule"), "output should mention custom schedule");
+    }
+
+    #[test]
+    fn test_nhg_history_generation() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        let result = tableau.run_nhg(
+            1000, 2.0, 0.002, 200,
+            false, false, false, false, false, false, false, false, false,
+        );
+        assert!(result.history().is_none(), "history should be None when not requested");
+
+        // Now with generate_history=true
+        let schedule = crate::schedule::LearningSchedule::default_4stage(1000, 2.0, 0.002);
+        let result = tableau.run_nhg_with_schedule(
+            &schedule, 200,
+            false, false, false, false, false, false, false, false, false,
+            true, // generate_history
+        );
+
+        let history = result.history().expect("history should be Some when generate_history=true");
+        let lines: Vec<&str> = history.lines().collect();
+
+        // Header: constraint abbreviations (no trial column)
+        let nc = tableau.constraint_count();
+        let header_cols: Vec<&str> = lines[0].split('\t').collect();
+        assert_eq!(header_cols.len(), nc, "header should have {} constraint columns", nc);
+
+        // 1000 trials / 200 reporting frequency = 5 data rows
+        assert_eq!(lines.len() - 1, 5, "should have 5 data rows for 1000 trials at frequency 200");
+
+        // Each data row should have nc values
+        for line in &lines[1..] {
+            let cols: Vec<&str> = line.split('\t').collect();
+            assert_eq!(cols.len(), nc, "each row should have {} columns", nc);
+        }
     }
 }

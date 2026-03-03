@@ -71,3 +71,33 @@ test('NHG: load custom schedule from file', { timeout: 30000 }, async () => {
   await page.getByText('Run Noisy HG').click()
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
 })
+
+test('NHG: generate history and download', { timeout: 30000 }, async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Noisy Harmonic Grammar', { exact: true }).click()
+
+  // Enable history generation
+  await page.getByText('Generate history of weights').click()
+
+  await page.getByText('Run Noisy HG').click()
+
+  // Wait for results
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+
+  // Download History button should appear
+  await expect.element(page.getByText('Download History')).toBeVisible()
+  await page.getByText('Download History').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileHistory.txt')
+
+  // Content should be tab-separated without Trial column (NHG format)
+  const lines = downloads[0].content.split('\n').filter((l: string) => l.length > 0)
+  expect(lines.length).toBeGreaterThan(1)
+  // Header should not start with "Trial"
+  expect(lines[0]).not.toMatch(/^Trial/)
+  // Header should contain constraint abbreviations separated by tabs
+  expect(lines[0]).toContain('\t')
+})

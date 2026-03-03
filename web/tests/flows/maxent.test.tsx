@@ -75,3 +75,38 @@ test('MaxEnt: load example, switch framework, run, see results, download', async
     "
   `)
 })
+
+test('MaxEnt: generate history of weights and download', async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Maximum Entropy', { exact: true }).click()
+
+  // Enable history generation
+  await page.getByText('Generate history of weights').click()
+
+  // Run MaxEnt
+  await page.getByText('Run MaxEnt').click()
+
+  // Wait for results
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+
+  // Download History button should appear
+  await expect.element(page.getByText('Download History')).toBeVisible()
+  await page.getByText('Download History').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileHistoryOfWeights.txt')
+
+  // MaxEnt history is deterministic — snapshot the content
+  const content = downloads[0].content
+  // Header should start with tab (leading tab) and contain constraint names
+  const lines = content.split('\n').filter((l: string) => l.length > 0)
+  expect(lines[0]).toMatch(/^\t/)
+  // Should have header + initial (row 0) + 100 iterations = 102 lines
+  expect(lines.length).toBe(102)
+  // First data row should be iteration 0 with all zeros
+  expect(lines[1]).toMatch(/^0\t/)
+  // Last data row should be iteration 100
+  expect(lines[101]).toMatch(/^100\t/)
+})

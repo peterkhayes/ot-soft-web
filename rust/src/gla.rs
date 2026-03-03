@@ -173,6 +173,8 @@ pub struct GlaResult {
     sigma: f64,
     /// Whether the Magri update rule was active (StochasticOT only)
     magri_update_rule: bool,
+    /// Optional history of ranking values/weights recorded during learning.
+    history: Option<String>,
 }
 
 impl GlaResult {
@@ -188,6 +190,7 @@ impl GlaResult {
             gaussian_prior: false,
             sigma: 0.0,
             magri_update_rule: false,
+            history: None,
         }
     }
 }
@@ -220,6 +223,10 @@ impl GlaResult {
 
     pub fn sigma(&self) -> f64 {
         self.sigma
+    }
+
+    pub fn history(&self) -> Option<String> {
+        self.history.clone()
     }
 
     /// Format results as text output for download.
@@ -427,6 +434,7 @@ impl Tableau {
             sigma,
             magri_update_rule,
             exact_proportions,
+            false,
         )
     }
 
@@ -462,6 +470,7 @@ impl Tableau {
                 sigma,
                 magri_update_rule,
                 exact_proportions,
+                false,
             );
 
             // G records: constraint ranking values / weights
@@ -527,6 +536,7 @@ impl Tableau {
         sigma: f64,
         magri_update_rule: bool,
         exact_proportions: bool,
+        generate_history: bool,
     ) -> GlaResult {
         let nc = self.constraints.len();
 
@@ -560,6 +570,20 @@ impl Tableau {
         let initial_value = if maxent_mode { 0.0 } else { 100.0 };
         let mut ranking_values = vec![initial_value; nc];
 
+        // ── History buffer ──────────────────────────────────────────────────
+        let mut history_buf = if generate_history {
+            let mut header = String::from("Trial");
+            for c in &self.constraints {
+                header.push('\t');
+                header.push_str(&c.abbrev());
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+        let mut trial_number: usize = 0;
+
         let mut rng = Rng::new(GaussianMode::Standard);
 
         let mode_name = if maxent_mode { "MaxEnt" } else { "StochasticOT" };
@@ -575,6 +599,8 @@ impl Tableau {
         if pool_size > 0 {
             for (stage_idx, stage) in schedule.stages.iter().enumerate() {
                 for _ in 0..stage.trials {
+                    trial_number += 1;
+
                     // Select observed exemplar
                     let (sel_form, sel_cand) = if exact_proportions {
                         if pool_cursor >= pool_size {
@@ -662,6 +688,16 @@ impl Tableau {
                             }
                         }
                     }
+
+                    // Record history after each mismatch (VB6: writes after RankingValueAdjustment)
+                    if let Some(ref mut buf) = history_buf {
+                        use std::fmt::Write;
+                        write!(buf, "{}", trial_number).unwrap();
+                        for rv in ranking_values.iter() {
+                            write!(buf, "\t{rv:.4}").unwrap();
+                        }
+                        buf.push('\n');
+                    }
                 }
                 crate::ot_log!("GLA stage {}/{} complete (plast_mark={:.4}, plast_faith={:.4})",
                     stage_idx + 1, schedule.stages.len(), stage.plast_mark, stage.plast_faith);
@@ -731,6 +767,7 @@ impl Tableau {
             gaussian_prior,
             sigma,
             magri_update_rule,
+            history: history_buf,
         }
     }
 }
@@ -850,7 +887,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -953,7 +990,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false);
         let output = result.format_output(&tableau, "test.txt");
 
         // Custom schedule should mention stages in the output
@@ -985,5 +1022,39 @@ mod tests {
                 "weight {} should be finite with exact proportions", c);
         }
         assert!(result.log_likelihood().is_finite());
+    }
+
+    #[test]
+    fn test_gla_sot_history_generation() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, true);
+
+        let history = result.history().expect("history should be Some when generate_history=true");
+        let lines: Vec<&str> = history.lines().collect();
+
+        // Header should start with "Trial" and contain constraint abbreviations
+        assert!(lines[0].starts_with("Trial\t"), "header should start with Trial");
+        let nc = tableau.constraint_count();
+        let header_cols: Vec<&str> = lines[0].split('\t').collect();
+        assert_eq!(header_cols.len(), nc + 1, "header should have Trial + {} constraint columns", nc);
+
+        // Should have at least some data rows (mismatches)
+        assert!(lines.len() > 1, "history should have data rows");
+
+        // Each data row should have trial number + nc values
+        for line in &lines[1..] {
+            let cols: Vec<&str> = line.split('\t').collect();
+            assert_eq!(cols.len(), nc + 1, "each row should have {} columns, got {}", nc + 1, cols.len());
+            // Trial number should parse as integer
+            cols[0].parse::<usize>().expect("trial number should be an integer");
+        }
+    }
+
+    #[test]
+    fn test_gla_history_none_when_disabled() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
+        assert!(result.history().is_none(), "history should be None when generate_history=false");
     }
 }

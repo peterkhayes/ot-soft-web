@@ -32,6 +32,7 @@ interface GlaResultState {
   maxentMode: boolean
   hasseDot?: string
   pairwiseTable?: string
+  history?: string
   error?: undefined
 }
 
@@ -53,6 +54,7 @@ interface GlaParams {
   sigma: number
   magriUpdateRule: boolean
   exactProportions: boolean
+  generateHistory: boolean
   useCustomSchedule: boolean
   customSchedule: string
   multipleRunsCount: 10 | 100 | 1000
@@ -68,6 +70,7 @@ const GLA_DEFAULTS: GlaParams = {
   sigma: 1.0,
   magriUpdateRule: false,
   exactProportions: false,
+  generateHistory: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
   multipleRunsCount: 10,
@@ -86,6 +89,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     sigma,
     magriUpdateRule,
     exactProportions,
+    generateHistory,
     useCustomSchedule,
     customSchedule,
     multipleRunsCount,
@@ -109,6 +113,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     opts.sigma = sigma
     opts.magri_update_rule = !maxentMode && magriUpdateRule
     opts.exact_proportions = exactProportions
+    opts.generate_history = generateHistory
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -173,6 +178,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           maxentMode: r.is_maxent_mode(),
           hasseDot,
           pairwiseTable,
+          history: r.history() ?? undefined,
         })
       } catch (err) {
         console.error('GLA error:', err)
@@ -220,6 +226,12 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   const successResult: GlaResultState | null =
     result && !result.error ? (result as GlaResultState) : null
   const valueLabel = successResult?.maxentMode ? 'Weight' : 'Ranking Value'
+
+  function handleDownloadHistory() {
+    if (successResult?.history) {
+      download(successResult.history, makeOutputFilename(inputFilename, 'History'))
+    }
+  }
 
   return (
     <section className="analysis-panel">
@@ -420,6 +432,18 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         </label>
       </div>
 
+      <div className="nhg-options">
+        <div className="nhg-options-label">Output options</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={generateHistory}
+            onChange={(e) => setParams({ generateHistory: e.target.checked })}
+          />
+          Generate history of {maxentMode ? 'weights' : 'ranking values'}
+        </label>
+      </div>
+
       <div className="action-bar">
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
@@ -468,6 +492,22 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Download Results
+          </button>
+        )}
+        {successResult?.history && (
+          <button className="download-button" onClick={handleDownloadHistory}>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download History
           </button>
         )}
         <button

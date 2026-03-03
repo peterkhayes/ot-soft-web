@@ -54,7 +54,10 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Exact proportions data presentation
 - [x] Multiple runs with collated results
 - [x] Pairwise ranking probabilities (used internally by GLA Hasse diagram)
-- [ ] History file output (weights/ranking values over time)
+- [x] History file output (simple weight/ranking value history per iteration)
+- [ ] Full annotated history (FullHistory.txt — trial + input/generated/heard + values)
+- [ ] Candidate probability history (HistoryOfCandidateProbabilities.txt — GLA MaxEnt mode only)
+- [ ] Output probability history (HistoryOfOutputProbabilities.txt — Batch MaxEnt)
 
 ## Factorial Typology
 
@@ -115,7 +118,7 @@ Roughly ordered by value and dependency:
 
 1. **Collect VB6 golden files** — Run VB6 OTSoft on Windows following `conformance/CHECKLIST.md` to populate the missing golden files. Most conformance test cases currently skip.
 
-2. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
+2. **Extended history outputs** — Full annotated history (FullHistory.txt), candidate probability history, and output probability history files.
 
 3. **Exact proportions data presentation** — Display data as exact proportions rather than frequency counts.
 

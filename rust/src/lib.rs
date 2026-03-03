@@ -35,6 +35,8 @@ pub struct NhgOptions {
     pub resolve_ties_by_skipping: bool,
     /// Present data in exact proportions (shuffled-array selection instead of random sampling).
     pub exact_proportions: bool,
+    /// Generate a history of weights at regular intervals during learning.
+    pub generate_history: bool,
     /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
     /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
     learning_schedule: String,
@@ -62,6 +64,7 @@ impl NhgOptions {
             negative_weights_ok: false,
             resolve_ties_by_skipping: false,
             exact_proportions: false,
+            generate_history: false,
             learning_schedule: String::new(),
         }
     }
@@ -93,6 +96,8 @@ pub struct GlaOptions {
     pub magri_update_rule: bool,
     /// Present data in exact proportions (shuffled-array selection instead of random sampling).
     pub exact_proportions: bool,
+    /// Generate a history of ranking values at every mismatch during learning.
+    pub generate_history: bool,
     /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
     /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
     learning_schedule: String,
@@ -117,6 +122,7 @@ impl GlaOptions {
             sigma: 1.0,
             magri_update_rule: false,
             exact_proportions: false,
+            generate_history: false,
             learning_schedule: String::new(),
         }
     }
@@ -141,6 +147,8 @@ pub struct MaxEntOptions {
     /// Gaussian prior regularization (L2, mu=0)
     pub use_prior: bool,
     pub sigma_squared: f64,
+    /// Generate a history of weights at every GIS iteration.
+    pub generate_history: bool,
 }
 
 impl Default for MaxEntOptions {
@@ -157,6 +165,7 @@ impl MaxEntOptions {
             weight_max: 50.0,
             use_prior: false,
             sigma_squared: 1.0,
+            generate_history: false,
         }
     }
 }
@@ -344,14 +353,14 @@ pub fn run_bcd(text: &str, specific: bool) -> Result<RCDResult, String> {
 #[wasm_bindgen]
 pub fn run_maxent(text: &str, opts: &MaxEntOptions) -> Result<MaxEntResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared))
+    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, opts.generate_history))
 }
 
 /// Format MaxEnt results as text for download
 #[wasm_bindgen]
 pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared);
+    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, false);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -366,6 +375,7 @@ pub fn run_nhg(text: &str, opts: &NhgOptions) -> Result<NhgResult, String> {
         opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
         opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
         opts.exact_proportions,
+        opts.generate_history,
     ))
 }
 
@@ -380,6 +390,7 @@ pub fn format_nhg_output(text: &str, filename: &str, opts: &NhgOptions) -> Resul
         opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
         opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
         opts.exact_proportions,
+        false,
     );
     Ok(result.format_output(&tableau, filename))
 }
@@ -570,6 +581,7 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
         opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
         opts.magri_update_rule, opts.exact_proportions,
+        opts.generate_history,
     ))
 }
 
@@ -582,6 +594,7 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
         opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
         opts.magri_update_rule, opts.exact_proportions,
+        false,
     );
     Ok(result.format_output(&tableau, filename))
 }

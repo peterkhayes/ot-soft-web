@@ -28,6 +28,8 @@ pub struct MaxEntResult {
     /// Gaussian prior parameters (None if no prior)
     use_prior: bool,
     sigma_squared: f64,
+    /// Optional history of weights recorded at each GIS iteration.
+    history: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -58,6 +60,10 @@ impl MaxEntResult {
 
     pub fn sigma_squared(&self) -> f64 {
         self.sigma_squared
+    }
+
+    pub fn history(&self) -> Option<String> {
+        self.history.clone()
     }
 
     /// Format results as text output for download.
@@ -213,7 +219,7 @@ impl Tableau {
     /// variance `sigma_squared` (Goodman 2002). The Newton's method update
     /// divides by 1000, reproducing the VB6 behavior (including the `/ 1000`
     /// noted as unexplained in the VB6 source).
-    pub fn run_maxent(&self, iterations: usize, weight_min: f64, weight_max: f64, use_prior: bool, sigma_squared: f64) -> MaxEntResult {
+    pub fn run_maxent(&self, iterations: usize, weight_min: f64, weight_max: f64, use_prior: bool, sigma_squared: f64, generate_history: bool) -> MaxEntResult {
         let nc = self.constraints.len();
 
         // Initialize all weights to 0
@@ -256,8 +262,29 @@ impl Tableau {
         crate::ot_log!("Starting MaxEnt with {} constraints, {} forms, {} iterations (weights: {}..{}, prior: {})",
             nc, self.forms.len(), iterations, weight_min, weight_max, use_prior);
 
+        // ── History buffer ──────────────────────────────────────────────────
+        let mut history_buf = if generate_history {
+            use std::fmt::Write;
+            // Header: leading tab + constraint abbreviations (matching VB6 HistoryOfWeights.txt)
+            let mut header = String::new();
+            for c in &self.constraints {
+                header.push('\t');
+                header.push_str(&c.abbrev());
+            }
+            header.push('\n');
+            // Row 0: initial weights (all zeros)
+            write!(header, "0").unwrap();
+            for w in &weights {
+                write!(header, "\t{w:.4}").unwrap();
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
         // GIS main loop
-        for _ in 0..iterations {
+        for iter_num in 1..=iterations {
             // Step 1: Calculate predicted proportions for each form
             let predicted = self.calculate_predicted_probs(&weights);
 
@@ -292,6 +319,16 @@ impl Tableau {
                     weights[c_idx] = (weights[c_idx] - delta).clamp(weight_min, weight_max);
                 }
             }
+
+            // Record history after each iteration
+            if let Some(ref mut buf) = history_buf {
+                use std::fmt::Write;
+                write!(buf, "{iter_num}").unwrap();
+                for w in &weights {
+                    write!(buf, "\t{w:.4}").unwrap();
+                }
+                buf.push('\n');
+            }
         }
 
         // Calculate final predicted probabilities
@@ -310,6 +347,7 @@ impl Tableau {
             weight_max,
             use_prior,
             sigma_squared,
+            history: history_buf,
         }
     }
 
@@ -362,7 +400,7 @@ mod tests {
     fn test_maxent_tiny_example() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(100, 0.0, 50.0, false, 1.0);
+        let result = tableau.run_maxent(100, 0.0, 50.0, false, 1.0, false);
 
         // After 100 iterations, markedness weights should be higher than faithfulness
         // (the data has only markedness violations causing losers)
@@ -386,7 +424,7 @@ mod tests {
     fn test_maxent_predicted_probs_sum_to_one() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0);
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false);
 
         // For each input form, predicted probabilities should sum to 1
         let form_count = tableau.form_count();
@@ -408,7 +446,7 @@ mod tests {
     fn test_maxent_weight_bounds() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(100, 1.0, 10.0, false, 1.0);
+        let result = tableau.run_maxent(100, 1.0, 10.0, false, 1.0, false);
 
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -423,7 +461,7 @@ mod tests {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
         // With sigma_squared=1.0, the prior term is enabled; results should still be finite
-        let result = tableau.run_maxent(10, 0.0, 50.0, true, 1.0);
+        let result = tableau.run_maxent(10, 0.0, 50.0, true, 1.0, false);
 
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -436,4 +474,34 @@ mod tests {
         assert_eq!(result.sigma_squared(), 1.0, "sigma_squared() should return 1.0");
     }
 
+    #[test]
+    fn test_maxent_history_generation() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+
+        // Without history
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false);
+        assert!(result.history().is_none(), "history should be None when not requested");
+
+        // With history
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, true);
+        let history = result.history().expect("history should be Some when generate_history=true");
+        let lines: Vec<&str> = history.lines().collect();
+
+        // Header: leading tab + constraint abbreviations
+        assert!(lines[0].starts_with('\t'), "header should start with a tab");
+        let nc = tableau.constraint_count();
+        let header_cols: Vec<&str> = lines[0].split('\t').collect();
+        // First col is empty (leading tab), then nc constraint names
+        assert_eq!(header_cols.len(), nc + 1, "header should have leading-tab + {} constraints", nc);
+
+        // iterations=10 → row 0 (initial) + 10 iteration rows = 11 data rows + 1 header = 12 lines
+        assert_eq!(lines.len(), 12, "should have header + initial + 10 iteration rows");
+
+        // Row 0 should be initial weights (all zeros)
+        assert!(lines[1].starts_with("0\t"), "first data row should be iteration 0");
+
+        // Last row should be iteration 10
+        assert!(lines[11].starts_with("10\t"), "last data row should be iteration 10");
+    }
 }

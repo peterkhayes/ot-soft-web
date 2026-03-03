@@ -21,6 +21,7 @@ interface NhgResultState {
     candidates: { form: string; obsPct: number; genPct: number }[]
   }[]
   logLikelihood: number
+  history?: string
   error?: undefined
 }
 
@@ -45,6 +46,7 @@ interface NhgParams {
   negativeWeightsOk: boolean
   resolveTiesBySkipping: boolean
   exactProportions: boolean
+  generateHistory: boolean
   useCustomSchedule: boolean
   customSchedule: string
 }
@@ -62,6 +64,7 @@ const NHG_DEFAULTS: NhgParams = {
   negativeWeightsOk: false,
   resolveTiesBySkipping: false,
   exactProportions: false,
+  generateHistory: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
 }
@@ -82,6 +85,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     negativeWeightsOk,
     resolveTiesBySkipping,
     exactProportions,
+    generateHistory,
     useCustomSchedule,
     customSchedule,
   } = params
@@ -106,6 +110,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     opts.negative_weights_ok = negativeWeightsOk
     opts.resolve_ties_by_skipping = resolveTiesBySkipping
     opts.exact_proportions = exactProportions
+    opts.generate_history = generateHistory
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -147,7 +152,12 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
           return { input: form.input, candidates }
         })
 
-        setResult({ weights, forms, logLikelihood: r.log_likelihood() })
+        setResult({
+          weights,
+          forms,
+          logLikelihood: r.log_likelihood(),
+          history: r.history() ?? undefined,
+        })
       } catch (err) {
         console.error('NHG error:', err)
         const msg = String(err)
@@ -175,6 +185,12 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
   const atDefaults = isAtDefaults(params, NHG_DEFAULTS)
   const successResult: NhgResultState | null =
     result && !result.error ? (result as NhgResultState) : null
+
+  function handleDownloadHistory() {
+    if (successResult?.history) {
+      download(successResult.history, makeOutputFilename(inputFilename, 'History'))
+    }
+  }
 
   return (
     <section className="analysis-panel">
@@ -359,6 +375,18 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         )}
       </div>
 
+      <div className="nhg-options">
+        <div className="nhg-options-label">Output options</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={generateHistory}
+            onChange={(e) => setParams({ generateHistory: e.target.checked })}
+          />
+          Generate history of weights
+        </label>
+      </div>
+
       <div className="action-bar">
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
@@ -407,6 +435,22 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Download Results
+          </button>
+        )}
+        {successResult?.history && (
+          <button className="download-button" onClick={handleDownloadHistory}>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download History
           </button>
         )}
         <button

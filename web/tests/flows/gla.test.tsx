@@ -180,3 +180,32 @@ test('GLA: load custom schedule from file', { timeout: 30000 }, async () => {
     .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
     .toBeVisible()
 })
+
+test('GLA: generate history and download', { timeout: 30000 }, async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+
+  // Enable history generation
+  await page.getByText('Generate history of ranking values').click()
+
+  await page.getByText('Run GLA').click()
+
+  // Wait for results
+  await expect
+    .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
+    .toBeVisible()
+
+  // Download History button should appear
+  await expect.element(page.getByText('Download History')).toBeVisible()
+  await page.getByText('Download History').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileHistory.txt')
+
+  // Content should be tab-separated with Trial header
+  const lines = downloads[0].content.split('\n').filter((l: string) => l.length > 0)
+  expect(lines[0]).toMatch(/^Trial\t/)
+  expect(lines.length).toBeGreaterThan(1)
+})
