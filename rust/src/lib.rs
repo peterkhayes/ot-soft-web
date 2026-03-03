@@ -239,6 +239,7 @@ mod nhg;
 mod gla;
 mod factorial_typology;
 mod hasse;
+mod sorted_input;
 pub mod schedule;
 
 // Re-export public types
@@ -526,6 +527,38 @@ pub fn format_lfcd_output(
         filename,
         "Low Faithfulness Constraint Demotion",
     ))
+}
+
+/// Format a sorted copy of the input file based on an RCD/BCD/LFCD result.
+///
+/// Reorders constraints by ranking stratum and sorts candidates by harmony.
+/// `algorithm`: one of "rcd", "bcd", "bcd-specific", "lfcd".
+/// `apriori_text`: contents of an a priori rankings file, or empty string for none.
+#[wasm_bindgen]
+pub fn format_sorted_input_file(
+    text: &str,
+    apriori_text: &str,
+    algorithm: &str,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    let apriori = if apriori_text.trim().is_empty() {
+        Vec::new()
+    } else {
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        apriori::parse_apriori(apriori_text, &abbrevs)?
+    };
+    let result = match algorithm {
+        "rcd" => {
+            if apriori.is_empty() { tableau.run_rcd() } else { tableau.run_rcd_with_apriori(&apriori) }
+        }
+        "lfcd" => {
+            if apriori.is_empty() { tableau.run_lfcd() } else { tableau.run_lfcd_with_apriori(&apriori) }
+        }
+        "bcd" => tableau.run_bcd(false),
+        "bcd-specific" => tableau.run_bcd(true),
+        _ => return Err(format!("Unknown algorithm: {algorithm}")),
+    };
+    Ok(sorted_input::format_sorted_input(&tableau, &result))
 }
 
 /// Run the Gradual Learning Algorithm (GLA) on a tableau.

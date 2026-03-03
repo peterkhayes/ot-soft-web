@@ -18,6 +18,7 @@ src/
   gla.rs        Gradual Learning Algorithm (Stochastic OT + online MaxEnt)
   factorial_typology.rs  Factorial Typology (FastRCD, cross-classification, T-order)
   hasse.rs      Hasse diagram DOT generation (FRed Hasse: fred_hasse_dot)
+  sorted_input.rs  Sorted input file (reorder constraints/candidates by ranking)
 ```
 
 ## Testing

@@ -71,7 +71,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Tableaux with fatal violation markers
 - [x] Downloadable results file
 - [x] HTML tableaux with configurable shading
-- [ ] Sorted input file (constraints/candidates reordered by rank)
+- [x] Sorted input file (constraints/candidates reordered by rank)
 - [ ] Praat export (`.OTGrammar`, `.PairDistribution`)
 - [ ] R export (logistic regression format)
 - [ ] HowIRanked log file
@@ -117,9 +117,7 @@ Roughly ordered by value and dependency:
 
 2. **History file output** — Write per-iteration weights/ranking values to a file for post-hoc analysis and visualization of learning trajectories.
 
-3. **Sorted input file** — Reorder constraints/candidates by rank and write a sorted copy of the input file.
-
-4. **Exact proportions data presentation** — Display data as exact proportions rather than frequency counts.
+3. **Exact proportions data presentation** — Display data as exact proportions rather than frequency counts.
 
 6. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
 

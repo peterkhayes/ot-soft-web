@@ -8,6 +8,7 @@ import {
   format_lfcd_output,
   format_rcd_html_output,
   format_rcd_output,
+  format_sorted_input_file,
   fred_hasse_dot,
   FredOptions,
   run_bcd,
@@ -204,6 +205,18 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
     }
   }
 
+  function handleDownloadSortedInput() {
+    try {
+      const apriori = supportsApriori ? aprioriText : ''
+      const alg = algorithm === 'bcd-specific' ? 'bcd-specific' : algorithm
+      const content = format_sorted_input_file(tableauText, apriori, alg)
+      download(content, makeOutputFilename(inputFilename, 'Sorted'))
+    } catch (err) {
+      console.error('Sorted input download error:', err)
+      alert('Error generating sorted input: ' + err)
+    }
+  }
+
   return (
     <section className="analysis-panel">
       <div className="panel-header">
@@ -342,6 +355,20 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
               Download HTML
+            </button>
+            <button className="download-button" onClick={handleDownloadSortedInput}>
+              <svg
+                className="button-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Download Sorted Input
             </button>
           </>
         )}

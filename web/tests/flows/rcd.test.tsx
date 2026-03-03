@@ -168,6 +168,37 @@ test('RCD: download HTML tableaux', async () => {
   expect(html).toContain('5. Mini-Tableaux')
 })
 
+test('RCD: download sorted input file', async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Run RCD Algorithm').click()
+  await expect
+    .element(page.getByText('A ranking was found that generates the correct outputs'))
+    .toBeVisible()
+
+  // Sorted input download button appears after results
+  await expect.element(page.getByText('Download Sorted Input')).toBeVisible()
+  await page.getByText('Download Sorted Input').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileSorted.txt')
+  // Sorted input: constraints in stratum order, candidates sorted by harmony
+  const content = downloads[0].content
+  const lines = content.split('\n')
+  // Header rows have constraints in stratum order
+  expect(lines[0]).toContain('*No Onset\t*Coda\tMax(t)\tDep(?)')
+  expect(lines[1]).toContain('*NoOns\t*Coda\tMax\tDep')
+  // Winners are first for each form
+  expect(lines[2]).toMatch(/^a\t\?a\t/)
+  expect(lines[4]).toMatch(/^tat\tta\t/)
+  expect(lines[6]).toMatch(/^at\t\?a\t/)
+  // "at" form rivals sorted by harmony: ?at, a, at
+  expect(lines[7]).toMatch(/^\t\?at\t/)
+  expect(lines[8]).toMatch(/^\ta\t/)
+  expect(lines[9]).toMatch(/^\tat\t/)
+})
+
 test('RCD: a priori rankings file upload', async () => {
   renderApp()
   await loadExample()
