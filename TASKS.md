@@ -55,9 +55,10 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Multiple runs with collated results
 - [x] Pairwise ranking probabilities (used internally by GLA Hasse diagram)
 - [x] History file output (simple weight/ranking value history per iteration)
-- [ ] Full annotated history (FullHistory.txt — trial + input/generated/heard + values)
-- [ ] Candidate probability history (HistoryOfCandidateProbabilities.txt — GLA MaxEnt mode only)
-- [ ] Output probability history (HistoryOfOutputProbabilities.txt — Batch MaxEnt)
+- [x] Full annotated history (FullHistory.txt — trial + input/generated/heard + values)
+- [x] Candidate probability history (HistoryOfCandidateProbabilities.txt — GLA MaxEnt mode only)
+- [x] Output probability history (HistoryOfOutputProbabilities.txt — Batch MaxEnt)
+- [x] History of weights (HistoryOfWeights.txt — Batch MaxEnt, per-iteration weight log)
 
 ## Factorial Typology
 
