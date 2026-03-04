@@ -33,6 +33,7 @@ interface GlaResultState {
   hasseDot?: string
   pairwiseTable?: string
   history?: string
+  fullHistory?: string
   error?: undefined
 }
 
@@ -55,6 +56,7 @@ interface GlaParams {
   magriUpdateRule: boolean
   exactProportions: boolean
   generateHistory: boolean
+  generateFullHistory: boolean
   useCustomSchedule: boolean
   customSchedule: string
   multipleRunsCount: 10 | 100 | 1000
@@ -71,6 +73,7 @@ const GLA_DEFAULTS: GlaParams = {
   magriUpdateRule: false,
   exactProportions: false,
   generateHistory: false,
+  generateFullHistory: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
   multipleRunsCount: 10,
@@ -90,6 +93,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     magriUpdateRule,
     exactProportions,
     generateHistory,
+    generateFullHistory,
     useCustomSchedule,
     customSchedule,
     multipleRunsCount,
@@ -114,6 +118,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     opts.magri_update_rule = !maxentMode && magriUpdateRule
     opts.exact_proportions = exactProportions
     opts.generate_history = generateHistory
+    opts.generate_full_history = generateFullHistory
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -179,6 +184,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           hasseDot,
           pairwiseTable,
           history: r.history() ?? undefined,
+          fullHistory: r.full_history() ?? undefined,
         })
       } catch (err) {
         console.error('GLA error:', err)
@@ -230,6 +236,12 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   function handleDownloadHistory() {
     if (successResult?.history) {
       download(successResult.history, makeOutputFilename(inputFilename, 'History'))
+    }
+  }
+
+  function handleDownloadFullHistory() {
+    if (successResult?.fullHistory) {
+      download(successResult.fullHistory, makeOutputFilename(inputFilename, 'FullHistory'))
     }
   }
 
@@ -442,6 +454,14 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           />
           Generate history of {maxentMode ? 'weights' : 'ranking values'}
         </label>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={generateFullHistory}
+            onChange={(e) => setParams({ generateFullHistory: e.target.checked })}
+          />
+          Generate full history (with input/output annotations)
+        </label>
       </div>
 
       <div className="action-bar">
@@ -508,6 +528,22 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Download History
+          </button>
+        )}
+        {successResult?.fullHistory && (
+          <button className="download-button" onClick={handleDownloadFullHistory}>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Full History
           </button>
         )}
         <button

@@ -175,6 +175,8 @@ pub struct GlaResult {
     magri_update_rule: bool,
     /// Optional history of ranking values/weights recorded during learning.
     history: Option<String>,
+    /// Optional full (annotated) history: trial, input, generated, heard, values.
+    full_history: Option<String>,
 }
 
 impl GlaResult {
@@ -191,6 +193,7 @@ impl GlaResult {
             sigma: 0.0,
             magri_update_rule: false,
             history: None,
+            full_history: None,
         }
     }
 }
@@ -227,6 +230,10 @@ impl GlaResult {
 
     pub fn history(&self) -> Option<String> {
         self.history.clone()
+    }
+
+    pub fn full_history(&self) -> Option<String> {
+        self.full_history.clone()
     }
 
     /// Format results as text output for download.
@@ -435,6 +442,7 @@ impl Tableau {
             magri_update_rule,
             exact_proportions,
             false,
+            false,
         )
     }
 
@@ -470,6 +478,7 @@ impl Tableau {
                 sigma,
                 magri_update_rule,
                 exact_proportions,
+                false,
                 false,
             );
 
@@ -537,6 +546,7 @@ impl Tableau {
         magri_update_rule: bool,
         exact_proportions: bool,
         generate_history: bool,
+        generate_full_history: bool,
     ) -> GlaResult {
         let nc = self.constraints.len();
 
@@ -583,6 +593,28 @@ impl Tableau {
             None
         };
         let mut trial_number: usize = 0;
+
+        // ── Full history buffer ─────────────────────────────────────────
+        // Reproduces VB6 boersma.frm FullHistory output: annotated log with
+        // trial, input, generated, heard, then one column per constraint.
+        let mut full_history_buf = if generate_full_history {
+            use std::fmt::Write;
+            let mut header = String::from("Trial #\tInput\tGenerated\tHeard");
+            for c in &self.constraints {
+                write!(header, "\t{}", c.abbrev()).unwrap();
+            }
+            header.push('\n');
+            // Initial row: starting values before learning begins
+            header.push_str("(Initial)\t\t\t");
+            let initial_value = if maxent_mode { 0.0 } else { 100.0 };
+            for _ in 0..nc {
+                write!(header, "\t{initial_value:.4}").unwrap();
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
 
         let mut rng = Rng::new(GaussianMode::Standard);
 
@@ -698,6 +730,21 @@ impl Tableau {
                         }
                         buf.push('\n');
                     }
+
+                    // Record full history (annotated log with input/generated/heard)
+                    if let Some(ref mut buf) = full_history_buf {
+                        use std::fmt::Write;
+                        write!(buf, "{}\t{}\t{}\t{}",
+                            trial_number,
+                            self.forms[sel_form].input,
+                            gen_cand.form,
+                            obs_cand.form,
+                        ).unwrap();
+                        for rv in ranking_values.iter() {
+                            write!(buf, "\t{rv:.4}").unwrap();
+                        }
+                        buf.push('\n');
+                    }
                 }
                 crate::ot_log!("GLA stage {}/{} complete (plast_mark={:.4}, plast_faith={:.4})",
                     stage_idx + 1, schedule.stages.len(), stage.plast_mark, stage.plast_faith);
@@ -768,6 +815,7 @@ impl Tableau {
             sigma,
             magri_update_rule,
             history: history_buf,
+            full_history: full_history_buf,
         }
     }
 }
@@ -887,7 +935,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -990,7 +1038,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false);
         let output = result.format_output(&tableau, "test.txt");
 
         // Custom schedule should mention stages in the output
@@ -1028,7 +1076,7 @@ mod tests {
     fn test_gla_sot_history_generation() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, true);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, true, false);
 
         let history = result.history().expect("history should be Some when generate_history=true");
         let lines: Vec<&str> = history.lines().collect();
@@ -1056,5 +1104,49 @@ mod tests {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
         assert!(result.history().is_none(), "history should be None when generate_history=false");
+    }
+
+    #[test]
+    fn test_gla_full_history_generation() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, true);
+
+        let fh = result.full_history().expect("full_history should be Some when enabled");
+        let lines: Vec<&str> = fh.lines().collect();
+        let nc = tableau.constraint_count();
+
+        // Header: Trial # \t Input \t Generated \t Heard \t [constraints...]
+        let header_cols: Vec<&str> = lines[0].split('\t').collect();
+        assert_eq!(header_cols.len(), nc + 4, "header should have 4 leading + {} constraint columns", nc);
+        assert_eq!(header_cols[0], "Trial #");
+        assert_eq!(header_cols[1], "Input");
+        assert_eq!(header_cols[2], "Generated");
+        assert_eq!(header_cols[3], "Heard");
+
+        // Initial row
+        assert!(lines[1].starts_with("(Initial)\t\t\t"), "second line should be initial row");
+        let init_cols: Vec<&str> = lines[1].split('\t').collect();
+        assert_eq!(init_cols.len(), nc + 4, "initial row should have same column count as header");
+
+        // Data rows (at least some mismatches should occur)
+        assert!(lines.len() > 2, "should have data rows after header + initial");
+        for line in &lines[2..] {
+            let cols: Vec<&str> = line.split('\t').collect();
+            assert_eq!(cols.len(), nc + 4, "each data row should have {} columns", nc + 4);
+            // Trial number
+            cols[0].parse::<usize>().expect("trial number should be an integer");
+            // Input, Generated, Heard should be non-empty
+            assert!(!cols[1].is_empty(), "input should be non-empty");
+            assert!(!cols[2].is_empty(), "generated should be non-empty");
+            assert!(!cols[3].is_empty(), "heard should be non-empty");
+        }
+    }
+
+    #[test]
+    fn test_gla_full_history_none_when_disabled() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
+        assert!(result.full_history().is_none(), "full_history should be None when disabled");
     }
 }

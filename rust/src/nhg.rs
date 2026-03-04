@@ -242,6 +242,8 @@ pub struct NhgResult {
     exponential_nhg: bool,
     /// Optional history of weights recorded during learning.
     history: Option<String>,
+    /// Optional full (annotated) history: input, generated, heard, then delta+value per constraint.
+    full_history: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -264,6 +266,10 @@ impl NhgResult {
 
     pub fn history(&self) -> Option<String> {
         self.history.clone()
+    }
+
+    pub fn full_history(&self) -> Option<String> {
+        self.full_history.clone()
     }
 
     /// Format results as text output for download.
@@ -423,6 +429,7 @@ impl Tableau {
             resolve_ties_by_skipping,
             exact_proportions,
             false,
+            false,
         )
     }
 
@@ -457,6 +464,7 @@ impl Tableau {
         resolve_ties_by_skipping: bool,
         exact_proportions: bool,
         generate_history: bool,
+        generate_full_history: bool,
     ) -> NhgResult {
         let nc = self.constraints.len();
 
@@ -513,6 +521,29 @@ impl Tableau {
         };
         let mut report_counter: usize = 0;
 
+        // ── Full history buffer ─────────────────────────────────────────
+        // Reproduces VB6 NoisyHarmonicGrammar.frm FullHistory output.
+        // Header has 4 leading columns (Trial, Input, Generated, Heard) but
+        // data rows have only 3 (Input, Generated, Heard) — this is a VB6 bug
+        // reproduced for fidelity. Two columns per constraint: delta + "now" value.
+        let mut full_history_buf = if generate_full_history {
+            use std::fmt::Write;
+            let mut header = String::from("Trial\tInput\tGenerated\tHeard");
+            for c in &self.constraints {
+                write!(header, "\t{}\tnow", c.abbrev()).unwrap();
+            }
+            header.push('\n');
+            // Initial row: starting values before learning begins
+            header.push_str("(Initial)\t\t\t");
+            for _ in 0..nc {
+                write!(header, "\t\t{:.4}", 0.0f64).unwrap();
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
         // ── Exact proportions cursor ─────────────────────────────────────────
         let mut pool_cursor: usize = pool_size;
 
@@ -559,6 +590,11 @@ impl Tableau {
                         let winner_cand = &self.forms[selected_form].candidates[generated];
                         let target_cand = &self.forms[selected_form].candidates[selected_cand];
 
+                        // Track which constraints changed for full history
+                        let tracking = full_history_buf.is_some();
+                        let mut changed = if tracking { vec![false; nc] } else { vec![] };
+                        let mut deltas = if tracking { vec![0.0f64; nc] } else { vec![] };
+
                         for (c, w) in weights.iter_mut().enumerate() {
                             let wv = winner_cand.violations[c] as f64;
                             let tv = target_cand.violations[c] as f64;
@@ -566,11 +602,34 @@ impl Tableau {
                                 // VB6: weight += plasticity * (winner_viols - training_viols)
                                 // Use PlastMark for Markedness, PlastFaith for Faithfulness.
                                 let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
-                                *w += plast * (wv - tv);
+                                let delta = plast * (wv - tv);
+                                *w += delta;
                                 if *w < 0.0 && !negative_weights_ok && !exponential_nhg {
                                     *w = 0.0;
                                 }
+                                if tracking {
+                                    changed[c] = true;
+                                    deltas[c] = delta;
+                                }
                             }
+                        }
+
+                        // Record full history: data rows have 3 leading columns (no trial number — VB6 bug)
+                        if let Some(ref mut buf) = full_history_buf {
+                            use std::fmt::Write;
+                            write!(buf, "{}\t{}\t{}",
+                                self.forms[selected_form].input,
+                                winner_cand.form,
+                                target_cand.form,
+                            ).unwrap();
+                            for c in 0..nc {
+                                if changed[c] {
+                                    write!(buf, "\t{:.4}\t{:.4}", deltas[c], weights[c]).unwrap();
+                                } else {
+                                    buf.push_str("\t\t");
+                                }
+                            }
+                            buf.push('\n');
                         }
                     }
 
@@ -665,6 +724,7 @@ impl Tableau {
             test_trials,
             exponential_nhg,
             history: history_buf,
+            full_history: full_history_buf,
         }
     }
 }
@@ -787,7 +847,7 @@ mod tests {
         let result = tableau.run_nhg_with_schedule(
             &schedule,
             200,   // test_trials
-            false, false, false, false, false, false, false, false, false, false,
+            false, false, false, false, false, false, false, false, false, false, false,
         );
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -805,7 +865,7 @@ mod tests {
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = crate::schedule::LearningSchedule::parse(schedule_text).unwrap();
         let result = tableau.run_nhg_with_schedule(
-            &schedule, 200, false, false, false, false, false, false, false, false, false, false,
+            &schedule, 200, false, false, false, false, false, false, false, false, false, false, false,
         );
         let output = result.format_output(&tableau, "test.txt");
         assert!(output.contains("Custom learning schedule"), "output should mention custom schedule");
@@ -826,7 +886,8 @@ mod tests {
         let result = tableau.run_nhg_with_schedule(
             &schedule, 200,
             false, false, false, false, false, false, false, false, false,
-            true, // generate_history
+            true,  // generate_history
+            false, // generate_full_history
         );
 
         let history = result.history().expect("history should be Some when generate_history=true");
@@ -845,5 +906,60 @@ mod tests {
             let cols: Vec<&str> = line.split('\t').collect();
             assert_eq!(cols.len(), nc, "each row should have {} columns", nc);
         }
+    }
+
+    #[test]
+    fn test_nhg_full_history_generation() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        let schedule = crate::schedule::LearningSchedule::default_4stage(500, 2.0, 0.002);
+        let result = tableau.run_nhg_with_schedule(
+            &schedule, 200,
+            false, false, false, false, false, false, false, false, false,
+            false, // generate_history
+            true,  // generate_full_history
+        );
+
+        let fh = result.full_history().expect("full_history should be Some when enabled");
+        let lines: Vec<&str> = fh.lines().collect();
+        let nc = tableau.constraint_count();
+
+        // Header: Trial \t Input \t Generated \t Heard \t [abbrev \t now] per constraint
+        // = 4 leading + 2*nc columns
+        let header_cols: Vec<&str> = lines[0].split('\t').collect();
+        assert_eq!(header_cols.len(), 4 + 2 * nc,
+            "header should have 4 leading + 2*{} constraint columns", nc);
+        assert_eq!(header_cols[0], "Trial");
+        assert_eq!(header_cols[1], "Input");
+        assert_eq!(header_cols[2], "Generated");
+        assert_eq!(header_cols[3], "Heard");
+
+        // Initial row
+        assert!(lines[1].starts_with("(Initial)\t\t\t"), "second line should be initial row");
+        let init_cols: Vec<&str> = lines[1].split('\t').collect();
+        assert_eq!(init_cols.len(), 4 + 2 * nc, "initial row should match header column count");
+
+        // Data rows have 3 leading columns (no trial number — VB6 bug) + 2*nc
+        assert!(lines.len() > 2, "should have data rows after header + initial");
+        for line in &lines[2..] {
+            let cols: Vec<&str> = line.split('\t').collect();
+            assert_eq!(cols.len(), 3 + 2 * nc,
+                "data rows should have 3 leading + 2*{} constraint columns (VB6 misalignment)", nc);
+            // Input, Generated, Heard should be non-empty
+            assert!(!cols[0].is_empty(), "input should be non-empty");
+            assert!(!cols[1].is_empty(), "generated should be non-empty");
+            assert!(!cols[2].is_empty(), "heard should be non-empty");
+        }
+    }
+
+    #[test]
+    fn test_nhg_full_history_none_when_disabled() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        let result = tableau.run_nhg(
+            500, 2.0, 0.002, 200,
+            false, false, false, false, false, false, false, false, false,
+        );
+        assert!(result.full_history().is_none(), "full_history should be None when disabled");
     }
 }

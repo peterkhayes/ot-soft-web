@@ -72,6 +72,34 @@ test('NHG: load custom schedule from file', { timeout: 30000 }, async () => {
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
 })
 
+test('NHG: generate full history and download', { timeout: 30000 }, async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Noisy Harmonic Grammar', { exact: true }).click()
+
+  // Enable full history generation
+  await page.getByText('Generate full history (with input/output annotations)').click()
+
+  await page.getByText('Run Noisy HG').click()
+
+  // Wait for results
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+
+  // Download Full History button should appear
+  await expect.element(page.getByText('Download Full History')).toBeVisible()
+  await page.getByText('Download Full History').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileFullHistory.txt')
+
+  // Content should have Trial header and data rows
+  const lines = downloads[0].content.split('\n').filter((l: string) => l.length > 0)
+  expect(lines[0]).toMatch(/^Trial\t/)
+  expect(lines[1]).toMatch(/^\(Initial\)/)
+  expect(lines.length).toBeGreaterThan(2)
+})
+
 test('NHG: generate history and download', { timeout: 30000 }, async () => {
   const { downloads } = renderApp()
   await loadExample()

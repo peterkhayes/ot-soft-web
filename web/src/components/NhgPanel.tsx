@@ -22,6 +22,7 @@ interface NhgResultState {
   }[]
   logLikelihood: number
   history?: string
+  fullHistory?: string
   error?: undefined
 }
 
@@ -47,6 +48,7 @@ interface NhgParams {
   resolveTiesBySkipping: boolean
   exactProportions: boolean
   generateHistory: boolean
+  generateFullHistory: boolean
   useCustomSchedule: boolean
   customSchedule: string
 }
@@ -65,6 +67,7 @@ const NHG_DEFAULTS: NhgParams = {
   resolveTiesBySkipping: false,
   exactProportions: false,
   generateHistory: false,
+  generateFullHistory: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
 }
@@ -86,6 +89,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     resolveTiesBySkipping,
     exactProportions,
     generateHistory,
+    generateFullHistory,
     useCustomSchedule,
     customSchedule,
   } = params
@@ -111,6 +115,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     opts.resolve_ties_by_skipping = resolveTiesBySkipping
     opts.exact_proportions = exactProportions
     opts.generate_history = generateHistory
+    opts.generate_full_history = generateFullHistory
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -157,6 +162,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
           forms,
           logLikelihood: r.log_likelihood(),
           history: r.history() ?? undefined,
+          fullHistory: r.full_history() ?? undefined,
         })
       } catch (err) {
         console.error('NHG error:', err)
@@ -189,6 +195,12 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
   function handleDownloadHistory() {
     if (successResult?.history) {
       download(successResult.history, makeOutputFilename(inputFilename, 'History'))
+    }
+  }
+
+  function handleDownloadFullHistory() {
+    if (successResult?.fullHistory) {
+      download(successResult.fullHistory, makeOutputFilename(inputFilename, 'FullHistory'))
     }
   }
 
@@ -385,6 +397,14 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
           />
           Generate history of weights
         </label>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={generateFullHistory}
+            onChange={(e) => setParams({ generateFullHistory: e.target.checked })}
+          />
+          Generate full history (with input/output annotations)
+        </label>
       </div>
 
       <div className="action-bar">
@@ -451,6 +471,22 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Download History
+          </button>
+        )}
+        {successResult?.fullHistory && (
+          <button className="download-button" onClick={handleDownloadFullHistory}>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Full History
           </button>
         )}
         <button
