@@ -424,34 +424,9 @@ impl Tableau {
     ///
     /// This is a convenience wrapper around `run_gla_with_schedule`.
     /// Reproduces VB6 boersma.frm:GLACore and related subroutines.
-    #[allow(clippy::too_many_arguments)]
-    pub fn run_gla(
-        &self,
-        maxent_mode: bool,
-        cycles: usize,
-        initial_plasticity: f64,
-        final_plasticity: f64,
-        test_trials: usize,
-        negative_weights_ok: bool,
-        gaussian_prior: bool,
-        sigma: f64,
-        magri_update_rule: bool,
-        exact_proportions: bool,
-    ) -> GlaResult {
-        let schedule = LearningSchedule::default_4stage(cycles, initial_plasticity, final_plasticity);
-        self.run_gla_with_schedule(
-            maxent_mode,
-            &schedule,
-            test_trials,
-            negative_weights_ok,
-            gaussian_prior,
-            sigma,
-            magri_update_rule,
-            exact_proportions,
-            false,
-            false,
-            false,
-        )
+    pub fn run_gla(&self, opts: &crate::GlaOptions) -> GlaResult {
+        let schedule = LearningSchedule::default_4stage(opts.cycles, opts.initial_plasticity, opts.final_plasticity);
+        self.run_gla_with_schedule(&schedule, opts)
     }
 
     /// Run GLA `run_count` times and format results as `CollateRuns.txt` content.
@@ -460,36 +435,35 @@ impl Tableau {
     ///   - **G records**: `G\t{run}\t{constraint_abbrev}\t{ranking_value}` (one per constraint)
     ///   - **O records**: `O\t{run}\t{form_idx}\t{input}\t{rival_idx}\t{rival_form}\t{freq}\t{pct_gen}`
     ///     (one per non-first candidate per form; VB6 skips candidate 0, the winner)
-    #[allow(clippy::too_many_arguments)]
     pub fn format_collate_runs_output(
         &self,
         run_count: usize,
-        maxent_mode: bool,
         schedule: &LearningSchedule,
-        test_trials: usize,
-        negative_weights_ok: bool,
-        gaussian_prior: bool,
-        sigma: f64,
-        magri_update_rule: bool,
-        exact_proportions: bool,
+        opts: &crate::GlaOptions,
     ) -> String {
         let nc = self.constraints.len();
         let mut out = String::new();
 
+        // Override history flags for collate runs (never needed)
+        let run_opts = crate::GlaOptions {
+            maxent_mode: opts.maxent_mode,
+            cycles: opts.cycles,
+            initial_plasticity: opts.initial_plasticity,
+            final_plasticity: opts.final_plasticity,
+            test_trials: opts.test_trials,
+            negative_weights_ok: opts.negative_weights_ok,
+            gaussian_prior: opts.gaussian_prior,
+            sigma: opts.sigma,
+            magri_update_rule: opts.magri_update_rule,
+            exact_proportions: opts.exact_proportions,
+            generate_history: false,
+            generate_full_history: false,
+            generate_candidate_prob_history: false,
+            learning_schedule: String::new(),
+        };
+
         for run_idx in 1..=run_count {
-            let result = self.run_gla_with_schedule(
-                maxent_mode,
-                schedule,
-                test_trials,
-                negative_weights_ok,
-                gaussian_prior,
-                sigma,
-                magri_update_rule,
-                exact_proportions,
-                false,
-                false,
-                false,
-            );
+            let result = self.run_gla_with_schedule(schedule, &run_opts);
 
             // G records: constraint ranking values / weights
             for ci in 0..nc {
@@ -534,30 +508,21 @@ impl Tableau {
     ///
     /// Supports separate plasticity for Markedness vs Faithfulness constraints
     /// (PlastMark / PlastFaith per stage), matching VB6 behavior.
-    ///
-    /// # Arguments
-    /// * `maxent_mode` — if true, run online MaxEnt; if false, run Stochastic OT
-    /// * `schedule` — multi-stage plasticity schedule
-    /// * `test_trials` — evaluation trials after learning; only used in StochasticOT mode
-    /// * `negative_weights_ok` — allow weights below 0 (MaxEnt mode only)
-    /// * `gaussian_prior` — apply Gaussian L2 prior each update (MaxEnt mode only)
-    /// * `sigma` — standard deviation of the Gaussian prior (mu=0 for all constraints)
-    /// * `magri_update_rule` — scale promotion plasticity by Magri's factor (StochasticOT only)
-    #[allow(clippy::too_many_arguments)]
     pub fn run_gla_with_schedule(
         &self,
-        maxent_mode: bool,
         schedule: &LearningSchedule,
-        test_trials: usize,
-        negative_weights_ok: bool,
-        gaussian_prior: bool,
-        sigma: f64,
-        magri_update_rule: bool,
-        exact_proportions: bool,
-        generate_history: bool,
-        generate_full_history: bool,
-        generate_candidate_prob_history: bool,
+        opts: &crate::GlaOptions,
     ) -> GlaResult {
+        let maxent_mode = opts.maxent_mode;
+        let test_trials = opts.test_trials;
+        let negative_weights_ok = opts.negative_weights_ok;
+        let gaussian_prior = opts.gaussian_prior;
+        let sigma = opts.sigma;
+        let magri_update_rule = opts.magri_update_rule;
+        let exact_proportions = opts.exact_proportions;
+        let generate_history = opts.generate_history;
+        let generate_full_history = opts.generate_full_history;
+        let generate_candidate_prob_history = opts.generate_candidate_prob_history;
         let nc = self.constraints.len();
 
         // ── Faithfulness flags ────────────────────────────────────────────────
@@ -884,7 +849,10 @@ mod tests {
     #[test]
     fn test_gla_sot_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        });
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -896,7 +864,10 @@ mod tests {
     #[test]
     fn test_gla_maxent_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, ..Default::default()
+        });
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -909,7 +880,10 @@ mod tests {
     #[test]
     fn test_gla_maxent_probs_sum_to_one() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, ..Default::default()
+        });
 
         for fi in 0..tableau.form_count() {
             let form = tableau.get_form(fi).unwrap();
@@ -925,7 +899,10 @@ mod tests {
         // StochasticOT should start at 100 (Boersma's canonical value)
         // After 0 cycles, values should still be 100
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 0, 2.0, 0.001, 100, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 0, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 100,
+            ..Default::default()
+        });
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 100.0,
@@ -937,7 +914,10 @@ mod tests {
     fn test_gla_maxent_initial_values_zero() {
         // MaxEnt should start at 0
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 0, 2.0, 0.001, 0, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 0, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, ..Default::default()
+        });
         let nc = tableau.constraint_count();
         for c in 0..nc {
             assert_eq!(result.get_ranking_value(c), 0.0,
@@ -948,7 +928,10 @@ mod tests {
     #[test]
     fn test_gla_maxent_gaussian_prior_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, true, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, gaussian_prior: true, ..Default::default()
+        });
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -962,7 +945,10 @@ mod tests {
     #[test]
     fn test_gla_sot_magri_update_rule_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, true, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            magri_update_rule: true, ..Default::default()
+        });
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -984,7 +970,10 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false, false);
+        let result = tableau.run_gla_with_schedule(
+            &schedule,
+            &crate::GlaOptions { test_trials: 200, ..Default::default() },
+        );
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -997,15 +986,9 @@ mod tests {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
         let output = tableau.format_collate_runs_output(
-            3,     // run_count
-            false, // maxent_mode
+            3,
             &schedule,
-            200,   // test_trials
-            false, // negative_weights_ok
-            false, // gaussian_prior
-            1.0,   // sigma
-            false, // magri_update_rule
-            false, // exact_proportions
+            &crate::GlaOptions { test_trials: 200, ..Default::default() },
         );
 
         let nc = tableau.constraint_count();
@@ -1044,7 +1027,10 @@ mod tests {
     #[test]
     fn test_gla_sot_pairwise_probabilities_structure() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        });
 
         let table = result.format_pairwise_probabilities(&tableau);
         assert!(table.contains("4. Ranking Value to Ranking Probability Conversion"));
@@ -1063,7 +1049,10 @@ mod tests {
     #[test]
     fn test_gla_sot_format_output_includes_pairwise() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        });
 
         let output = result.format_output(&tableau, "test.txt");
         assert!(output.contains("4. Ranking Value to Ranking Probability Conversion"),
@@ -1073,7 +1062,10 @@ mod tests {
     #[test]
     fn test_gla_maxent_format_output_excludes_pairwise() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, ..Default::default()
+        });
 
         let output = result.format_output(&tableau, "test.txt");
         assert!(!output.contains("Ranking Value to Ranking Probability Conversion"),
@@ -1087,7 +1079,10 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false, false);
+        let result = tableau.run_gla_with_schedule(
+            &schedule,
+            &crate::GlaOptions { test_trials: 200, ..Default::default() },
+        );
         let output = result.format_output(&tableau, "test.txt");
 
         // Custom schedule should mention stages in the output
@@ -1098,7 +1093,10 @@ mod tests {
     #[test]
     fn test_gla_sot_exact_proportions_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, true);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            exact_proportions: true, ..Default::default()
+        });
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -1111,7 +1109,10 @@ mod tests {
     #[test]
     fn test_gla_maxent_exact_proportions_runs() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 500, 2.0, 0.001, 0, false, false, 1.0, false, true);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, exact_proportions: true, ..Default::default()
+        });
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -1125,7 +1126,10 @@ mod tests {
     fn test_gla_sot_history_generation() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, true, false, false);
+        let result = tableau.run_gla_with_schedule(
+            &schedule,
+            &crate::GlaOptions { test_trials: 200, generate_history: true, ..Default::default() },
+        );
 
         let history = result.history().expect("history should be Some when generate_history=true");
         let lines: Vec<&str> = history.lines().collect();
@@ -1151,7 +1155,10 @@ mod tests {
     #[test]
     fn test_gla_history_none_when_disabled() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        });
         assert!(result.history().is_none(), "history should be None when generate_history=false");
     }
 
@@ -1159,7 +1166,10 @@ mod tests {
     fn test_gla_full_history_generation() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, true, false);
+        let result = tableau.run_gla_with_schedule(
+            &schedule,
+            &crate::GlaOptions { test_trials: 200, generate_full_history: true, ..Default::default() },
+        );
 
         let fh = result.full_history().expect("full_history should be Some when enabled");
         let lines: Vec<&str> = fh.lines().collect();
@@ -1195,7 +1205,10 @@ mod tests {
     #[test]
     fn test_gla_full_history_none_when_disabled() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        });
         assert!(result.full_history().is_none(), "full_history should be None when disabled");
     }
 
@@ -1206,7 +1219,11 @@ mod tests {
         let schedule = LearningSchedule::default_4stage(total_cycles, 2.0, 0.001);
         let total_trials = schedule.total_cycles();
         let result = tableau.run_gla_with_schedule(
-            true, &schedule, 0, false, false, 1.0, false, false, false, false, true,
+            &schedule,
+            &crate::GlaOptions {
+                maxent_mode: true, test_trials: 0, generate_candidate_prob_history: true,
+                ..Default::default()
+            },
         );
 
         let cph = result.candidate_prob_history()
@@ -1246,7 +1263,10 @@ mod tests {
     #[test]
     fn test_gla_candidate_prob_history_none_when_disabled() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
-        let result = tableau.run_gla(true, 50, 2.0, 0.001, 0, false, false, 1.0, false, false);
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 50, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, ..Default::default()
+        });
         assert!(result.candidate_prob_history().is_none(),
             "candidate_prob_history should be None when not requested");
     }
@@ -1257,7 +1277,11 @@ mod tests {
         let schedule = LearningSchedule::default_4stage(10, 2.0, 0.001);
         // Even with generate_candidate_prob_history=true, SOT should not produce it
         let result = tableau.run_gla_with_schedule(
-            false, &schedule, 200, false, false, 1.0, false, false, false, false, true,
+            &schedule,
+            &crate::GlaOptions {
+                test_trials: 200, generate_candidate_prob_history: true,
+                ..Default::default()
+            },
         );
         assert!(result.candidate_prob_history().is_none(),
             "candidate_prob_history should be None in Stochastic OT mode");

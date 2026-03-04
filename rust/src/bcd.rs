@@ -64,18 +64,28 @@ pub(crate) fn locate_violation_subsets(tableau: &Tableau) -> Vec<Vec<bool>> {
     subset
 }
 
+/// Immutable recursion context for BCD faith-subset evaluation.
+struct BcdContext<'a> {
+    tableau: &'a Tableau,
+    is_faithfulness: &'a [bool],
+    current_stratum: usize,
+    strata: &'a [usize],
+    still_informative: &'a [Vec<bool>],
+}
+
 /// Simulate ranking a faithfulness subset and count how many markedness constraints
 /// are subsequently freed up (become non-demotable).
 ///
 /// Reproduces VB6 BCD.bas:CheckMarkednessRelease
 fn check_markedness_release(
-    tableau: &Tableau,
+    ctx: &BcdContext,
     faith_subset: &[usize],
-    is_faithfulness: &[bool],
-    current_stratum: usize,
-    strata: &[usize],
-    still_informative: &[Vec<bool>],
 ) -> usize {
+    let tableau = ctx.tableau;
+    let is_faithfulness = ctx.is_faithfulness;
+    let current_stratum = ctx.current_stratum;
+    let strata = ctx.strata;
+    let still_informative = ctx.still_informative;
     let nc = tableau.constraints.len();
 
     // Make local copies of state
@@ -158,71 +168,57 @@ fn check_markedness_release(
     total_markedness_freed
 }
 
+/// Mutable state tracking the best faithfulness subset found during enumeration.
+struct BcdSearchState {
+    current_subset: Vec<usize>,
+    best_subset: Vec<usize>,
+    best_mark_count: usize,
+    tie_flag: bool,
+}
+
 /// Recursively enumerate all subsets of `rankable_faith` of size `target_size`,
 /// evaluate each, and track the best (most markedness freed).
 ///
 /// Reproduces VB6 BCD.bas:EvaluateFaithSubsets
-#[allow(clippy::too_many_arguments)]
 fn evaluate_faith_subsets(
     rankable_faith: &[usize],
     target_size: usize,
-    current_subset: &mut Vec<usize>,
     start_idx: usize,
-    best_subset: &mut Vec<usize>,
-    best_mark_count: &mut usize,
-    tie_flag: &mut bool,
-    tableau: &Tableau,
-    is_faithfulness: &[bool],
-    current_stratum: usize,
-    strata: &[usize],
-    still_informative: &[Vec<bool>],
+    state: &mut BcdSearchState,
+    ctx: &BcdContext,
 ) {
-    if current_subset.len() == target_size {
+    if state.current_subset.len() == target_size {
         // Evaluate this complete subset
-        let mark_count = check_markedness_release(
-            tableau,
-            current_subset,
-            is_faithfulness,
-            current_stratum,
-            strata,
-            still_informative,
-        );
+        let mark_count = check_markedness_release(ctx, &state.current_subset);
 
         // Check for tie (only non-zero ties count)
-        if mark_count == *best_mark_count && *best_mark_count > 0 {
-            *tie_flag = true;
+        if mark_count == state.best_mark_count && state.best_mark_count > 0 {
+            state.tie_flag = true;
         }
 
-        if mark_count > *best_mark_count {
-            *tie_flag = false;
-            *best_mark_count = mark_count;
-            *best_subset = current_subset.clone();
+        if mark_count > state.best_mark_count {
+            state.tie_flag = false;
+            state.best_mark_count = mark_count;
+            state.best_subset = state.current_subset.clone();
         }
 
         return;
     }
 
     // Recurse, building subsets
-    let remaining_needed = target_size - current_subset.len();
+    let remaining_needed = target_size - state.current_subset.len();
     let max_start = rankable_faith.len().saturating_sub(remaining_needed - 1);
 
     for idx in start_idx..max_start {
-        current_subset.push(rankable_faith[idx]);
+        state.current_subset.push(rankable_faith[idx]);
         evaluate_faith_subsets(
             rankable_faith,
             target_size,
-            current_subset,
             idx + 1,
-            best_subset,
-            best_mark_count,
-            tie_flag,
-            tableau,
-            is_faithfulness,
-            current_stratum,
-            strata,
-            still_informative,
+            state,
+            ctx,
         );
-        current_subset.pop();
+        state.current_subset.pop();
     }
 }
 
@@ -371,39 +367,42 @@ impl Tableau {
                         }
                     } else {
                         // FIND MINIMAL FAITHFULNESS SET
-                        let mut best_subset: Vec<usize> = Vec::new();
-                        let mut best_mark_count = 0usize;
-                        tie_flag = false;
-
+                        let ctx = BcdContext {
+                            tableau: self,
+                            is_faithfulness: &is_faithfulness,
+                            current_stratum,
+                            strata: &strata,
+                            still_informative: &still_informative,
+                        };
+                        let mut search = BcdSearchState {
+                            current_subset: Vec::new(),
+                            best_subset: Vec::new(),
+                            best_mark_count: 0,
+                            tie_flag: false,
+                        };
                         for subset_size in 1..=rankable_faith.len() {
-                            let mut current_subset = Vec::new();
+                            search.current_subset.clear();
                             evaluate_faith_subsets(
                                 &rankable_faith,
                                 subset_size,
-                                &mut current_subset,
                                 0,
-                                &mut best_subset,
-                                &mut best_mark_count,
-                                &mut tie_flag,
-                                self,
-                                &is_faithfulness,
-                                current_stratum,
-                                &strata,
-                                &still_informative,
+                                &mut search,
+                                &ctx,
                             );
-                            if best_mark_count > 0 {
+                            if search.best_mark_count > 0 {
                                 break;
                             }
                         }
+                        tie_flag = search.tie_flag;
 
-                        if best_mark_count == 0 {
+                        if search.best_mark_count == 0 {
                             // No subset released any markedness; rank all rankable faith
                             for &c_idx in &rankable_faith {
                                 strata[c_idx] = current_stratum;
                             }
                         } else {
                             // Rank the best subset
-                            for &c_idx in &best_subset {
+                            for &c_idx in &search.best_subset {
                                 strata[c_idx] = current_stratum;
                             }
                         }

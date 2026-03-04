@@ -22,20 +22,20 @@ const MAX_TIE_RETRIES: usize = 100;
 /// Compute the noisy harmony of each candidate for one input form and return the index
 /// of the winning candidate (lowest harmony). Returns `NO_WINNER` if tie-skipping is
 /// active and a tie persists after MAX_TIE_RETRIES attempts.
-#[allow(clippy::too_many_arguments)]
 fn generate_form(
     candidates: &[crate::tableau::Candidate],
     weights: &[f64],
     noise_std: f64,
-    noise_by_cell: bool,
-    post_mult_noise: bool,
-    noise_for_zero_cells: bool,
-    late_noise: bool,
-    exponential_nhg: bool,
-    negative_weights_ok: bool,
-    resolve_ties_by_skipping: bool,
+    opts: &crate::NhgOptions,
     rng: &mut Rng,
 ) -> usize {
+    let noise_by_cell = opts.noise_by_cell;
+    let post_mult_noise = opts.post_mult_noise;
+    let noise_for_zero_cells = opts.noise_for_zero_cells;
+    let late_noise = opts.late_noise;
+    let exponential_nhg = opts.exponential_nhg;
+    let negative_weights_ok = opts.negative_weights_ok;
+    let resolve_ties_by_skipping = opts.resolve_ties_by_skipping;
     let nc = weights.len();
     let n_cands = candidates.len();
 
@@ -398,74 +398,26 @@ impl Tableau {
     ///
     /// This is a convenience wrapper around `run_nhg_with_schedule`.
     /// Reproduces VB6 NoisyHarmonicGrammar.frm:NoisyHarmonicGrammarCore and NHGTestGrammar.
-    #[allow(clippy::too_many_arguments)]
-    pub fn run_nhg(
-        &self,
-        cycles: usize,
-        initial_plasticity: f64,
-        final_plasticity: f64,
-        test_trials: usize,
-        noise_by_cell: bool,
-        post_mult_noise: bool,
-        noise_for_zero_cells: bool,
-        late_noise: bool,
-        exponential_nhg: bool,
-        demi_gaussians: bool,
-        negative_weights_ok: bool,
-        resolve_ties_by_skipping: bool,
-        exact_proportions: bool,
-    ) -> NhgResult {
-        let schedule = LearningSchedule::default_4stage(cycles, initial_plasticity, final_plasticity);
-        self.run_nhg_with_schedule(
-            &schedule,
-            test_trials,
-            noise_by_cell,
-            post_mult_noise,
-            noise_for_zero_cells,
-            late_noise,
-            exponential_nhg,
-            demi_gaussians,
-            negative_weights_ok,
-            resolve_ties_by_skipping,
-            exact_proportions,
-            false,
-            false,
-        )
+    pub fn run_nhg(&self, opts: &crate::NhgOptions) -> NhgResult {
+        let schedule = LearningSchedule::default_4stage(opts.cycles, opts.initial_plasticity, opts.final_plasticity);
+        self.run_nhg_with_schedule(&schedule, opts)
     }
 
     /// Run the Noisy Harmonic Grammar algorithm with an explicit learning schedule.
     ///
     /// Supports separate plasticity for Markedness vs Faithfulness constraints
     /// (PlastMark / PlastFaith per stage), matching VB6 behavior.
-    ///
-    /// # Arguments
-    /// * `schedule` — multi-stage plasticity schedule
-    /// * `test_trials` — evaluation trials after learning (default 2000)
-    /// * `noise_by_cell` — if true, draw a fresh noise value per (candidate, constraint) cell
-    /// * `post_mult_noise` — if true, add noise after weight × violations product
-    /// * `noise_for_zero_cells` — if true, apply noise even in zero-violation cells
-    /// * `late_noise` — if true, add single noise term to total harmony (after all constraints)
-    /// * `exponential_nhg` — use exp(weight) instead of raw weight
-    /// * `demi_gaussians` — use positive-only (half-Gaussian) noise
-    /// * `negative_weights_ok` — allow weights to go below zero
-    /// * `resolve_ties_by_skipping` — skip trial on tie instead of random pick
-    #[allow(clippy::too_many_arguments)]
     pub fn run_nhg_with_schedule(
         &self,
         schedule: &LearningSchedule,
-        test_trials: usize,
-        noise_by_cell: bool,
-        post_mult_noise: bool,
-        noise_for_zero_cells: bool,
-        late_noise: bool,
-        exponential_nhg: bool,
-        demi_gaussians: bool,
-        negative_weights_ok: bool,
-        resolve_ties_by_skipping: bool,
-        exact_proportions: bool,
-        generate_history: bool,
-        generate_full_history: bool,
+        opts: &crate::NhgOptions,
     ) -> NhgResult {
+        let test_trials = opts.test_trials;
+        let exponential_nhg = opts.exponential_nhg;
+        let negative_weights_ok = opts.negative_weights_ok;
+        let exact_proportions = opts.exact_proportions;
+        let generate_history = opts.generate_history;
+        let generate_full_history = opts.generate_full_history;
         let nc = self.constraints.len();
 
         // Noise std deviation: 1.0 for normal NHG, 0.1 for exponential (matches VB6 SetTheNoise)
@@ -499,7 +451,7 @@ impl Tableau {
         // ── Initialize weights ───────────────────────────────────────────────────────────
         let mut weights = vec![0.0f64; nc];
 
-        let gaussian_mode = if demi_gaussians { GaussianMode::DemiGaussian } else { GaussianMode::Standard };
+        let gaussian_mode = if opts.demi_gaussians { GaussianMode::DemiGaussian } else { GaussianMode::Standard };
         let mut rng = Rng::new(gaussian_mode);
         let total_cycles = schedule.total_cycles();
 
@@ -575,13 +527,7 @@ impl Tableau {
                         &self.forms[selected_form].candidates,
                         &weights,
                         noise_std,
-                        noise_by_cell,
-                        post_mult_noise,
-                        noise_for_zero_cells,
-                        late_noise,
-                        exponential_nhg,
-                        negative_weights_ok,
-                        resolve_ties_by_skipping,
+                        opts,
                         &mut rng,
                     );
 
@@ -665,13 +611,7 @@ impl Tableau {
                     &form.candidates,
                     &weights,
                     noise_std,
-                    noise_by_cell,
-                    post_mult_noise,
-                    noise_for_zero_cells,
-                    late_noise,
-                    exponential_nhg,
-                    negative_weights_ok,
-                    resolve_ties_by_skipping,
+                    opts,
                     &mut rng,
                 );
                 if winner != NO_WINNER {
@@ -744,13 +684,10 @@ mod tests {
     fn test_nhg_runs_tiny_example() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_nhg(
-            500,   // cycles (fewer for speed)
-            2.0,   // initial_plasticity
-            0.002, // final_plasticity
-            200,   // test_trials
-            false, false, false, false, false, false, false, false, false,
-        );
+        let result = tableau.run_nhg(&crate::NhgOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.002, test_trials: 200,
+            ..Default::default()
+        });
 
         // All weights should be finite
         let nc = tableau.constraint_count();
@@ -768,9 +705,10 @@ mod tests {
     fn test_nhg_test_probs_sum_to_one() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_nhg(
-            500, 2.0, 0.002, 500, false, false, false, false, false, false, false, false, false,
-        );
+        let result = tableau.run_nhg(&crate::NhgOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.002, test_trials: 500,
+            ..Default::default()
+        });
 
         for form_idx in 0..tableau.form_count() {
             let form = tableau.get_form(form_idx).unwrap();
@@ -795,9 +733,10 @@ mod tests {
         // than their rivals for the tiny example.
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_nhg(
-            2000, 2.0, 0.002, 1000, false, false, false, false, false, false, false, false, false,
-        );
+        let result = tableau.run_nhg(&crate::NhgOptions {
+            cycles: 2000, initial_plasticity: 2.0, final_plasticity: 0.002, test_trials: 1000,
+            ..Default::default()
+        });
 
         for form_idx in 0..tableau.form_count() {
             let form = tableau.get_form(form_idx).unwrap();
@@ -823,11 +762,10 @@ mod tests {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
         // Exponential NHG uses smaller noise (0.1) and lower initial plasticity
-        let result = tableau.run_nhg(
-            500, 0.05, 0.0002, 200, false, false, false, false,
-            true,  // exponential_nhg
-            false, false, false, false,
-        );
+        let result = tableau.run_nhg(&crate::NhgOptions {
+            cycles: 500, initial_plasticity: 0.05, final_plasticity: 0.0002, test_trials: 200,
+            exponential_nhg: true, ..Default::default()
+        });
         // Weights should remain finite (may be negative in exponential mode)
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -846,8 +784,7 @@ mod tests {
         let schedule = crate::schedule::LearningSchedule::parse(schedule_text).unwrap();
         let result = tableau.run_nhg_with_schedule(
             &schedule,
-            200,   // test_trials
-            false, false, false, false, false, false, false, false, false, false, false,
+            &crate::NhgOptions { test_trials: 200, ..Default::default() },
         );
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -865,7 +802,8 @@ mod tests {
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = crate::schedule::LearningSchedule::parse(schedule_text).unwrap();
         let result = tableau.run_nhg_with_schedule(
-            &schedule, 200, false, false, false, false, false, false, false, false, false, false, false,
+            &schedule,
+            &crate::NhgOptions { test_trials: 200, ..Default::default() },
         );
         let output = result.format_output(&tableau, "test.txt");
         assert!(output.contains("Custom learning schedule"), "output should mention custom schedule");
@@ -875,19 +813,17 @@ mod tests {
     fn test_nhg_history_generation() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_nhg(
-            1000, 2.0, 0.002, 200,
-            false, false, false, false, false, false, false, false, false,
-        );
+        let result = tableau.run_nhg(&crate::NhgOptions {
+            cycles: 1000, initial_plasticity: 2.0, final_plasticity: 0.002, test_trials: 200,
+            ..Default::default()
+        });
         assert!(result.history().is_none(), "history should be None when not requested");
 
         // Now with generate_history=true
         let schedule = crate::schedule::LearningSchedule::default_4stage(1000, 2.0, 0.002);
         let result = tableau.run_nhg_with_schedule(
-            &schedule, 200,
-            false, false, false, false, false, false, false, false, false,
-            true,  // generate_history
-            false, // generate_full_history
+            &schedule,
+            &crate::NhgOptions { test_trials: 200, generate_history: true, ..Default::default() },
         );
 
         let history = result.history().expect("history should be Some when generate_history=true");
@@ -914,10 +850,8 @@ mod tests {
         let tableau = Tableau::parse(&text).unwrap();
         let schedule = crate::schedule::LearningSchedule::default_4stage(500, 2.0, 0.002);
         let result = tableau.run_nhg_with_schedule(
-            &schedule, 200,
-            false, false, false, false, false, false, false, false, false,
-            false, // generate_history
-            true,  // generate_full_history
+            &schedule,
+            &crate::NhgOptions { test_trials: 200, generate_full_history: true, ..Default::default() },
         );
 
         let fh = result.full_history().expect("full_history should be Some when enabled");
@@ -956,10 +890,10 @@ mod tests {
     fn test_nhg_full_history_none_when_disabled() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_nhg(
-            500, 2.0, 0.002, 200,
-            false, false, false, false, false, false, false, false, false,
-        );
+        let result = tableau.run_nhg(&crate::NhgOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.002, test_trials: 200,
+            ..Default::default()
+        });
         assert!(result.full_history().is_none(), "full_history should be None when disabled");
     }
 }

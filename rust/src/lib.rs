@@ -365,14 +365,14 @@ pub fn run_bcd(text: &str, specific: bool) -> Result<RCDResult, String> {
 #[wasm_bindgen]
 pub fn run_maxent(text: &str, opts: &MaxEntOptions) -> Result<MaxEntResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, opts.generate_history, opts.generate_output_prob_history))
+    Ok(tableau.run_maxent(opts))
 }
 
 /// Format MaxEnt results as text for download
 #[wasm_bindgen]
 pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, false, false);
+    let result = tableau.run_maxent(opts);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -381,15 +381,7 @@ pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) ->
 pub fn run_nhg(text: &str, opts: &NhgOptions) -> Result<NhgResult, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_nhg_schedule(opts)?;
-    Ok(tableau.run_nhg_with_schedule(
-        &sched,
-        opts.test_trials,
-        opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
-        opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
-        opts.exact_proportions,
-        opts.generate_history,
-        opts.generate_full_history,
-    ))
+    Ok(tableau.run_nhg_with_schedule(&sched, opts))
 }
 
 /// Format NHG results as text for download
@@ -397,15 +389,7 @@ pub fn run_nhg(text: &str, opts: &NhgOptions) -> Result<NhgResult, String> {
 pub fn format_nhg_output(text: &str, filename: &str, opts: &NhgOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_nhg_schedule(opts)?;
-    let result = tableau.run_nhg_with_schedule(
-        &sched,
-        opts.test_trials,
-        opts.noise_by_cell, opts.post_mult_noise, opts.noise_for_zero_cells, opts.late_noise,
-        opts.exponential_nhg, opts.demi_gaussians, opts.negative_weights_ok, opts.resolve_ties_by_skipping,
-        opts.exact_proportions,
-        false,
-        false,
-    );
+    let result = tableau.run_nhg_with_schedule(&sched, opts);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -591,14 +575,7 @@ pub fn format_sorted_input_file(
 pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_gla_schedule(opts)?;
-    Ok(tableau.run_gla_with_schedule(
-        opts.maxent_mode, &sched,
-        opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
-        opts.magri_update_rule, opts.exact_proportions,
-        opts.generate_history,
-        opts.generate_full_history,
-        opts.generate_candidate_prob_history,
-    ))
+    Ok(tableau.run_gla_with_schedule(&sched, opts))
 }
 
 /// Format GLA results as text for download.
@@ -606,14 +583,7 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
 pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_gla_schedule(opts)?;
-    let result = tableau.run_gla_with_schedule(
-        opts.maxent_mode, &sched,
-        opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
-        opts.magri_update_rule, opts.exact_proportions,
-        false,
-        false,
-        false,
-    );
+    let result = tableau.run_gla_with_schedule(&sched, opts);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -633,17 +603,7 @@ pub fn format_gla_multiple_runs_output(
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_gla_schedule(opts)?;
-    Ok(tableau.format_collate_runs_output(
-        run_count as usize,
-        opts.maxent_mode,
-        &sched,
-        opts.test_trials,
-        opts.negative_weights_ok,
-        opts.gaussian_prior,
-        opts.sigma,
-        opts.magri_update_rule,
-        opts.exact_proportions,
-    ))
+    Ok(tableau.format_collate_runs_output(run_count as usize, &sched, opts))
 }
 
 fn build_gla_schedule(opts: &GlaOptions) -> Result<schedule::LearningSchedule, String> {
