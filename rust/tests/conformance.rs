@@ -243,7 +243,7 @@ fn run_case(case: &TestCase, root: &Path) -> Result<String, String> {
         }
         ("rcd", OutputFormat::Html) => {
             let fred_opts = build_fred_options(&case.params);
-            ot_soft::format_rcd_html_output(&input_text, filename, &apriori_text, &fred_opts)
+            ot_soft::format_rcd_html_output(&input_text, filename, &apriori_text, &fred_opts, ot_soft::AxisMode::NeverSwitch)
         }
         ("bcd", OutputFormat::Text) => {
             let specific = case.params["specific"].as_bool().unwrap_or(false);
@@ -253,7 +253,7 @@ fn run_case(case: &TestCase, root: &Path) -> Result<String, String> {
         ("bcd", OutputFormat::Html) => {
             let specific = case.params["specific"].as_bool().unwrap_or(false);
             let fred_opts = build_fred_options(&case.params);
-            ot_soft::format_bcd_html_output(&input_text, filename, specific, &fred_opts)
+            ot_soft::format_bcd_html_output(&input_text, filename, specific, &fred_opts, ot_soft::AxisMode::NeverSwitch)
         }
         ("lfcd", OutputFormat::Text) => {
             let fred_opts = build_fred_options(&case.params);
@@ -261,7 +261,7 @@ fn run_case(case: &TestCase, root: &Path) -> Result<String, String> {
         }
         ("lfcd", OutputFormat::Html) => {
             let fred_opts = build_fred_options(&case.params);
-            ot_soft::format_lfcd_html_output(&input_text, filename, &apriori_text, &fred_opts)
+            ot_soft::format_lfcd_html_output(&input_text, filename, &apriori_text, &fred_opts, ot_soft::AxisMode::NeverSwitch)
         }
         ("maxent", OutputFormat::Text) => {
             let opts = build_maxent_options(&case.params);

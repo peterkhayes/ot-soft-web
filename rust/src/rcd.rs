@@ -7,6 +7,7 @@
 use wasm_bindgen::prelude::*;
 use crate::tableau::Tableau;
 use crate::fred::FRedResult;
+use crate::AxisMode;
 
 // ── HTML output constants ────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ td:first-child, th:first-child { text-align: left; border: 1px solid #ddd; }
 .cl8 { border-right: 2px solid #888; }
 .cl9 { background-color: #CCCCCC; }
 .cl10 { }
+.stratum-break { border-top: 2px solid #888; }
 .success { color: #2d7a2d; }
 .failure { color: #cc0000; }
 .warning { background: #fff8dc; border-left: 4px solid #f0c040; padding: 0.5em 1em; }
@@ -612,15 +614,16 @@ impl RCDResult {
 
     /// Generate an HTML document containing styled tableaux for this RCD result.
     pub fn format_html_output(&self, tableau: &Tableau, filename: &str) -> String {
-        self.format_html_output_with_algorithm(tableau, filename, "Recursive Constraint Demotion")
+        self.format_html_output_with_options(tableau, filename, "Recursive Constraint Demotion", AxisMode::default())
     }
 
-    /// Generate an HTML document with a configurable algorithm name.
-    pub(crate) fn format_html_output_with_algorithm(
+    /// Generate an HTML document with configurable algorithm name and axis mode.
+    pub(crate) fn format_html_output_with_options(
         &self,
         tableau: &Tableau,
         filename: &str,
         algorithm_name: &str,
+        axis_mode: AxisMode,
     ) -> String {
         let mut out = String::new();
 
@@ -679,9 +682,33 @@ impl RCDResult {
 
         // Section 2: Tableaux as HTML tables
         out.push_str("<h2>2. Tableaux</h2>\n");
+
+        // Precompute total constraint abbreviation length for "switch where needed" mode
+        let total_constraint_length: usize = tableau.constraints.iter()
+            .map(|c| c.abbrev().len() + 1)
+            .sum();
+
         for form in &tableau.forms {
             let winner_idx = form.candidates.iter().position(|c| c.frequency > 0);
-            out.push_str(&self.format_html_form_table(tableau, form, winner_idx));
+            let use_reversed = match axis_mode {
+                AxisMode::SwitchAll => true,
+                AxisMode::NeverSwitch => false,
+                AxisMode::SwitchWhereNeeded => {
+                    if total_constraint_length <= 75 {
+                        false
+                    } else {
+                        let total_candidate_length: usize = form.candidates.iter()
+                            .map(|c| c.form.len() + 2)
+                            .sum();
+                        total_candidate_length < total_constraint_length + 5
+                    }
+                }
+            };
+            if use_reversed {
+                out.push_str(&self.format_html_reversed_form_table(tableau, form, winner_idx));
+            } else {
+                out.push_str(&self.format_html_form_table(tableau, form, winner_idx));
+            }
         }
 
         // Section 3: Constraint necessity
@@ -858,6 +885,68 @@ impl RCDResult {
                 }
             }
 
+            out.push_str("  </tr>\n");
+        }
+
+        out.push_str("</table>\n\n");
+        out
+    }
+
+    /// Render a single input form as a transposed HTML tableau table.
+    ///
+    /// In this layout, the first row shows the input + candidate names as columns,
+    /// and each subsequent row shows one constraint with violations per candidate.
+    fn format_html_reversed_form_table(
+        &self,
+        tableau: &Tableau,
+        form: &crate::tableau::InputForm,
+        winner_idx: Option<usize>,
+    ) -> String {
+        let num_constraints = tableau.constraints.len();
+        let num_candidates = form.candidates.len();
+        let mut out = String::new();
+
+        out.push_str("<table>\n");
+
+        // Header row: input form + candidate names as columns
+        out.push_str("  <tr>\n");
+        out.push_str(&format!("    <th>/{}/</th>\n", html_escape(&form.input)));
+        for (cand_idx, candidate) in form.candidates.iter().enumerate() {
+            let is_winner = Some(cand_idx) == winner_idx;
+            let label = if is_winner {
+                format!("&#x261E;&nbsp;{}", html_escape(&candidate.form))
+            } else {
+                html_escape(&candidate.form)
+            };
+            out.push_str(&format!("    <th>{label}</th>\n"));
+        }
+        out.push_str("  </tr>\n");
+
+        // One row per constraint
+        for c_idx in 0..num_constraints {
+            // Stratum separator: add a visual break between strata via a class
+            let stratum_break = c_idx > 0
+                && self.constraint_strata[c_idx] != self.constraint_strata[c_idx - 1];
+
+            out.push_str("  <tr>\n");
+            let th_class = if stratum_break { " class=\"stratum-break\"" } else { "" };
+            out.push_str(&format!(
+                "    <th{}>{}</th>\n",
+                th_class,
+                html_escape(&tableau.constraints[c_idx].abbrev()),
+            ));
+
+            for cand_idx in 0..num_candidates {
+                let viols = form.candidates[cand_idx].violations[c_idx];
+                let winner_viols = winner_idx
+                    .map(|wi| form.candidates[wi].violations[c_idx])
+                    .unwrap_or(0);
+                // In transposed layout we don't mark fatal violations (matches VB6 comment:
+                // "this needs work ... HTML output does not have stratal separators")
+                let content = format_html_viol(viols, winner_viols, false);
+                let td_class = if stratum_break { " class=\"stratum-break\"" } else { "" };
+                out.push_str(&format!("    <td{td_class}>{content}</td>\n"));
+            }
             out.push_str("  </tr>\n");
         }
 

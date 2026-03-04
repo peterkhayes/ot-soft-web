@@ -272,6 +272,21 @@ pub use nhg::NhgResult;
 pub use gla::GlaResult;
 pub use factorial_typology::FactorialTypologyResult;
 
+/// Controls tableau axis orientation in HTML output.
+///
+/// Mirrors VB6's "Options for crowded tableaux" radio buttons.
+#[wasm_bindgen]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum AxisMode {
+    /// Constraints on vertical axis, candidates horizontal (VB6 default).
+    #[default]
+    SwitchAll,
+    /// Auto-switch per form when constraint labels are too wide.
+    SwitchWhereNeeded,
+    /// Traditional layout: constraints as columns, candidates as rows.
+    NeverSwitch,
+}
+
 /// Initialize the module
 #[wasm_bindgen(start)]
 pub fn init() {
@@ -411,6 +426,7 @@ pub fn format_rcd_html_output(
     filename: &str,
     apriori_text: &str,
     fred_opts: &FredOptions,
+    axis_mode: AxisMode,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let apriori = if apriori_text.trim().is_empty() {
@@ -425,7 +441,7 @@ pub fn format_rcd_html_output(
         tableau.run_rcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_html_output(&tableau, filename))
+    Ok(result.format_html_output_with_options(&tableau, filename, "Recursive Constraint Demotion", axis_mode))
 }
 
 /// Format BCD results as an HTML document for download.
@@ -435,6 +451,7 @@ pub fn format_bcd_html_output(
     filename: &str,
     specific: bool,
     fred_opts: &FredOptions,
+    axis_mode: AxisMode,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
@@ -444,7 +461,7 @@ pub fn format_bcd_html_output(
         "Biased Constraint Demotion"
     };
     result.apply_fred_options(&tableau, &[], fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_html_output_with_algorithm(&tableau, filename, algorithm_name))
+    Ok(result.format_html_output_with_options(&tableau, filename, algorithm_name, axis_mode))
 }
 
 /// Format LFCD results as an HTML document for download.
@@ -455,6 +472,7 @@ pub fn format_lfcd_html_output(
     filename: &str,
     apriori_text: &str,
     fred_opts: &FredOptions,
+    axis_mode: AxisMode,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let apriori = if apriori_text.trim().is_empty() {
@@ -469,10 +487,11 @@ pub fn format_lfcd_html_output(
         tableau.run_lfcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_html_output_with_algorithm(
+    Ok(result.format_html_output_with_options(
         &tableau,
         filename,
         "Low Faithfulness Constraint Demotion",
+        axis_mode,
     ))
 }
 

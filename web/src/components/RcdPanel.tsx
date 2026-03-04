@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import {
+  AxisMode,
   format_bcd_html_output,
   format_bcd_output,
   format_lfcd_html_output,
@@ -25,6 +26,7 @@ interface RcdPanelProps {
   tableau: Tableau
   tableauText: string
   inputFilename: string | null
+  axisMode?: AxisMode
 }
 
 interface StratumData {
@@ -80,7 +82,12 @@ const ALGORITHM_DESCRIPTIONS: Record<Algorithm, string> = {
   lfcd: 'Low Faithfulness Constraint Demotion',
 }
 
-function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
+function RcdPanel({
+  tableau,
+  tableauText,
+  inputFilename,
+  axisMode = AxisMode.SwitchAll,
+}: RcdPanelProps) {
   const [rcdResult, setRcdResult] = useState<RcdState | null>(null)
   const [params, setParams] = useLocalStorage<RcdParams>('otsoft:params:rcd', RCD_DEFAULTS)
   const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux } = params
@@ -183,19 +190,27 @@ function RcdPanel({ tableau, tableauText, inputFilename }: RcdPanelProps) {
       fredOpts.include_mini_tableaux = includeMiniTableaux
       const htmlContent =
         algorithm === 'rcd'
-          ? format_rcd_html_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
+          ? format_rcd_html_output(
+              tableauText,
+              inputFilename || 'tableau.txt',
+              apriori,
+              fredOpts,
+              axisMode,
+            )
           : algorithm === 'lfcd'
             ? format_lfcd_html_output(
                 tableauText,
                 inputFilename || 'tableau.txt',
                 apriori,
                 fredOpts,
+                axisMode,
               )
             : format_bcd_html_output(
                 tableauText,
                 inputFilename || 'tableau.txt',
                 algorithm === 'bcd-specific',
                 fredOpts,
+                axisMode,
               )
 
       download(htmlContent, makeOutputFilename(inputFilename, 'Output', '.html'))

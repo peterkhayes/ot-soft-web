@@ -94,7 +94,7 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] A priori rankings controls
 - [x] Parameter inputs for probabilistic algorithms
 - [x] Progress indicator for long computations
-- [ ] Tableau axis switching (for crowded tableaux)
+- [x] Tableau axis switching (for crowded tableaux)
 - [x] Hasse diagram viewer (`HasseDiagram.tsx` component using `@viz-js/viz`, SVG + PNG export)
 - [x] Hasse diagram integrated into RcdPanel (FRed Hasse, shown when FRed is enabled)
 - [x] Hasse diagram integrated into GlaPanel (Stochastic OT mode only)

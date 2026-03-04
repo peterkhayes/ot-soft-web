@@ -3,6 +3,7 @@ import '../style.css'
 import { useEffect, useRef, useState } from 'react'
 
 import type { Tableau } from '../pkg/ot_soft.js'
+import { AxisMode } from '../pkg/ot_soft.js'
 import FactorialTypologyPanel from './components/FactorialTypologyPanel.tsx'
 import type { Framework } from './components/FrameworkPanel.tsx'
 import FrameworkPanel from './components/FrameworkPanel.tsx'
@@ -100,6 +101,28 @@ function App() {
     } catch {}
     setFrameworkRaw(fw)
   }
+  const VALID_AXIS_MODES = new Set([
+    AxisMode.SwitchAll,
+    AxisMode.SwitchWhereNeeded,
+    AxisMode.NeverSwitch,
+  ])
+  const [axisMode, setAxisModeRaw] = useState<AxisMode>(() => {
+    try {
+      const stored = localStorage.getItem('otsoft:params:tableau-axis')
+      if (stored !== null) {
+        const num = Number(stored)
+        if (VALID_AXIS_MODES.has(num as AxisMode)) return num as AxisMode
+      }
+    } catch {}
+    return AxisMode.SwitchAll
+  })
+  function setAxisMode(mode: AxisMode) {
+    try {
+      localStorage.setItem('otsoft:params:tableau-axis', String(mode))
+    } catch {}
+    setAxisModeRaw(mode)
+  }
+
   // loadCountRef is used as a React key on algorithm panels to force a full remount
   // (resetting their internal state) whenever a new tableau is loaded.
   const loadCountRef = useRef(0)
@@ -203,12 +226,35 @@ function App() {
                     <h2>Tableau Analysis</h2>
                     <span className="panel-number">02</span>
                   </div>
+                  {!parseError && (
+                    <div className="axis-mode-selector">
+                      <span className="axis-mode-label">Axis layout</span>
+                      {(
+                        [
+                          [AxisMode.SwitchAll, 'Switch all'],
+                          [AxisMode.SwitchWhereNeeded, 'Switch where needed'],
+                          [AxisMode.NeverSwitch, 'Never switch'],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <label key={value} className="axis-mode-option">
+                          <input
+                            type="radio"
+                            name="axis-mode"
+                            value={value}
+                            checked={axisMode === value}
+                            onChange={() => setAxisMode(value)}
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                   {parseError ? (
                     <div className="tableau-container">
                       {'Error parsing tableau:\n\n' + parseError}
                     </div>
                   ) : (
-                    <TableauPanel tableau={currentTableau!} />
+                    <TableauPanel tableau={currentTableau!} axisMode={axisMode} />
                   )}
                 </section>
               </ExpandableSection>
@@ -227,6 +273,7 @@ function App() {
                   tableau={currentTableau}
                   tableauText={currentTableauText!}
                   inputFilename={currentInputFilename}
+                  axisMode={axisMode}
                 />
               </ExpandableSection>
             )}

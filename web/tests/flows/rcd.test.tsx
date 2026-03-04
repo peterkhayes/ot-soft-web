@@ -136,6 +136,9 @@ test('RCD: download HTML tableaux', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
+  // Switch to "Never switch" axis mode so HTML uses the normal (non-transposed) layout
+  await page.getByRole('radio', { name: 'Never switch' }).click()
+
   await page.getByText('Run RCD Algorithm').click()
   await expect
     .element(page.getByText('A ranking was found that generates the correct outputs'))
