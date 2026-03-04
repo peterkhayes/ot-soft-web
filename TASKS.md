@@ -119,10 +119,6 @@ Roughly ordered by value and dependency:
 
 1. **Collect VB6 golden files** — Run VB6 OTSoft on Windows following `conformance/CHECKLIST.md` to populate the missing golden files. Most conformance test cases currently skip.
 
-2. **Extended history outputs** — Full annotated history (FullHistory.txt), candidate probability history, and output probability history files.
+2. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
 
-3. **Exact proportions data presentation** — Display data as exact proportions rather than frequency counts.
-
-6. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
-
-7. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
+3. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
