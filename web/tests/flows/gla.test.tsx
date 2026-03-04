@@ -239,3 +239,36 @@ test('GLA: generate history and download', { timeout: 30000 }, async () => {
   expect(lines[0]).toMatch(/^Trial\t/)
   expect(lines.length).toBeGreaterThan(1)
 })
+
+test(
+  'GLA (Online MaxEnt): candidate probability history download',
+  { timeout: 30000 },
+  async () => {
+    const { downloads } = renderApp()
+    await loadExample()
+
+    await page.getByText('Stochastic OT', { exact: true }).click()
+    await page.getByRole('radio', { name: 'Online MaxEnt (weights)' }).click()
+
+    // Enable candidate probability history
+    await page.getByText('Generate history of candidate probabilities').click()
+
+    await page.getByText('Run GLA').click()
+
+    // Wait for results
+    await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+
+    // Download button should appear
+    await expect.element(page.getByText('Download Candidate Probability History')).toBeVisible()
+    await page.getByText('Download Candidate Probability History').click()
+
+    expect(downloads).toHaveLength(1)
+    expect(downloads[0].filename).toBe('TinyIllustrativeFileHistoryOfCandidateProbabilities.txt')
+
+    // Content structure
+    const lines = downloads[0].content.split('\n').filter((l: string) => l.length > 0)
+    expect(lines[0]).toMatch(/^Trial #\t/)
+    expect(lines[1]).toMatch(/^\(initial\)/)
+    expect(lines.length).toBeGreaterThan(2)
+  },
+)

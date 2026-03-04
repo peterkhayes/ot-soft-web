@@ -177,6 +177,8 @@ pub struct GlaResult {
     history: Option<String>,
     /// Optional full (annotated) history: trial, input, generated, heard, values.
     full_history: Option<String>,
+    /// Optional history of candidate probabilities at every trial (MaxEnt only).
+    candidate_prob_history: Option<String>,
 }
 
 impl GlaResult {
@@ -194,6 +196,7 @@ impl GlaResult {
             magri_update_rule: false,
             history: None,
             full_history: None,
+            candidate_prob_history: None,
         }
     }
 }
@@ -234,6 +237,10 @@ impl GlaResult {
 
     pub fn full_history(&self) -> Option<String> {
         self.full_history.clone()
+    }
+
+    pub fn candidate_prob_history(&self) -> Option<String> {
+        self.candidate_prob_history.clone()
     }
 
     /// Format results as text output for download.
@@ -443,6 +450,7 @@ impl Tableau {
             exact_proportions,
             false,
             false,
+            false,
         )
     }
 
@@ -478,6 +486,7 @@ impl Tableau {
                 sigma,
                 magri_update_rule,
                 exact_proportions,
+                false,
                 false,
                 false,
             );
@@ -547,6 +556,7 @@ impl Tableau {
         exact_proportions: bool,
         generate_history: bool,
         generate_full_history: bool,
+        generate_candidate_prob_history: bool,
     ) -> GlaResult {
         let nc = self.constraints.len();
 
@@ -616,6 +626,33 @@ impl Tableau {
             None
         };
 
+        // ── Candidate probability history buffer (MaxEnt only) ────────────
+        // Records predicted probabilities for every candidate at every trial.
+        // Reproduces VB6 boersma.frm:mnuCandidateProbabilityHistory.
+        let mut cand_prob_history_buf = if maxent_mode && generate_candidate_prob_history {
+            use std::fmt::Write;
+            let mut header = String::from("Trial #");
+            for form in &self.forms {
+                for cand in &form.candidates {
+                    write!(header, "\t/{}/ -> {}", form.input, cand.form).unwrap();
+                }
+            }
+            header.push('\n');
+            // Initial row: predictions with zero weights
+            let zero_weights = vec![0.0; nc];
+            let initial_preds = maxent_predictions(self, &zero_weights);
+            header.push_str("(initial)");
+            for form_preds in &initial_preds {
+                for &p in form_preds {
+                    write!(header, "\t{}", p).unwrap();
+                }
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
         let mut rng = Rng::new(GaussianMode::Standard);
 
         let mode_name = if maxent_mode { "MaxEnt" } else { "StochasticOT" };
@@ -666,82 +703,93 @@ impl Tableau {
                         )
                     };
 
-                    // Skip if the grammar already produced the correct form
-                    if generated == sel_cand {
-                        continue;
-                    }
+                    // Update weights and record mismatch histories only on error
+                    if generated != sel_cand {
+                        let gen_cand = &self.forms[sel_form].candidates[generated];
+                        let obs_cand = &self.forms[sel_form].candidates[sel_cand];
 
-                    let gen_cand = &self.forms[sel_form].candidates[generated];
-                    let obs_cand = &self.forms[sel_form].candidates[sel_cand];
-
-                    // Update ranking values / weights
-                    if maxent_mode {
-                        // MaxEnt update: reproduces VB6 RankingValueAdjustment (MaxEnt branch).
-                        // PriorBasedChange = plasticity * (weight - mu) / sigma² / 2  (mu=0)
-                        // The "/2" is "out of the blue" per the VB6 author's comment; reproduced for fidelity.
-                        let sigma_sq = sigma * sigma;
-                        for (c, rv) in ranking_values.iter_mut().enumerate() {
-                            let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
-                            let gen_v = gen_cand.violations[c] as f64;
-                            let obs_v = obs_cand.violations[c] as f64;
-                            let likelihood_change = plast * (gen_v - obs_v);
-                            let prior_change = if gaussian_prior {
-                                plast * *rv / sigma_sq / 2.0
-                            } else {
-                                0.0
-                            };
-                            *rv -= likelihood_change + prior_change;
-                            if !negative_weights_ok && *rv < 0.0 {
-                                *rv = 0.0;
+                        // Update ranking values / weights
+                        if maxent_mode {
+                            // MaxEnt update: reproduces VB6 RankingValueAdjustment (MaxEnt branch).
+                            // PriorBasedChange = plasticity * (weight - mu) / sigma² / 2  (mu=0)
+                            // The "/2" is "out of the blue" per the VB6 author's comment; reproduced for fidelity.
+                            let sigma_sq = sigma * sigma;
+                            for (c, rv) in ranking_values.iter_mut().enumerate() {
+                                let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
+                                let gen_v = gen_cand.violations[c] as f64;
+                                let obs_v = obs_cand.violations[c] as f64;
+                                let likelihood_change = plast * (gen_v - obs_v);
+                                let prior_change = if gaussian_prior {
+                                    plast * *rv / sigma_sq / 2.0
+                                } else {
+                                    0.0
+                                };
+                                *rv -= likelihood_change + prior_change;
+                                if !negative_weights_ok && *rv < 0.0 {
+                                    *rv = 0.0;
+                                }
                             }
-                        }
-                    } else {
-                        // StochasticOT update: ±plasticity per constraint.
-                        // Reproduces VB6 RankingValueAdjustment (StochasticOT branch).
-                        //
-                        // Magri update rule: promotion is scaled by
-                        //   NumberOfConstraintsDemoted / (NumberOfConstraintsPromoted + 1)
-                        // Demotion is unaffected (VB6 comment: "no special regime for demotion").
-                        let promo_scale = if magri_update_rule {
-                            magri_promotion_amount(gen_cand, obs_cand, nc)
                         } else {
-                            1.0
-                        };
-                        for (c, rv) in ranking_values.iter_mut().enumerate() {
-                            let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
-                            let gen_v = gen_cand.violations[c];
-                            let obs_v = obs_cand.violations[c];
-                            if gen_v > obs_v {
-                                // Generated violates more: strengthen (raise)
-                                *rv += plast * promo_scale;
-                            } else if gen_v < obs_v {
-                                // Generated violates less: weaken (lower)
-                                *rv -= plast;
+                            // StochasticOT update: ±plasticity per constraint.
+                            // Reproduces VB6 RankingValueAdjustment (StochasticOT branch).
+                            //
+                            // Magri update rule: promotion is scaled by
+                            //   NumberOfConstraintsDemoted / (NumberOfConstraintsPromoted + 1)
+                            // Demotion is unaffected (VB6 comment: "no special regime for demotion").
+                            let promo_scale = if magri_update_rule {
+                                magri_promotion_amount(gen_cand, obs_cand, nc)
+                            } else {
+                                1.0
+                            };
+                            for (c, rv) in ranking_values.iter_mut().enumerate() {
+                                let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
+                                let gen_v = gen_cand.violations[c];
+                                let obs_v = obs_cand.violations[c];
+                                if gen_v > obs_v {
+                                    // Generated violates more: strengthen (raise)
+                                    *rv += plast * promo_scale;
+                                } else if gen_v < obs_v {
+                                    // Generated violates less: weaken (lower)
+                                    *rv -= plast;
+                                }
                             }
                         }
-                    }
 
-                    // Record history after each mismatch (VB6: writes after RankingValueAdjustment)
-                    if let Some(ref mut buf) = history_buf {
-                        use std::fmt::Write;
-                        write!(buf, "{}", trial_number).unwrap();
-                        for rv in ranking_values.iter() {
-                            write!(buf, "\t{rv:.4}").unwrap();
+                        // Record history after each mismatch (VB6: writes after RankingValueAdjustment)
+                        if let Some(ref mut buf) = history_buf {
+                            use std::fmt::Write;
+                            write!(buf, "{}", trial_number).unwrap();
+                            for rv in ranking_values.iter() {
+                                write!(buf, "\t{rv:.4}").unwrap();
+                            }
+                            buf.push('\n');
                         }
-                        buf.push('\n');
+
+                        // Record full history (annotated log with input/generated/heard)
+                        if let Some(ref mut buf) = full_history_buf {
+                            use std::fmt::Write;
+                            write!(buf, "{}\t{}\t{}\t{}",
+                                trial_number,
+                                self.forms[sel_form].input,
+                                self.forms[sel_form].candidates[generated].form,
+                                self.forms[sel_form].candidates[sel_cand].form,
+                            ).unwrap();
+                            for rv in ranking_values.iter() {
+                                write!(buf, "\t{rv:.4}").unwrap();
+                            }
+                            buf.push('\n');
+                        }
                     }
 
-                    // Record full history (annotated log with input/generated/heard)
-                    if let Some(ref mut buf) = full_history_buf {
+                    // Record candidate probability history every trial (not just mismatches)
+                    if let Some(ref mut buf) = cand_prob_history_buf {
                         use std::fmt::Write;
-                        write!(buf, "{}\t{}\t{}\t{}",
-                            trial_number,
-                            self.forms[sel_form].input,
-                            gen_cand.form,
-                            obs_cand.form,
-                        ).unwrap();
-                        for rv in ranking_values.iter() {
-                            write!(buf, "\t{rv:.4}").unwrap();
+                        let preds = maxent_predictions(self, &ranking_values);
+                        write!(buf, "{}", trial_number).unwrap();
+                        for form_preds in &preds {
+                            for &p in form_preds {
+                                write!(buf, "\t{}", p).unwrap();
+                            }
                         }
                         buf.push('\n');
                     }
@@ -816,6 +864,7 @@ impl Tableau {
             magri_update_rule,
             history: history_buf,
             full_history: full_history_buf,
+            candidate_prob_history: cand_prob_history_buf,
         }
     }
 }
@@ -935,7 +984,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false, false);
 
         let nc = tableau.constraint_count();
         for c in 0..nc {
@@ -1038,7 +1087,7 @@ mod tests {
                              250\t2\t0.5\t2\t2\n\
                              250\t0.2\t0.05\t2\t2\n";
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, false, false);
         let output = result.format_output(&tableau, "test.txt");
 
         // Custom schedule should mention stages in the output
@@ -1076,7 +1125,7 @@ mod tests {
     fn test_gla_sot_history_generation() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, true, false);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, true, false, false);
 
         let history = result.history().expect("history should be Some when generate_history=true");
         let lines: Vec<&str> = history.lines().collect();
@@ -1110,7 +1159,7 @@ mod tests {
     fn test_gla_full_history_generation() {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
-        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, true);
+        let result = tableau.run_gla_with_schedule(false, &schedule, 200, false, false, 1.0, false, false, false, true, false);
 
         let fh = result.full_history().expect("full_history should be Some when enabled");
         let lines: Vec<&str> = fh.lines().collect();
@@ -1148,5 +1197,69 @@ mod tests {
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let result = tableau.run_gla(false, 500, 2.0, 0.001, 200, false, false, 1.0, false, false);
         assert!(result.full_history().is_none(), "full_history should be None when disabled");
+    }
+
+    #[test]
+    fn test_gla_candidate_prob_history_maxent() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let total_cycles = 10;
+        let schedule = LearningSchedule::default_4stage(total_cycles, 2.0, 0.001);
+        let total_trials = schedule.total_cycles();
+        let result = tableau.run_gla_with_schedule(
+            true, &schedule, 0, false, false, 1.0, false, false, false, false, true,
+        );
+
+        let cph = result.candidate_prob_history()
+            .expect("candidate_prob_history should be Some when enabled in MaxEnt mode");
+        let lines: Vec<&str> = cph.lines().collect();
+
+        // Header: Trial # + one column per candidate across all forms
+        assert!(lines[0].starts_with("Trial #\t"), "header should start with Trial #");
+        let total_cands: usize = (0..tableau.form_count())
+            .map(|fi| tableau.get_form(fi).unwrap().candidate_count())
+            .sum();
+        let header_cols: Vec<&str> = lines[0].split('\t').collect();
+        assert_eq!(header_cols.len(), total_cands + 1,
+            "header should have Trial # + {} candidate columns", total_cands);
+
+        // Each header column (except first) should contain " -> "
+        for col in &header_cols[1..] {
+            assert!(col.contains(" -> "), "column '{}' should contain ' -> '", col);
+        }
+
+        // Initial row
+        assert!(lines[1].starts_with("(initial)"), "second line should be initial row");
+
+        // Data rows: one per trial (not just mismatches)
+        let data_lines = lines.len() - 2; // minus header and initial
+        assert_eq!(data_lines, total_trials,
+            "should have one data row per trial ({}), got {}", total_trials, data_lines);
+
+        // Each data row should have correct column count
+        for line in &lines[2..] {
+            let cols: Vec<&str> = line.split('\t').collect();
+            assert_eq!(cols.len(), total_cands + 1);
+            cols[0].parse::<usize>().expect("trial number should be an integer");
+        }
+    }
+
+    #[test]
+    fn test_gla_candidate_prob_history_none_when_disabled() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(true, 50, 2.0, 0.001, 0, false, false, 1.0, false, false);
+        assert!(result.candidate_prob_history().is_none(),
+            "candidate_prob_history should be None when not requested");
+    }
+
+    #[test]
+    fn test_gla_candidate_prob_history_none_for_stochastic_ot() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let schedule = LearningSchedule::default_4stage(10, 2.0, 0.001);
+        // Even with generate_candidate_prob_history=true, SOT should not produce it
+        let result = tableau.run_gla_with_schedule(
+            false, &schedule, 200, false, false, 1.0, false, false, false, false, true,
+        );
+        assert!(result.candidate_prob_history().is_none(),
+            "candidate_prob_history should be None in Stochastic OT mode");
     }
 }

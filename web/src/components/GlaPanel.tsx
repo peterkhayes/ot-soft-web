@@ -34,6 +34,7 @@ interface GlaResultState {
   pairwiseTable?: string
   history?: string
   fullHistory?: string
+  candidateProbHistory?: string
   error?: undefined
 }
 
@@ -57,6 +58,7 @@ interface GlaParams {
   exactProportions: boolean
   generateHistory: boolean
   generateFullHistory: boolean
+  generateCandidateProbHistory: boolean
   useCustomSchedule: boolean
   customSchedule: string
   multipleRunsCount: 10 | 100 | 1000
@@ -74,6 +76,7 @@ const GLA_DEFAULTS: GlaParams = {
   exactProportions: false,
   generateHistory: false,
   generateFullHistory: false,
+  generateCandidateProbHistory: false,
   useCustomSchedule: false,
   customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
   multipleRunsCount: 10,
@@ -94,6 +97,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     exactProportions,
     generateHistory,
     generateFullHistory,
+    generateCandidateProbHistory,
     useCustomSchedule,
     customSchedule,
     multipleRunsCount,
@@ -119,6 +123,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     opts.exact_proportions = exactProportions
     opts.generate_history = generateHistory
     opts.generate_full_history = generateFullHistory
+    opts.generate_candidate_prob_history = maxentMode && generateCandidateProbHistory
     if (useCustomSchedule) {
       opts.learning_schedule = customSchedule
     }
@@ -185,6 +190,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           pairwiseTable,
           history: r.history() ?? undefined,
           fullHistory: r.full_history() ?? undefined,
+          candidateProbHistory: r.candidate_prob_history() ?? undefined,
         })
       } catch (err) {
         console.error('GLA error:', err)
@@ -242,6 +248,15 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   function handleDownloadFullHistory() {
     if (successResult?.fullHistory) {
       download(successResult.fullHistory, makeOutputFilename(inputFilename, 'FullHistory'))
+    }
+  }
+
+  function handleDownloadCandidateProbHistory() {
+    if (successResult?.candidateProbHistory) {
+      download(
+        successResult.candidateProbHistory,
+        makeOutputFilename(inputFilename, 'HistoryOfCandidateProbabilities'),
+      )
     }
   }
 
@@ -462,6 +477,16 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           />
           Generate full history (with input/output annotations)
         </label>
+        {maxentMode && (
+          <label className="nhg-checkbox">
+            <input
+              type="checkbox"
+              checked={generateCandidateProbHistory}
+              onChange={(e) => setParams({ generateCandidateProbHistory: e.target.checked })}
+            />
+            Generate history of candidate probabilities
+          </label>
+        )}
       </div>
 
       <div className="action-bar">
@@ -544,6 +569,22 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Download Full History
+          </button>
+        )}
+        {successResult?.candidateProbHistory && (
+          <button className="download-button" onClick={handleDownloadCandidateProbHistory}>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Candidate Probability History
           </button>
         )}
         <button

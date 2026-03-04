@@ -103,6 +103,8 @@ pub struct GlaOptions {
     pub generate_history: bool,
     /// Generate a full annotated history (trial, input, generated, heard, values) on each mismatch.
     pub generate_full_history: bool,
+    /// Generate a history of candidate probabilities at every trial (MaxEnt mode only).
+    pub generate_candidate_prob_history: bool,
     /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
     /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
     learning_schedule: String,
@@ -129,6 +131,7 @@ impl GlaOptions {
             exact_proportions: false,
             generate_history: false,
             generate_full_history: false,
+            generate_candidate_prob_history: false,
             learning_schedule: String::new(),
         }
     }
@@ -591,6 +594,7 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
         opts.magri_update_rule, opts.exact_proportions,
         opts.generate_history,
         opts.generate_full_history,
+        opts.generate_candidate_prob_history,
     ))
 }
 
@@ -603,6 +607,7 @@ pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Resul
         opts.maxent_mode, &sched,
         opts.test_trials, opts.negative_weights_ok, opts.gaussian_prior, opts.sigma,
         opts.magri_update_rule, opts.exact_proportions,
+        false,
         false,
         false,
     );
