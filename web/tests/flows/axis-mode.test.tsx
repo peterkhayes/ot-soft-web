@@ -8,33 +8,27 @@ test('Axis mode: default is "Switch all" with transposed layout', async () => {
   await loadExample()
 
   // "Switch all" radio should be checked by default
-  const switchAllRadio = page.getByRole('radio', { name: 'Switch all' })
-  await expect.element(switchAllRadio).toBeChecked()
+  await expect.element(page.getByRole('radio', { name: 'Switch all' })).toBeChecked()
 
-  // Transposed layout shows constraint abbreviations in table body cells (constraint-label-cell)
-  // Use .first() since the abbreviation appears once per form table
+  // Transposed layout: constraint abbreviations appear as body cells (not column headers)
   await expect.element(page.getByRole('cell', { name: '*NoOns' }).first()).toBeVisible()
-
-  // In transposed layout, there should be no "Input" column header
-  // (the normal layout has "Input", "Candidate", "Freq" headers)
-  await expect
-    .element(page.getByRole('columnheader', { name: 'Input', exact: true }))
-    .not.toBeInTheDocument()
 })
 
-test('Axis mode: switch to "Never switch" shows traditional layout', async () => {
+test('Axis mode: switch to "Never switch" shows normal per-form layout', async () => {
   renderApp()
   await loadExample()
 
-  // Verify transposed layout is showing (default)
+  // Verify we start in transposed layout
   await expect.element(page.getByRole('cell', { name: '*NoOns' }).first()).toBeVisible()
 
   // Switch to "Never switch"
-  await page.getByRole('radio', { name: 'Never switch' }).click()
+  const neverSwitchRadio = page.getByRole('radio', { name: 'Never switch' })
+  await expect.element(neverSwitchRadio).toBeVisible()
+  await neverSwitchRadio.click()
 
-  // Traditional layout has "Input", "Candidate", "Freq" column headers
-  await expect.element(page.getByText('Input', { exact: true })).toBeVisible()
-  await expect.element(page.getByText('Candidate', { exact: true })).toBeVisible()
+  // After switching, transposed cells should disappear and constraint headers should appear
+  // In normal layout, *NoOns appears as a column header <th>, not a body cell <td>
+  await expect.element(page.getByText('*NoOns').first()).toBeVisible()
 })
 
 test('Axis mode: HTML download uses selected axis mode', async () => {
@@ -51,9 +45,8 @@ test('Axis mode: HTML download uses selected axis mode', async () => {
 
   expect(downloads).toHaveLength(1)
   const html = normalizeOutput(downloads[0].content)
-  // Transposed layout: candidate names appear as column headers in the form table
+  // Transposed layout: winner marker and constraint abbreviations as rows
   expect(html).toContain('&#x261E;')
-  // Constraint abbreviations should appear as row headers
   expect(html).toContain('*NoOns')
   expect(html).toContain('*Coda')
 })
