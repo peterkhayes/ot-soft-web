@@ -30,6 +30,8 @@ pub struct MaxEntResult {
     sigma_squared: f64,
     /// Optional history of weights recorded at each GIS iteration.
     history: Option<String>,
+    /// Optional history of output probabilities recorded at each GIS iteration.
+    output_prob_history: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -64,6 +66,10 @@ impl MaxEntResult {
 
     pub fn history(&self) -> Option<String> {
         self.history.clone()
+    }
+
+    pub fn output_prob_history(&self) -> Option<String> {
+        self.output_prob_history.clone()
     }
 
     /// Format results as text output for download.
@@ -219,7 +225,8 @@ impl Tableau {
     /// variance `sigma_squared` (Goodman 2002). The Newton's method update
     /// divides by 1000, reproducing the VB6 behavior (including the `/ 1000`
     /// noted as unexplained in the VB6 source).
-    pub fn run_maxent(&self, iterations: usize, weight_min: f64, weight_max: f64, use_prior: bool, sigma_squared: f64, generate_history: bool) -> MaxEntResult {
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_maxent(&self, iterations: usize, weight_min: f64, weight_max: f64, use_prior: bool, sigma_squared: f64, generate_history: bool, generate_output_prob_history: bool) -> MaxEntResult {
         let nc = self.constraints.len();
 
         // Initialize all weights to 0
@@ -283,10 +290,44 @@ impl Tableau {
             None
         };
 
+        // ── Output probability history buffer ─────────────────────────────
+        let mut output_prob_history_buf = if generate_output_prob_history {
+            // Header: per-form groups separated by tabs (tab before form if not first)
+            // Each group: {input}\t{cand1}\t{cand2}...
+            let mut header = String::new();
+            for (form_idx, form) in self.forms.iter().enumerate() {
+                if form_idx > 0 {
+                    header.push('\t');
+                }
+                header.push_str(&form.input);
+                for cand in &form.candidates {
+                    header.push('\t');
+                    header.push_str(&cand.form);
+                }
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
         // GIS main loop
         for iter_num in 1..=iterations {
             // Step 1: Calculate predicted proportions for each form
             let predicted = self.calculate_predicted_probs(&weights);
+
+            // Record output probability history (before weight update, matching VB6 timing)
+            if let Some(ref mut buf) = output_prob_history_buf {
+                use std::fmt::Write;
+                for (form_idx, form) in self.forms.iter().enumerate() {
+                    // VB6 bug: no separator between forms in data rows (header has tab separator)
+                    write!(buf, "{iter_num}\t").unwrap();
+                    for (cand_idx, _cand) in form.candidates.iter().enumerate() {
+                        write!(buf, "\t{}", predicted[form_idx][cand_idx]).unwrap();
+                    }
+                }
+                buf.push('\n');
+            }
 
             // Step 2: Calculate expected violations
             let mut expected = vec![0.0f64; nc];
@@ -348,6 +389,7 @@ impl Tableau {
             use_prior,
             sigma_squared,
             history: history_buf,
+            output_prob_history: output_prob_history_buf,
         }
     }
 
@@ -400,7 +442,7 @@ mod tests {
     fn test_maxent_tiny_example() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(100, 0.0, 50.0, false, 1.0, false);
+        let result = tableau.run_maxent(100, 0.0, 50.0, false, 1.0, false, false);
 
         // After 100 iterations, markedness weights should be higher than faithfulness
         // (the data has only markedness violations causing losers)
@@ -424,7 +466,7 @@ mod tests {
     fn test_maxent_predicted_probs_sum_to_one() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false);
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false, false);
 
         // For each input form, predicted probabilities should sum to 1
         let form_count = tableau.form_count();
@@ -446,7 +488,7 @@ mod tests {
     fn test_maxent_weight_bounds() {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
-        let result = tableau.run_maxent(100, 1.0, 10.0, false, 1.0, false);
+        let result = tableau.run_maxent(100, 1.0, 10.0, false, 1.0, false, false);
 
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -461,7 +503,7 @@ mod tests {
         let text = load_tiny_example();
         let tableau = Tableau::parse(&text).unwrap();
         // With sigma_squared=1.0, the prior term is enabled; results should still be finite
-        let result = tableau.run_maxent(10, 0.0, 50.0, true, 1.0, false);
+        let result = tableau.run_maxent(10, 0.0, 50.0, true, 1.0, false, false);
 
         let nc = tableau.constraint_count();
         for c_idx in 0..nc {
@@ -480,11 +522,11 @@ mod tests {
         let tableau = Tableau::parse(&text).unwrap();
 
         // Without history
-        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false);
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false, false);
         assert!(result.history().is_none(), "history should be None when not requested");
 
         // With history
-        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, true);
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, true, false);
         let history = result.history().expect("history should be Some when generate_history=true");
         let lines: Vec<&str> = history.lines().collect();
 
@@ -503,5 +545,35 @@ mod tests {
 
         // Last row should be iteration 10
         assert!(lines[11].starts_with("10\t"), "last data row should be iteration 10");
+    }
+
+    #[test]
+    fn test_maxent_output_prob_history() {
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+
+        // Disabled: should be None
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false, false);
+        assert!(result.output_prob_history().is_none(), "should be None when disabled");
+
+        // Enabled: should have header + 10 data rows
+        let result = tableau.run_maxent(10, 0.0, 50.0, false, 1.0, false, true);
+        let history = result.output_prob_history().expect("should be Some when enabled");
+        let lines: Vec<&str> = history.lines().collect();
+
+        // Header should contain input form names
+        let header = lines[0];
+        for form in &tableau.forms {
+            assert!(header.contains(&form.input), "header should contain input '{}'", form.input);
+        }
+
+        // Data row count == iterations
+        assert_eq!(lines.len() - 1, 10, "should have exactly 10 data rows (one per iteration)");
+
+        // First data row should start with "1\t" (no initial row, unlike weight history)
+        assert!(lines[1].starts_with("1\t"), "first data row should be iteration 1");
+
+        // Last data row should start with "10\t"
+        assert!(lines[10].starts_with("10\t"), "last data row should be iteration 10");
     }
 }

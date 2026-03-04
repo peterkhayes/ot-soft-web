@@ -110,3 +110,44 @@ test('MaxEnt: generate history of weights and download', async () => {
   // Last data row should be iteration 100
   expect(lines[101]).toMatch(/^100\t/)
 })
+
+test('MaxEnt: generate history of output probabilities and download', async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Maximum Entropy', { exact: true }).click()
+
+  // Enable output probability history
+  await page.getByText('Generate history of output probabilities').click()
+
+  // Run MaxEnt
+  await page.getByText('Run MaxEnt').click()
+
+  // Wait for results
+  await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
+
+  // Download Output Probability History button should appear
+  await expect.element(page.getByText('Download Output Probability History')).toBeVisible()
+  await page.getByText('Download Output Probability History').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileHistoryOfOutputProbabilities.txt')
+
+  // MaxEnt output prob history is deterministic — check structure
+  const content = downloads[0].content
+  const lines = content.split('\n').filter((l: string) => l.length > 0)
+
+  // Header should contain input form names
+  expect(lines[0]).toContain('a')
+  expect(lines[0]).toContain('tat')
+  expect(lines[0]).toContain('at')
+
+  // Should have header + 100 iteration rows = 101 lines
+  expect(lines.length).toBe(101)
+
+  // First data row should be iteration 1 (no initial row)
+  expect(lines[1]).toMatch(/^1\t/)
+
+  // Last data row should be iteration 100
+  expect(lines[100]).toMatch(/^100\t/)
+})

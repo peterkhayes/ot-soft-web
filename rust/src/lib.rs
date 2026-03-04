@@ -158,6 +158,8 @@ pub struct MaxEntOptions {
     pub sigma_squared: f64,
     /// Generate a history of weights at every GIS iteration.
     pub generate_history: bool,
+    /// Generate a history of output probabilities at every GIS iteration.
+    pub generate_output_prob_history: bool,
 }
 
 impl Default for MaxEntOptions {
@@ -175,6 +177,7 @@ impl MaxEntOptions {
             use_prior: false,
             sigma_squared: 1.0,
             generate_history: false,
+            generate_output_prob_history: false,
         }
     }
 }
@@ -362,14 +365,14 @@ pub fn run_bcd(text: &str, specific: bool) -> Result<RCDResult, String> {
 #[wasm_bindgen]
 pub fn run_maxent(text: &str, opts: &MaxEntOptions) -> Result<MaxEntResult, String> {
     let tableau = Tableau::parse(text)?;
-    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, opts.generate_history))
+    Ok(tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, opts.generate_history, opts.generate_output_prob_history))
 }
 
 /// Format MaxEnt results as text for download
 #[wasm_bindgen]
 pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, false);
+    let result = tableau.run_maxent(opts.iterations, opts.weight_min, opts.weight_max, opts.use_prior, opts.sigma_squared, false, false);
     Ok(result.format_output(&tableau, filename))
 }
 

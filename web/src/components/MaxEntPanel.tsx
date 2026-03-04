@@ -25,6 +25,7 @@ interface MaxEntResultState {
   }[]
   logProb: number
   history?: string
+  outputProbHistory?: string
   error?: undefined
 }
 
@@ -42,6 +43,7 @@ interface MaxEntParams {
   usePrior: boolean
   sigmaSquared: number
   generateHistory: boolean
+  generateOutputProbHistory: boolean
 }
 const MAXENT_DEFAULTS: MaxEntParams = {
   iterations: 100,
@@ -50,11 +52,20 @@ const MAXENT_DEFAULTS: MaxEntParams = {
   usePrior: false,
   sigmaSquared: 1,
   generateHistory: false,
+  generateOutputProbHistory: false,
 }
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
   const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', MAXENT_DEFAULTS)
-  const { iterations, weightMin, weightMax, usePrior, sigmaSquared, generateHistory } = params
+  const {
+    iterations,
+    weightMin,
+    weightMax,
+    usePrior,
+    sigmaSquared,
+    generateHistory,
+    generateOutputProbHistory,
+  } = params
   const [result, setResult] = useState<MaxEntState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const download = useDownload()
@@ -70,6 +81,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         opts.use_prior = usePrior
         opts.sigma_squared = sigmaSquared
         opts.generate_history = generateHistory
+        opts.generate_output_prob_history = generateOutputProbHistory
         const r = run_maxent(tableauText, opts)
         const constraintCount = tableau.constraint_count()
         const formCount = tableau.form_count()
@@ -104,7 +116,13 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
           return { input: form.input, candidates }
         })
 
-        setResult({ weights, forms, logProb: r.log_prob(), history: r.history() ?? undefined })
+        setResult({
+          weights,
+          forms,
+          logProb: r.log_prob(),
+          history: r.history() ?? undefined,
+          outputProbHistory: r.output_prob_history() ?? undefined,
+        })
       } catch (err) {
         console.error('MaxEnt error:', err)
         setResult({ error: String(err) })
@@ -146,6 +164,15 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
   function handleDownloadHistory() {
     if (successResult?.history) {
       download(successResult.history, makeOutputFilename(inputFilename, 'HistoryOfWeights'))
+    }
+  }
+
+  function handleDownloadOutputProbHistory() {
+    if (successResult?.outputProbHistory) {
+      download(
+        successResult.outputProbHistory,
+        makeOutputFilename(inputFilename, 'HistoryOfOutputProbabilities'),
+      )
     }
   }
 
@@ -230,6 +257,14 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
           />
           Generate history of weights
         </label>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={generateOutputProbHistory}
+            onChange={(e) => setParams({ generateOutputProbHistory: e.target.checked })}
+          />
+          Generate history of output probabilities
+        </label>
       </div>
 
       <div className="action-bar">
@@ -296,6 +331,22 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
             Download History
+          </button>
+        )}
+        {successResult?.outputProbHistory && (
+          <button className="download-button" onClick={handleDownloadOutputProbHistory}>
+            <svg
+              className="button-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Output Probability History
           </button>
         )}
         <button
