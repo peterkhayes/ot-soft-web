@@ -99,6 +99,9 @@ pub struct GlaOptions {
     pub magri_update_rule: bool,
     /// Present data in exact proportions (shuffled-array selection instead of random sampling).
     pub exact_proportions: bool,
+    /// Minimum gap enforced between a priori ranked constraints (StochasticOT only).
+    /// Default 20, matching VB6 txtValueThatImplementsAPrioriRankings default.
+    pub apriori_gap: f64,
     /// Generate a history of ranking values at every mismatch during learning.
     pub generate_history: bool,
     /// Generate a full annotated history (trial, input, generated, heard, values) on each mismatch.
@@ -108,6 +111,9 @@ pub struct GlaOptions {
     /// Custom learning schedule text. If empty, the default 4-stage geometric schedule is used.
     /// Format: header row + data rows with columns: Trials PlastMark PlastFaith NoiseMark NoiseFaith
     learning_schedule: String,
+    /// A priori rankings file text (tab-delimited constraint × constraint matrix).
+    /// Empty string = no a priori rankings. StochasticOT only.
+    apriori_text: String,
 }
 
 impl Default for GlaOptions {
@@ -129,10 +135,12 @@ impl GlaOptions {
             sigma: 1.0,
             magri_update_rule: false,
             exact_proportions: false,
+            apriori_gap: 20.0,
             generate_history: false,
             generate_full_history: false,
             generate_candidate_prob_history: false,
             learning_schedule: String::new(),
+            apriori_text: String::new(),
         }
     }
 
@@ -144,6 +152,16 @@ impl GlaOptions {
     #[wasm_bindgen(setter)]
     pub fn set_learning_schedule(&mut self, v: String) {
         self.learning_schedule = v;
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn apriori_text(&self) -> String {
+        self.apriori_text.clone()
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_apriori_text(&mut self, v: String) {
+        self.apriori_text = v;
     }
 }
 
@@ -594,7 +612,8 @@ pub fn format_sorted_input_file(
 pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_gla_schedule(opts)?;
-    Ok(tableau.run_gla_with_schedule(&sched, opts))
+    let apriori = parse_gla_apriori(&tableau, opts)?;
+    Ok(tableau.run_gla_with_schedule(&sched, &apriori, opts))
 }
 
 /// Format GLA results as text for download.
@@ -602,7 +621,8 @@ pub fn run_gla(text: &str, opts: &GlaOptions) -> Result<GlaResult, String> {
 pub fn format_gla_output(text: &str, filename: &str, opts: &GlaOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_gla_schedule(opts)?;
-    let result = tableau.run_gla_with_schedule(&sched, opts);
+    let apriori = parse_gla_apriori(&tableau, opts)?;
+    let result = tableau.run_gla_with_schedule(&sched, &apriori, opts);
     Ok(result.format_output(&tableau, filename))
 }
 
@@ -622,7 +642,17 @@ pub fn format_gla_multiple_runs_output(
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let sched = build_gla_schedule(opts)?;
-    Ok(tableau.format_collate_runs_output(run_count as usize, &sched, opts))
+    let apriori = parse_gla_apriori(&tableau, opts)?;
+    Ok(tableau.format_collate_runs_output(run_count as usize, &sched, &apriori, opts))
+}
+
+fn parse_gla_apriori(tableau: &Tableau, opts: &GlaOptions) -> Result<Vec<Vec<bool>>, String> {
+    let text = opts.apriori_text();
+    if text.trim().is_empty() {
+        return Ok(vec![]);
+    }
+    let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+    apriori::parse_apriori(&text, &abbrevs)
 }
 
 fn build_gla_schedule(opts: &GlaOptions) -> Result<schedule::LearningSchedule, String> {

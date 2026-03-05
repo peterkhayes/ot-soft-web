@@ -56,6 +56,8 @@ interface GlaParams {
   sigma: number
   magriUpdateRule: boolean
   exactProportions: boolean
+  aprioriText: string
+  aprioriGap: number
   generateHistory: boolean
   generateFullHistory: boolean
   generateCandidateProbHistory: boolean
@@ -74,6 +76,8 @@ const GLA_DEFAULTS: GlaParams = {
   sigma: 1.0,
   magriUpdateRule: false,
   exactProportions: false,
+  aprioriText: '',
+  aprioriGap: 20,
   generateHistory: false,
   generateFullHistory: false,
   generateCandidateProbHistory: false,
@@ -95,6 +99,8 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     sigma,
     magriUpdateRule,
     exactProportions,
+    aprioriText,
+    aprioriGap,
     generateHistory,
     generateFullHistory,
     generateCandidateProbHistory,
@@ -121,6 +127,10 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     opts.sigma = sigma
     opts.magri_update_rule = !maxentMode && magriUpdateRule
     opts.exact_proportions = exactProportions
+    if (!maxentMode && aprioriText.trim()) {
+      opts.apriori_text = aprioriText
+      opts.apriori_gap = aprioriGap
+    }
     opts.generate_history = generateHistory
     opts.generate_full_history = generateFullHistory
     opts.generate_candidate_prob_history = maxentMode && generateCandidateProbHistory
@@ -488,6 +498,34 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           </label>
         )}
       </div>
+
+      {!maxentMode && (
+        <div className="nhg-options">
+          <div className="nhg-options-label">A priori rankings</div>
+          <TextFileEditor
+            value={aprioriText}
+            onChange={(text) => setParams({ aprioriText: text })}
+            hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+            placeholder="Load from file or paste content here…"
+            testId="gla-apriori-file-input"
+          />
+          {aprioriText.trim() && (
+            <label className="param-label" style={{ marginTop: '0.5rem' }}>
+              Constraints ranked a priori must differ by
+              <input
+                type="number"
+                className="param-input"
+                value={aprioriGap}
+                min={0.001}
+                step={1}
+                onChange={(e) =>
+                  setParams({ aprioriGap: Math.max(0.001, parseFloat(e.target.value) || 20) })
+                }
+              />
+            </label>
+          )}
+        </div>
+      )}
 
       <div className="action-bar">
         <button

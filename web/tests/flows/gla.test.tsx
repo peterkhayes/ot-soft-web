@@ -107,8 +107,8 @@ test('GLA: custom learning schedule runs successfully', { timeout: 30000 }, asyn
   // Enable custom schedule by clicking the label text
   await page.getByText('Use custom learning schedule').click()
 
-  // The textarea should appear with a default schedule
-  await expect.element(page.getByRole('textbox')).toBeVisible()
+  // The schedule textarea should appear with a default schedule template
+  await expect.element(page.getByText('Trials\tPlastMark', { exact: false })).toBeVisible()
 
   // Run with the default template schedule
   await page.getByText('Run GLA').click()
@@ -209,6 +209,43 @@ test('GLA: generate full history and download', { timeout: 30000 }, async () => 
   expect(lines[0]).toMatch(/^Trial #\t/)
   expect(lines[1]).toMatch(/^\(Initial\)/)
   expect(lines.length).toBeGreaterThan(2)
+})
+
+test('GLA: a priori rankings section appears in Stochastic OT, not MaxEnt', async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+
+  // A priori section should be visible in StochasticOT mode
+  await expect.element(page.getByText('A priori rankings')).toBeVisible()
+
+  // Switch to MaxEnt — a priori section should disappear
+  await page.getByRole('radio', { name: 'Online MaxEnt (weights)' }).click()
+  await expect.element(page.getByText('A priori rankings')).not.toBeInTheDocument()
+})
+
+test('GLA: load a priori file and run', { timeout: 30000 }, async () => {
+  renderApp()
+  await loadExample()
+
+  await page.getByText('Stochastic OT', { exact: true }).click()
+
+  // Upload a minimal a priori file (*NoOns >> *Coda from TinyIllustrativeFile)
+  // Full 4-constraint table: *NoOns, *Coda, Max, Dep
+  const aprioriContent =
+    '\t*NoOns\t*Coda\tMax\tDep\n*NoOns\t\t1\t\t\n*Coda\t\t\t\t\nMax\t\t\t\t\nDep\t\t\t\t\n'
+  const file = new File([aprioriContent], 'APriori.txt', { type: 'text/plain' })
+  await page.getByTestId('gla-apriori-file-input').upload(file)
+
+  // Gap input should now be visible
+  await expect.element(page.getByText('Constraints ranked a priori must differ by')).toBeVisible()
+
+  // Run GLA — should succeed
+  await page.getByText('Run GLA').click()
+  await expect
+    .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
+    .toBeVisible()
 })
 
 test('GLA: generate history and download', { timeout: 30000 }, async () => {

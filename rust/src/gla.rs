@@ -150,6 +150,56 @@ fn magri_promotion_amount(
     demoted as f64 / (promoted as f64 + 1.0)
 }
 
+// ─── A priori ranking enforcement ────────────────────────────────────────────
+//
+// Reproduces VB6 boersma.frm:AdjustAPrioriRankings_Up and :AdjustAPrioriRankings_Down.
+//
+// table[i][j] = true means constraint i a priori dominates constraint j (i >> j),
+// so ranking_values[i] must be >= ranking_values[j] + gap.
+
+/// Raise dominators until all a priori gaps are satisfied.
+/// Called after a constraint is strengthened (raised). Loops until stable.
+fn adjust_apriori_up(rv: &mut [f64], apriori: &[Vec<bool>], gap: f64) {
+    let nc = rv.len();
+    loop {
+        let mut changed = false;
+        for i in 0..nc {
+            for j in 0..nc {
+                if apriori[i][j] {
+                    let margin = rv[i] - rv[j];
+                    // VB6 uses gap - 0.0001 to avoid floating-point equality issues
+                    if margin < gap - 0.0001 {
+                        rv[i] = rv[j] + gap;
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if !changed { break; }
+    }
+}
+
+/// Lower dominated constraints until all a priori gaps are satisfied.
+/// Called after a constraint is weakened (lowered). Loops until stable.
+fn adjust_apriori_down(rv: &mut [f64], apriori: &[Vec<bool>], gap: f64) {
+    let nc = rv.len();
+    loop {
+        let mut changed = false;
+        for i in 0..nc {
+            for j in 0..nc {
+                if apriori[i][j] {
+                    let margin = rv[i] - rv[j];
+                    if margin < gap {
+                        rv[j] = rv[i] - gap;
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if !changed { break; }
+    }
+}
+
 // ─── GLA Result ──────────────────────────────────────────────────────────────
 
 /// Result of running the Gradual Learning Algorithm (GLA)
@@ -173,6 +223,10 @@ pub struct GlaResult {
     sigma: f64,
     /// Whether the Magri update rule was active (StochasticOT only)
     magri_update_rule: bool,
+    /// A priori ranking table used during learning (empty if none).
+    apriori: Vec<Vec<bool>>,
+    /// Minimum gap enforced between a priori ranked constraints.
+    apriori_gap: f64,
     /// Optional history of ranking values/weights recorded during learning.
     history: Option<String>,
     /// Optional full (annotated) history: trial, input, generated, heard, values.
@@ -194,6 +248,8 @@ impl GlaResult {
             gaussian_prior: false,
             sigma: 0.0,
             magri_update_rule: false,
+            apriori: Vec::new(),
+            apriori_gap: 20.0,
             history: None,
             full_history: None,
             candidate_prob_history: None,
@@ -280,6 +336,12 @@ impl GlaResult {
         if !self.maxent_mode && self.magri_update_rule {
             out.push_str("   The Magri update rule was employed.\n");
         }
+        if !self.apriori.is_empty() {
+            out.push_str(&format!(
+                "   A priori rankings in effect (minimum gap: {}).\n",
+                self.apriori_gap
+            ));
+        }
         out.push_str("\n\n");
 
         // Section 1: Ranking Values / Weights Found (original constraint order)
@@ -364,6 +426,47 @@ impl GlaResult {
             out.push_str(&self.format_pairwise_probabilities(tableau));
         }
 
+        // Section 5: A priori rankings (if any)
+        // Reproduces VB6 Main.frm:PrintOutTheAprioriRankings
+        if !self.apriori.is_empty() {
+            let nc = tableau.constraints.len();
+            let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+
+            let section_num = if self.maxent_mode { 4 } else { 5 };
+            out.push_str(&format!("\n\n{section_num}. A Priori Rankings\n\n"));
+            out.push_str("In the following table, \"yes\" means that the constraint of the indicated\n");
+            out.push_str("row was marked a priori to dominate the constraint in the given column.\n\n");
+
+            // Print the table: rows = dominators, columns = dominated
+            // VB6 switches axes: table[i][j]=true → row=j, col=i shows "yes"
+            let col_width = abbrevs.iter().map(|a| a.len()).max().unwrap_or(3).max(3);
+            let row_label_width = col_width + 2;
+
+            // Header row
+            out.push_str(&format!("{:width$}", "", width = row_label_width));
+            for abbrev in &abbrevs {
+                out.push_str(&format!("  {:>width$}", abbrev, width = col_width));
+            }
+            out.push('\n');
+
+            // Data rows
+            for (row_i, row_abbrev) in abbrevs.iter().enumerate() {
+                out.push_str(&format!("{:<width$}", row_abbrev, width = row_label_width));
+                for col_j in 0..nc {
+                    // VB6 switches axes: table[col_j][row_i] = true means col_j >> row_i
+                    // so "yes" appears at (row=row_i, col=col_j) when col_j dominates row_i
+                    let cell = if self.apriori[col_j][row_i] { "yes" } else { "" };
+                    out.push_str(&format!("  {:>width$}", cell, width = col_width));
+                }
+                out.push('\n');
+            }
+
+            out.push_str(&format!(
+                "\n   An a priori ranking was implemented as a minimal difference\n   in ranking values of {}.\n",
+                self.apriori_gap
+            ));
+        }
+
         out
     }
 
@@ -419,6 +522,18 @@ impl GlaResult {
 
 // ─── Main GLA Algorithm ───────────────────────────────────────────────────────
 
+fn parse_apriori_from_opts(
+    tableau: &Tableau,
+    opts: &crate::GlaOptions,
+) -> Result<Vec<Vec<bool>>, String> {
+    let text = opts.apriori_text();
+    if text.trim().is_empty() {
+        return Ok(vec![]);
+    }
+    let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+    crate::apriori::parse_apriori(&text, &abbrevs)
+}
+
 impl Tableau {
     /// Run the Gradual Learning Algorithm using the default 4-stage schedule.
     ///
@@ -426,7 +541,9 @@ impl Tableau {
     /// Reproduces VB6 boersma.frm:GLACore and related subroutines.
     pub fn run_gla(&self, opts: &crate::GlaOptions) -> GlaResult {
         let schedule = LearningSchedule::default_4stage(opts.cycles, opts.initial_plasticity, opts.final_plasticity);
-        self.run_gla_with_schedule(&schedule, opts)
+        let apriori = parse_apriori_from_opts(self, opts)
+            .expect("Invalid a priori rankings text in GlaOptions");
+        self.run_gla_with_schedule(&schedule, &apriori, opts)
     }
 
     /// Run GLA `run_count` times and format results as `CollateRuns.txt` content.
@@ -439,6 +556,7 @@ impl Tableau {
         &self,
         run_count: usize,
         schedule: &LearningSchedule,
+        apriori: &[Vec<bool>],
         opts: &crate::GlaOptions,
     ) -> String {
         let nc = self.constraints.len();
@@ -456,14 +574,16 @@ impl Tableau {
             sigma: opts.sigma,
             magri_update_rule: opts.magri_update_rule,
             exact_proportions: opts.exact_proportions,
+            apriori_gap: opts.apriori_gap,
             generate_history: false,
             generate_full_history: false,
             generate_candidate_prob_history: false,
             learning_schedule: String::new(),
+            apriori_text: String::new(),
         };
 
         for run_idx in 1..=run_count {
-            let result = self.run_gla_with_schedule(schedule, &run_opts);
+            let result = self.run_gla_with_schedule(schedule, apriori, &run_opts);
 
             // G records: constraint ranking values / weights
             for ci in 0..nc {
@@ -508,9 +628,13 @@ impl Tableau {
     ///
     /// Supports separate plasticity for Markedness vs Faithfulness constraints
     /// (PlastMark / PlastFaith per stage), matching VB6 behavior.
+    ///
+    /// `apriori`: parsed a priori rankings table (empty = no a priori constraints).
+    /// Reproduces VB6 boersma.frm:AdjustAPrioriRankings_Up / _Down.
     pub fn run_gla_with_schedule(
         &self,
         schedule: &LearningSchedule,
+        apriori: &[Vec<bool>],
         opts: &crate::GlaOptions,
     ) -> GlaResult {
         let maxent_mode = opts.maxent_mode;
@@ -554,6 +678,14 @@ impl Tableau {
         // MaxEnt starts at 0
         let initial_value = if maxent_mode { 0.0 } else { 100.0 };
         let mut ranking_values = vec![initial_value; nc];
+
+        // ── Apply initial a priori enforcement ───────────────────────────────
+        // Reproduces VB6 boersma.frm:GLAPreliminaries → AdjustAPrioriRankings_Up.
+        // Establishes the gap from the start so learning begins in a valid state.
+        if !apriori.is_empty() && !maxent_mode {
+            adjust_apriori_up(&mut ranking_values, apriori, opts.apriori_gap);
+            adjust_apriori_down(&mut ranking_values, apriori, opts.apriori_gap);
+        }
 
         // ── History buffer ──────────────────────────────────────────────────
         let mut history_buf = if generate_history {
@@ -718,6 +850,13 @@ impl Tableau {
                                     *rv -= plast;
                                 }
                             }
+
+                            // Enforce a priori gaps after each trial's updates.
+                            // Reproduces VB6 boersma.frm:AdjustAPrioriRankings_Up/_Down.
+                            if !apriori.is_empty() {
+                                adjust_apriori_up(&mut ranking_values, apriori, opts.apriori_gap);
+                                adjust_apriori_down(&mut ranking_values, apriori, opts.apriori_gap);
+                            }
                         }
 
                         // Record history after each mismatch (VB6: writes after RankingValueAdjustment)
@@ -827,6 +966,8 @@ impl Tableau {
             gaussian_prior,
             sigma,
             magri_update_rule,
+            apriori: apriori.to_vec(),
+            apriori_gap: opts.apriori_gap,
             history: history_buf,
             full_history: full_history_buf,
             candidate_prob_history: cand_prob_history_buf,
@@ -972,6 +1113,7 @@ mod tests {
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
         let result = tableau.run_gla_with_schedule(
             &schedule,
+            &[],
             &crate::GlaOptions { test_trials: 200, ..Default::default() },
         );
 
@@ -988,6 +1130,7 @@ mod tests {
         let output = tableau.format_collate_runs_output(
             3,
             &schedule,
+            &[],
             &crate::GlaOptions { test_trials: 200, ..Default::default() },
         );
 
@@ -1081,6 +1224,7 @@ mod tests {
         let schedule = LearningSchedule::parse(schedule_text).unwrap();
         let result = tableau.run_gla_with_schedule(
             &schedule,
+            &[],
             &crate::GlaOptions { test_trials: 200, ..Default::default() },
         );
         let output = result.format_output(&tableau, "test.txt");
@@ -1128,6 +1272,7 @@ mod tests {
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
         let result = tableau.run_gla_with_schedule(
             &schedule,
+            &[],
             &crate::GlaOptions { test_trials: 200, generate_history: true, ..Default::default() },
         );
 
@@ -1168,6 +1313,7 @@ mod tests {
         let schedule = LearningSchedule::default_4stage(500, 2.0, 0.001);
         let result = tableau.run_gla_with_schedule(
             &schedule,
+            &[],
             &crate::GlaOptions { test_trials: 200, generate_full_history: true, ..Default::default() },
         );
 
@@ -1220,6 +1366,7 @@ mod tests {
         let total_trials = schedule.total_cycles();
         let result = tableau.run_gla_with_schedule(
             &schedule,
+            &[],
             &crate::GlaOptions {
                 maxent_mode: true, test_trials: 0, generate_candidate_prob_history: true,
                 ..Default::default()
@@ -1278,6 +1425,7 @@ mod tests {
         // Even with generate_candidate_prob_history=true, SOT should not produce it
         let result = tableau.run_gla_with_schedule(
             &schedule,
+            &[],
             &crate::GlaOptions {
                 test_trials: 200, generate_candidate_prob_history: true,
                 ..Default::default()
@@ -1285,5 +1433,39 @@ mod tests {
         );
         assert!(result.candidate_prob_history().is_none(),
             "candidate_prob_history should be None in Stochastic OT mode");
+    }
+
+    #[test]
+    fn test_gla_apriori_enforces_gap() {
+        // Build a 2-constraint apriori table: constraint 0 >> constraint 1.
+        // After learning, ranking_values[0] must be >= ranking_values[1] + gap.
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let nc = tableau.constraint_count();
+        if nc < 2 {
+            return; // Need at least 2 constraints
+        }
+
+        // table[0][1] = true means constraint 0 a priori dominates constraint 1
+        let mut apriori = vec![vec![false; nc]; nc];
+        apriori[0][1] = true;
+
+        let gap = 20.0;
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 1000, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            apriori_gap: gap, ..Default::default()
+        });
+        // Without enforcement the test would still pass; run with explicit apriori:
+        let result = tableau.run_gla_with_schedule(
+            &crate::schedule::LearningSchedule::default_4stage(1000, 2.0, 0.001),
+            &apriori,
+            &crate::GlaOptions { test_trials: 200, apriori_gap: gap, ..Default::default() },
+        );
+
+        let rv0 = result.get_ranking_value(0);
+        let rv1 = result.get_ranking_value(1);
+        assert!(
+            rv0 - rv1 >= gap - 0.001,
+            "a priori gap not maintained: rv[0]={rv0:.3}, rv[1]={rv1:.3}, required gap={gap}"
+        );
     }
 }
