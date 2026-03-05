@@ -242,7 +242,7 @@ function FactorialTypologyPanel({
             checked={includeFullListing}
             onChange={(e) => setParams({ includeFullListing: e.target.checked })}
           />
-          Include grammar listing
+          Include rankings in results
         </label>
 
         <label className="nhg-checkbox">

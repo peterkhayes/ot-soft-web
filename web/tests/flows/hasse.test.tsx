@@ -7,7 +7,7 @@ test('Hasse diagram: appears after running RCD with FRed enabled', async () => {
   renderApp()
   await loadExample()
 
-  // Classical OT + FRed is selected by default; run RCD
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
 
   // Results appear
@@ -29,6 +29,7 @@ test('Hasse diagram: SVG download contains correct content', async () => {
   const { blobDownloads } = renderApp()
   await loadExample()
 
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
   await expect.element(page.getByRole('button', { name: /SVG/i })).toBeEnabled()
 
@@ -49,6 +50,7 @@ test('Hasse diagram: PNG download produces a PNG blob', async () => {
   const { blobDownloads } = renderApp()
   await loadExample()
 
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
   await expect.element(page.getByRole('button', { name: /PNG/i })).toBeEnabled()
 
@@ -64,6 +66,8 @@ test('Hasse diagram: PNG download produces a PNG blob', async () => {
 test('Hasse diagram: hidden when FRed is disabled', async () => {
   renderApp()
   await loadExample()
+
+  await page.getByText('Classical OT', { exact: true }).click()
 
   // Uncheck "Include ranking arguments"
   await page.getByRole('checkbox', { name: /Include ranking arguments/i }).click()

@@ -46,7 +46,7 @@ interface MaxEntParams {
   generateOutputProbHistory: boolean
 }
 const MAXENT_DEFAULTS: MaxEntParams = {
-  iterations: 100,
+  iterations: 5,
   weightMin: 0,
   weightMax: 50,
   usePrior: false,

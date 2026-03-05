@@ -14,7 +14,7 @@ test('RCD: load example, run, see results, download', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
-  // Classical OT is selected by default; run RCD
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
 
   // Assert results appear
@@ -91,6 +91,58 @@ test('RCD: load example, run, see results, download', async () => {
 
 
 
+    Original set of ERCs:
+
+       #       ERC   Evidence
+       1       WeeL  for /a/,  ?a >> a, for /at/,  ?a >> a
+       2       eWLe  for /tat/,  ta >> tat, for /at/,  ?a >> ?at
+       3       WWLL  for /at/,  ?a >> at
+
+    Recursive ranking search
+
+       Recursive search has now reached this location in the search tree:  1
+
+       Fusion of this ERC set is:  WWLL
+       The following ERCs form the total information-loss residue:
+          WeeL
+          eWLe
+
+       Fusion of total residue:  WWLL
+
+       Skeletal basis of the fusion:  WWee
+          WWee has no L's, so it cannot be retained in the Skeletal Basis.
+
+       Recursive search has now reached this location in the search tree:  1, 1
+       Current set of ERCs is based on constraint #1, *NoOns
+       Working with the following ERC set:
+          eWLe
+
+       Fusion of this ERC set is:  eWLe
+       The following ERCs form the total information-loss residue:
+          (none)
+
+       (The total information-loss residue is empty.)
+
+       eWLe has a null residue and thus may be retained in the Skeletal Basis of ERCs.
+
+       Recursive search has now reached this location in the search tree:  1, 2
+       Current set of ERCs is based on constraint #2, *Coda
+       Working with the following ERC set:
+          WeeL
+
+       Fusion of this ERC set is:  WeeL
+       The following ERCs form the total information-loss residue:
+          (none)
+
+       (The total information-loss residue is empty.)
+
+       WeeL has a null residue and thus may be retained in the Skeletal Basis of ERCs.
+
+
+    Ranking argumentation:  Final result
+
+    The following set of ERCs forms the Skeletal Basis for the ERC set as a whole, and thus encapsulates the available ranking information.
+
     The final rankings obtained are as follows:
 
           *Coda >> Max
@@ -139,6 +191,7 @@ test('RCD: download HTML tableaux', async () => {
   // Switch to "Never switch" axis mode so HTML uses the normal (non-transposed) layout
   await page.getByRole('radio', { name: 'Never switch' }).click()
 
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
   await expect
     .element(page.getByText('A ranking was found that generates the correct outputs'))
@@ -175,6 +228,7 @@ test('RCD: download sorted input file', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
   await expect
     .element(page.getByText('A ranking was found that generates the correct outputs'))
@@ -205,6 +259,8 @@ test('RCD: download sorted input file', async () => {
 test('RCD: a priori rankings file upload', async () => {
   renderApp()
   await loadExample()
+
+  await page.getByText('Classical OT', { exact: true }).click()
 
   // A priori editor is visible for RCD
   await expect.element(page.getByTestId('rcd-apriori-file-input')).toBeInTheDocument()

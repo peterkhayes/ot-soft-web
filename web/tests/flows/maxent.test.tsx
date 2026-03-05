@@ -3,15 +3,11 @@ import { expect, test } from 'vitest'
 
 import { loadExample, normalizeOutput, renderApp } from '../helpers'
 
-test('MaxEnt: load example, switch framework, run, see results, download', async () => {
+test('MaxEnt: load example, run, see results, download', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
-  // Switch to Maximum Entropy framework — the radio input is display:none,
-  // so click the visible label text instead
-  await page.getByText('Maximum Entropy', { exact: true }).click()
-
-  // Run MaxEnt
+  // Maximum Entropy is the default framework; run directly
   await page.getByText('Run MaxEnt').click()
 
   // Assert results appear
@@ -35,15 +31,15 @@ test('MaxEnt: load example, switch framework, run, see results, download', async
 
 
     Parameters:
-       Iterations: 100
+       Iterations: 5
        Weight minimum: 0
        Weight maximum: 50
 
 
     1. Constraint Weights
 
-       *No Onset                                 21.416
-       *Coda                                     21.416
+       *No Onset                                 20.725
+       *Coda                                     20.725
        Max(t)                                    0.000
        Dep(?)                                    0.000
 
@@ -80,8 +76,6 @@ test('MaxEnt: generate history of weights and download', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
-  await page.getByText('Maximum Entropy', { exact: true }).click()
-
   // Enable history generation
   await page.getByText('Generate history of weights').click()
 
@@ -103,19 +97,17 @@ test('MaxEnt: generate history of weights and download', async () => {
   // Header should start with tab (leading tab) and contain constraint names
   const lines = content.split('\n').filter((l: string) => l.length > 0)
   expect(lines[0]).toMatch(/^\t/)
-  // Should have header + initial (row 0) + 100 iterations = 102 lines
-  expect(lines.length).toBe(102)
+  // Should have header + initial (row 0) + 5 iterations = 7 lines
+  expect(lines.length).toBe(7)
   // First data row should be iteration 0 with all zeros
   expect(lines[1]).toMatch(/^0\t/)
-  // Last data row should be iteration 100
-  expect(lines[101]).toMatch(/^100\t/)
+  // Last data row should be iteration 5
+  expect(lines[6]).toMatch(/^5\t/)
 })
 
 test('MaxEnt: generate history of output probabilities and download', async () => {
   const { downloads } = renderApp()
   await loadExample()
-
-  await page.getByText('Maximum Entropy', { exact: true }).click()
 
   // Enable output probability history
   await page.getByText('Generate history of output probabilities').click()
@@ -142,12 +134,12 @@ test('MaxEnt: generate history of output probabilities and download', async () =
   expect(lines[0]).toContain('tat')
   expect(lines[0]).toContain('at')
 
-  // Should have header + 100 iteration rows = 101 lines
-  expect(lines.length).toBe(101)
+  // Should have header + 5 iteration rows = 6 lines
+  expect(lines.length).toBe(6)
 
   // First data row should be iteration 1 (no initial row)
   expect(lines[1]).toMatch(/^1\t/)
 
-  // Last data row should be iteration 100
-  expect(lines[100]).toMatch(/^100\t/)
+  // Last data row should be iteration 5
+  expect(lines[5]).toMatch(/^5\t/)
 })

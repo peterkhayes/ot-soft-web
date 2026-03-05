@@ -115,12 +115,12 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 Discrepancies between the VB6 UI defaults/options and the web UI:
 
-- [ ] Default framework should be Maximum Entropy (VB6: `optMaximumEntropy` checked; web: Classical OT)
-- [ ] "Show details of argumentation" should default to checked (VB6: checked; web: unchecked)
-- [ ] MaxEnt iterations default should be 5 (VB6: 5; web: 100)
+- [x] Default framework should be Maximum Entropy (VB6: `optMaximumEntropy` checked; web: Classical OT)
+- [x] "Show details of argumentation" should default to checked (VB6: checked; web: unchecked)
+- [x] MaxEnt iterations default should be 5 (VB6: 5; web: 100)
 - [ ] Add a priori rankings support to GLA panel (VB6 `boersma.frm` supports it; web doesn't expose it)
 - [ ] Add "Diagnostics if ranking fails" option (VB6: `chkDiagnosticTableaux`, checked by default; web: not exposed)
-- [ ] Rename Factorial Typology "Include grammar listing" to "Include rankings in results" (VB6 terminology)
+- [x] Rename Factorial Typology "Include grammar listing" to "Include rankings in results" (VB6 terminology)
 - [ ] Add HTML output options for shading customization (VB6: dialog for shading darkness and custom color; web: hardcoded)
 
 ---

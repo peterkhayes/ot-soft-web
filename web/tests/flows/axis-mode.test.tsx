@@ -35,7 +35,8 @@ test('Axis mode: HTML download uses selected axis mode', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
-  // Default is "Switch all" — run RCD and download HTML
+  // Default is "Switch all" — switch to Classical OT, run RCD and download HTML
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
   await expect
     .element(page.getByText('A ranking was found that generates the correct outputs'))

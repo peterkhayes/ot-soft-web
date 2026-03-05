@@ -7,6 +7,8 @@ test('Factorial Typology: FTSum download', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
+  await page.getByText('Classical OT', { exact: true }).click()
+
   // Enable the FTSum checkbox before running
   await page.getByText('Generate FTSum file').click()
   await page.getByText('Run Factorial Typology').click()
@@ -31,6 +33,8 @@ test('Factorial Typology: CompactSum download', async () => {
   const { downloads } = renderApp()
   await loadExample()
 
+  await page.getByText('Classical OT', { exact: true }).click()
+
   // Enable the CompactSum checkbox before running
   await page.getByText('Generate CompactSum file').click()
   await page.getByText('Run Factorial Typology').click()
@@ -54,7 +58,7 @@ test('Factorial Typology: load example, run, see results, download', async () =>
   const { downloads } = renderApp()
   await loadExample()
 
-  // Classical OT is the default framework; FT panel is below RCD
+  await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run Factorial Typology').click()
 
   // Assert results appear — ft-section-headers are <div>s not headings,

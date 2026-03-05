@@ -93,7 +93,7 @@ function App() {
       const stored = localStorage.getItem('otsoft:framework')
       if (stored && VALID_FRAMEWORKS.has(stored as Framework)) return stored as Framework
     } catch {}
-    return 'classical-ot'
+    return 'maxent'
   })
   function setFramework(fw: Framework) {
     try {
