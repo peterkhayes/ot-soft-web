@@ -56,7 +56,6 @@ def run_case(driver: OTSoftDriver, case: dict, repo_root: str) -> bool:
     output_format = case.get("format", "text")
     apriori_file = case.get("apriori_file")
     input_file = case["input_file"]
-    display_name = case["input_display_name"]
 
     logger.info("=" * 60)
     logger.info("Running case: %s", case_id)
@@ -69,7 +68,7 @@ def run_case(driver: OTSoftDriver, case: dict, repo_root: str) -> bool:
     # Handle a priori rankings
     if apriori_file:
         abs_apriori = os.path.join(repo_root, apriori_file)
-        apriori_dest = get_apriori_dest(input_file, display_name, repo_root)
+        apriori_dest = get_apriori_dest(input_file, repo_root)
         os.makedirs(os.path.dirname(apriori_dest), exist_ok=True)
         shutil.copy2(abs_apriori, apriori_dest)
         logger.info("Copied a priori file: %s -> %s", abs_apriori, apriori_dest)
@@ -99,7 +98,6 @@ def run_case(driver: OTSoftDriver, case: dict, repo_root: str) -> bool:
     # Collect the output
     success = collect_output(
         input_file=input_file,
-        display_name=display_name,
         golden_file=case["golden_file"],
         output_format=output_format,
         repo_root=repo_root,
@@ -175,7 +173,6 @@ def run_all(
 
         # Cleanup VB6 output directories
         if not no_cleanup:
-            display_name = group_cases[0]["input_display_name"]
-            cleanup_output_dir(input_file, display_name, repo_root)
+            cleanup_output_dir(input_file, repo_root)
 
     return results

@@ -1,9 +1,12 @@
 """
 Collects VB6 OTSoft output files and copies them to golden file paths.
 
-VB6 writes output to: <input_dir>/FilesFor<filename>/
-Text output:  <filename>DraftOutput.txt
-HTML output:  ResultsFor<filename>.htm
+VB6 writes output to: <input_dir>/FilesFor<actual_filename>/
+Text output:  <actual_filename>DraftOutput.txt
+HTML output:  ResultsFor<actual_filename>.htm
+
+Note: VB6 uses the actual loaded filename (e.g. "input"), NOT the
+display_name from the manifest (e.g. "TinyIllustrativeFile").
 """
 
 import logging
@@ -13,32 +16,31 @@ import shutil
 logger = logging.getLogger(__name__)
 
 
-def _output_dir(input_file: str, display_name: str, repo_root: str) -> str:
+def _actual_base_name(input_file: str) -> str:
+    """Get the actual filename (without extension) that VB6 uses for output."""
+    return os.path.splitext(os.path.basename(input_file))[0]
+
+
+def _output_dir(input_file: str, repo_root: str) -> str:
     """Derive the VB6 output directory path for a given input file."""
     abs_input = os.path.join(repo_root, input_file)
     input_dir = os.path.dirname(abs_input)
-    base_name = os.path.splitext(display_name)[0]
-    return os.path.join(input_dir, f"FilesFor{base_name}")
+    name = _actual_base_name(input_file)
+    return os.path.join(input_dir, f"FilesFor{name}")
 
 
-def _base_name(display_name: str) -> str:
-    """Extract the base name (without extension) from a VB6 display name."""
-    return os.path.splitext(display_name)[0]
-
-
-def get_apriori_dest(input_file: str, display_name: str, repo_root: str) -> str:
+def get_apriori_dest(input_file: str, repo_root: str) -> str:
     """
     Get the path where VB6 expects the a priori rankings file.
 
     VB6 looks for: <input_dir>/FilesFor<name>/<name>apriori.txt
     """
-    name = _base_name(display_name)
-    return os.path.join(_output_dir(input_file, display_name, repo_root), f"{name}apriori.txt")
+    name = _actual_base_name(input_file)
+    return os.path.join(_output_dir(input_file, repo_root), f"{name}apriori.txt")
 
 
 def collect_output(
     input_file: str,
-    display_name: str,
     golden_file: str,
     output_format: str,
     repo_root: str,
@@ -48,8 +50,8 @@ def collect_output(
 
     Returns True if the file was successfully collected, False otherwise.
     """
-    name = _base_name(display_name)
-    out_dir = _output_dir(input_file, display_name, repo_root)
+    name = _actual_base_name(input_file)
+    out_dir = _output_dir(input_file, repo_root)
 
     if output_format == "html":
         source = os.path.join(out_dir, f"ResultsFor{name}.htm")
@@ -74,9 +76,6 @@ def collect_output(
     return True
 
 
-def cleanup_output_dir(input_file: str, display_name: str, repo_root: str):
+def cleanup_output_dir(input_file: str, repo_root: str):
     """Remove the VB6 output directory for a given input file."""
-    shutil.rmtree(
-        _output_dir(input_file, display_name, repo_root),
-        ignore_errors=True,
-    )
+    shutil.rmtree(_output_dir(input_file, repo_root), ignore_errors=True)
