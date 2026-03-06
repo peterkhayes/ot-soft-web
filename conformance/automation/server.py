@@ -107,6 +107,11 @@ class Handler(BaseHTTPRequestHandler):
             output = result.stdout + result.stderr
             logger.info("Run completed (exit code %d)", result.returncode)
 
+            # Auto-commit and push golden files after successful runs
+            if result.returncode == 0:
+                push_output = self._commit_and_push_golden()
+                output += "\n" + push_output
+
             with _lock:
                 _state["last_output"] = output
                 _state["last_results"] = {
@@ -121,6 +126,48 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             with _lock:
                 _state["running"] = False
+
+    def _commit_and_push_golden(self) -> str:
+        """Commit any new/changed golden files and push to remote."""
+        cwd = Handler.repo_root
+        lines = []
+
+        # Stage golden files
+        result = subprocess.run(
+            ["git", "add", "conformance/golden/"],
+            cwd=cwd, capture_output=True, text=True,
+        )
+
+        # Check if there's anything to commit
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=cwd, capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            lines.append("No new golden files to commit.")
+            return "\n".join(lines)
+
+        # Commit
+        result = subprocess.run(
+            ["git", "commit", "-m", "Collect golden files from VB6 OTSoft"],
+            cwd=cwd, capture_output=True, text=True,
+        )
+        lines.append(f"git commit: {result.stdout.strip()}")
+        logger.info("git commit: %s", result.stdout.strip())
+
+        # Push
+        result = subprocess.run(
+            ["git", "push"],
+            cwd=cwd, capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            lines.append("git push: success")
+            logger.info("Pushed golden files to remote.")
+        else:
+            lines.append(f"git push failed: {result.stderr.strip()}")
+            logger.error("git push failed: %s", result.stderr.strip())
+
+        return "\n".join(lines)
 
     def _handle_reload(self):
         """Git pull and restart the server process."""
