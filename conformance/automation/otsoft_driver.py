@@ -310,7 +310,9 @@ class OTSoftDriver:
 
     def run_rank(self):
         """Click the Rank button and wait for completion."""
-        rank_btn = self.main_win.child_window(title_re=".*Rank.*|.*ranking.*")
+        rank_btn = self.main_win.child_window(
+            class_name="ThunderRT6CommandButton", title_re=".*Rank.*"
+        )
         logger.info("Clicking Rank button")
         rank_btn.click()
         self._poll_until(
@@ -320,7 +322,9 @@ class OTSoftDriver:
 
     def run_factorial_typology(self):
         """Click the Factorial Typology button and wait for completion."""
-        ft_btn = self.main_win.child_window(title_re=".*[Ff]actorial [Tt]ypology.*")
+        ft_btn = self.main_win.child_window(
+            class_name="ThunderRT6CommandButton", title_re=".*[Ff]actorial.*"
+        )
         logger.info("Clicking Factorial Typology button")
         ft_btn.click()
         self._poll_until(
@@ -337,7 +341,9 @@ class OTSoftDriver:
         time.sleep(0.5)
 
         # Click Rank to open GLA form
-        rank_btn = self.main_win.child_window(title_re=".*Rank.*|.*ranking.*")
+        rank_btn = self.main_win.child_window(
+            class_name="ThunderRT6CommandButton", title_re=".*Rank.*"
+        )
         rank_btn.click()
         time.sleep(1)
 
