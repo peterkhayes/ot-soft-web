@@ -113,27 +113,29 @@ class OTSoftDriver:
 
     def _find_main_window(self):
         """Find the main OTSoft window among potentially multiple windows."""
-        windows = self.app.windows(title_re="OTSoft.*")
-        logger.info("Found %d OTSoft windows", len(windows))
+        # app.windows() returns DialogWrapper objects; we need to identify
+        # the right one, then use app.window() with its handle for a proper
+        # WindowSpecification.
+        dialogs = self.app.windows(title_re="OTSoft.*")
+        logger.info("Found %d OTSoft windows", len(dialogs))
+        for d in dialogs:
+            logger.info("  Window: %r (%dx%d)", d.window_text(),
+                        d.rectangle().width(), d.rectangle().height())
 
-        if len(windows) == 1:
-            self.main_win = windows[0]
-        else:
-            # The main window has a menu bar; pick the largest window as fallback
-            for win in windows:
-                try:
-                    if win.menu():
-                        self.main_win = win
-                        break
-                except Exception:
-                    continue
-            else:
-                # Fall back to the largest window by area
-                self.main_win = max(
-                    windows,
-                    key=lambda w: w.rectangle().width() * w.rectangle().height(),
-                )
+        # Close any small windows (splash/about dialogs)
+        if len(dialogs) > 1:
+            largest = max(dialogs, key=lambda w: w.rectangle().width() * w.rectangle().height())
+            for d in dialogs:
+                if d.handle != largest.handle:
+                    try:
+                        logger.info("Closing secondary window: %s", d.window_text())
+                        d.close()
+                    except Exception:
+                        pass
+            time.sleep(0.5)
 
+        # Now there should be one window; use app.window() to get a WindowSpecification
+        self.main_win = self.app.window(title_re="OTSoft.*")
         self.main_win.wait("ready", timeout=LAUNCH_TIMEOUT)
         logger.info("OTSoft main window ready: %s", self.main_win.window_text())
 
