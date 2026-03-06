@@ -24,6 +24,7 @@ node_modules/
 
 # Conformance automation local config
 conformance/automation/remote.conf
+conformance/automation/server.conf
 
 # OS
 .DS_Store
