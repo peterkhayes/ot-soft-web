@@ -31,7 +31,6 @@ struct Manifest {
 struct TestCase {
     id: String,
     input_file: String,
-    input_display_name: String,
     apriori_file: Option<String>,
     algorithm: String,
     #[serde(default)]
@@ -269,7 +268,11 @@ fn run_case(case: &TestCase, root: &Path) -> Result<String, String> {
         None => String::new(),
     };
 
-    let filename = &case.input_display_name;
+    let filename = Path::new(&case.input_file)
+        .file_name()
+        .expect("input_file should have a filename")
+        .to_str()
+        .expect("input_file should be valid UTF-8");
 
     match (case.algorithm.as_str(), &case.format) {
         ("rcd", OutputFormat::Text) => {
