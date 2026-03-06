@@ -9,6 +9,7 @@
 #   ./remote_run.sh --verbose                    # verbose logging
 #   ./remote_run.sh --status                     # check server status
 #   ./remote_run.sh --results                    # get last run results
+#   ./remote_run.sh --reload                     # git pull + restart server
 
 set -euo pipefail
 
@@ -51,6 +52,7 @@ while [ $# -gt 0 ]; do
         --verbose|-v) VERBOSE=true; shift ;;
         --status)    MODE="status"; shift ;;
         --results)   MODE="results"; shift ;;
+        --reload)    MODE="reload"; shift ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -58,6 +60,24 @@ done
 case "$MODE" in
     status)
         curl -s "$BASE_URL/status" | python3 -m json.tool
+        ;;
+    reload)
+        echo "Reloading server (git pull + restart)..."
+        RESP=$(curl -s -X POST "$BASE_URL/reload")
+        echo "$RESP" | python3 -m json.tool
+        echo ""
+        echo "Waiting for server to restart..."
+        sleep 2
+        # Poll until server is back
+        for i in $(seq 1 10); do
+            if curl -s "$BASE_URL/status" > /dev/null 2>&1; then
+                echo "Server is back up."
+                exit 0
+            fi
+            sleep 1
+        done
+        echo "Warning: server did not come back within 12 seconds."
+        exit 1
         ;;
     results)
         RESP=$(curl -s "$BASE_URL/results")

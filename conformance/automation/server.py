@@ -11,6 +11,7 @@ Endpoints:
     GET  /status          — check if server is running
     POST /run             — run tests (body: JSON with optional "filter", "no_cleanup", "verbose")
     GET  /results         — get results from the last run
+    POST /reload          — git pull and restart the server process
 """
 
 import argparse
@@ -50,6 +51,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json_response({"error": "not found"}, status=404)
 
     def do_POST(self):
+        if self.path == "/reload":
+            self._handle_reload()
+            return
+
         if self.path != "/run":
             self._json_response({"error": "not found"}, status=404)
             return
@@ -116,6 +121,45 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             with _lock:
                 _state["running"] = False
+
+    def _handle_reload(self):
+        """Git pull and restart the server process."""
+        with _lock:
+            if _state["running"]:
+                self._json_response(
+                    {"error": "cannot reload while a run is in progress"}, status=409
+                )
+                return
+
+        # Git pull first
+        logger.info("Pulling latest changes...")
+        result = subprocess.run(
+            ["git", "pull"],
+            cwd=Handler.repo_root,
+            capture_output=True,
+            text=True,
+        )
+        pull_output = result.stdout.strip()
+        logger.info("git pull: %s", pull_output)
+
+        if result.returncode != 0:
+            self._json_response({
+                "error": "git pull failed",
+                "output": result.stderr,
+            }, status=500)
+            return
+
+        self._json_response({"status": "restarting", "pull": pull_output})
+
+        # Re-exec the server process with the same arguments.
+        # Small delay to let the HTTP response flush.
+        def restart():
+            import time
+            time.sleep(0.5)
+            logger.info("Restarting server...")
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+
+        threading.Thread(target=restart, daemon=True).start()
 
     def _json_response(self, data, status=200):
         body = json.dumps(data, indent=2).encode()
