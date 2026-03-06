@@ -63,8 +63,8 @@ def run_case(driver: OTSoftDriver, case: dict, repo_root: str) -> bool:
     logger.info("  algorithm=%s, format=%s", algorithm, output_format)
     logger.info("  params=%s", params)
 
-    # Restore defaults first to ensure clean state
-    driver.restore_defaults()
+    # No need to restore_defaults() — we relaunch OTSoft between cases,
+    # so the app starts fresh. We explicitly set all needed options below.
 
     # Handle a priori rankings
     if apriori_file:

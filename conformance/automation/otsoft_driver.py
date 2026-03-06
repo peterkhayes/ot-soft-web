@@ -166,10 +166,21 @@ class OTSoftDriver:
         Load an input file into OTSoft by relaunching with a command-line argument.
 
         VB6 OTSoft has no file dialog — it reads Command() on startup
-        for the file path.
+        for the file path. Deletes the settings file first to ensure defaults.
         """
         abs_path = os.path.abspath(file_path)
         logger.info("Opening file: %s", abs_path)
+
+        # Delete VB6's saved settings file so the app starts with defaults.
+        # It lives next to the OTSoft.exe.
+        settings_file = os.path.join(
+            os.path.dirname(self.otsoft_path), "OTSoftRememberUserChoices.txt"
+        )
+        try:
+            os.remove(settings_file)
+            logger.info("Deleted settings file: %s", settings_file)
+        except FileNotFoundError:
+            pass
 
         if self.main_win:
             try:
