@@ -5,8 +5,8 @@ This checklist guides you through running each test case in VB6 OTSoft on Window
 ## Setup
 
 1. Open OTSoft 2.7 on Windows
-2. Copy `examples/TinyIllustrativeFile/input.txt` to your Windows machine and rename it to **`TinyIllustrativeFile.txt`** (VB6 embeds the filename in output headers)
-3. Copy `examples/TinyIllustrativeFile/apriori.txt` to your Windows machine (keep the name `apriori.txt`)
+2. Copy `examples/TinyIllustrativeFile.txt` to your Windows machine and rename it to **`TinyIllustrativeFile.txt`** (VB6 embeds the filename in output headers)
+3. Copy `examples/TinyIllustrativeFile_apriori.txt` to your Windows machine (keep the name `apriori.txt`)
 
 ## Output collection
 
@@ -164,7 +164,7 @@ For all MaxEnt tests, set **Precision** (GIS iterations) to **5**.
 
 ## Ilokano Hiatus Resolution Tests
 
-Use `examples/IlokanoHiatusResolution/input.txt`, renamed to **`IlokanoHiatusResolution.txt`** on Windows.
+Use `examples/IlokanoHiatusResolution.txt`, renamed to **`IlokanoHiatusResolution.txt`** on Windows.
 
 ### ilokano_rcd_defaults (including HTML)
 - [ ] Open `IlokanoHiatusResolution.txt`

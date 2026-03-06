@@ -124,7 +124,7 @@ mod tests {
     use super::*;
 
     fn load_tiny() -> (Tableau, RCDResult) {
-        let text = std::fs::read_to_string("../examples/TinyIllustrativeFile/input.txt")
+        let text = std::fs::read_to_string("../examples/TinyIllustrativeFile.txt")
             .expect("Failed to load tiny example");
         let tableau = Tableau::parse(&text).unwrap();
         let result = tableau.run_rcd();

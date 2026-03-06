@@ -1,12 +1,9 @@
 """
 Collects VB6 OTSoft output files and copies them to golden file paths.
 
-VB6 writes output to: <input_dir>/FilesFor<actual_filename>/
-Text output:  <actual_filename>DraftOutput.txt
-HTML output:  ResultsFor<actual_filename>.htm
-
-Note: VB6 uses the actual loaded filename (e.g. "input"), NOT the
-display_name from the manifest (e.g. "TinyIllustrativeFile").
+VB6 writes output to: <input_dir>/FilesFor<filename>/
+Text output:  <filename>DraftOutput.txt
+HTML output:  ResultsFor<filename>.htm
 """
 
 import logging

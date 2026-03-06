@@ -5,7 +5,7 @@
     {
       "id": "TinyIllustrativeFile_rcd_defaults",
       "description": "RCD with default settings (Skeletal Basis, FRed enabled, mini-tableaux)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -20,7 +20,7 @@
     {
       "id": "TinyIllustrativeFile_rcd_no_fred",
       "description": "RCD with FRed disabled (sections 4 and 5 omitted)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -35,7 +35,7 @@
     {
       "id": "TinyIllustrativeFile_rcd_mib",
       "description": "RCD with Most Informative Basis (MIB) instead of Skeletal",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -50,9 +50,9 @@
     {
       "id": "TinyIllustrativeFile_rcd_apriori",
       "description": "RCD with a priori rankings (*NoOns >> Max)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
-      "apriori_file": "examples/TinyIllustrativeFile/apriori.txt",
+      "apriori_file": "examples/TinyIllustrativeFile_apriori.txt",
       "algorithm": "rcd",
       "params": {
         "include_fred": true,
@@ -65,7 +65,7 @@
     {
       "id": "TinyIllustrativeFile_bcd_defaults",
       "description": "BCD with default settings (non-specific)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -81,7 +81,7 @@
     {
       "id": "TinyIllustrativeFile_bcd_specific",
       "description": "BCD with Favor Specificity heuristic enabled",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -97,7 +97,7 @@
     {
       "id": "TinyIllustrativeFile_lfcd_defaults",
       "description": "LFCD with default settings",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "lfcd",
@@ -112,9 +112,9 @@
     {
       "id": "TinyIllustrativeFile_lfcd_apriori",
       "description": "LFCD with a priori rankings (*NoOns >> Max)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
-      "apriori_file": "examples/TinyIllustrativeFile/apriori.txt",
+      "apriori_file": "examples/TinyIllustrativeFile_apriori.txt",
       "algorithm": "lfcd",
       "params": {
         "include_fred": true,
@@ -127,7 +127,7 @@
     {
       "id": "TinyIllustrativeFile_lfcd_mib",
       "description": "LFCD with Most Informative Basis",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "lfcd",
@@ -142,7 +142,7 @@
     {
       "id": "TinyIllustrativeFile_maxent_defaults",
       "description": "MaxEnt with 5 GIS iterations (VB6 default 'precision'), no prior",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "maxent",
@@ -158,7 +158,7 @@
     {
       "id": "TinyIllustrativeFile_maxent_prior",
       "description": "MaxEnt with Gaussian prior (sigma^2 = 1.0), 5 iterations",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "maxent",
@@ -174,7 +174,7 @@
     {
       "id": "TinyIllustrativeFile_maxent_sigma10",
       "description": "MaxEnt with Gaussian prior (sigma^2 = 10.0), 5 iterations",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "maxent",
@@ -190,7 +190,7 @@
     {
       "id": "TinyIllustrativeFile_ft_defaults",
       "description": "Factorial Typology with default settings (no full listing)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
@@ -202,7 +202,7 @@
     {
       "id": "TinyIllustrativeFile_ft_full_listing",
       "description": "Factorial Typology with full listing enabled",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
@@ -214,9 +214,9 @@
     {
       "id": "TinyIllustrativeFile_ft_apriori",
       "description": "Factorial Typology with a priori rankings (*NoOns >> Max)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
-      "apriori_file": "examples/TinyIllustrativeFile/apriori.txt",
+      "apriori_file": "examples/TinyIllustrativeFile_apriori.txt",
       "algorithm": "factorial_typology",
       "params": {
         "include_full_listing": false
@@ -226,7 +226,7 @@
     {
       "id": "ilokano_rcd_defaults",
       "description": "RCD with default settings (Skeletal Basis, FRed enabled, mini-tableaux)",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -241,7 +241,7 @@
     {
       "id": "ilokano_rcd_no_fred",
       "description": "RCD with FRed disabled (sections 4 and 5 omitted)",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -256,7 +256,7 @@
     {
       "id": "ilokano_rcd_mib",
       "description": "RCD with Most Informative Basis (MIB) instead of Skeletal",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -271,7 +271,7 @@
     {
       "id": "ilokano_bcd_defaults",
       "description": "BCD with default settings (non-specific)",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -287,7 +287,7 @@
     {
       "id": "ilokano_bcd_specific",
       "description": "BCD with Favor Specificity heuristic enabled",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -303,7 +303,7 @@
     {
       "id": "ilokano_lfcd_defaults",
       "description": "LFCD with default settings",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "lfcd",
@@ -318,7 +318,7 @@
     {
       "id": "ilokano_lfcd_mib",
       "description": "LFCD with Most Informative Basis",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "lfcd",
@@ -333,7 +333,7 @@
     {
       "id": "ilokano_maxent_defaults",
       "description": "MaxEnt with 5 GIS iterations (VB6 default 'precision'), no prior",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "maxent",
@@ -349,7 +349,7 @@
     {
       "id": "ilokano_maxent_prior",
       "description": "MaxEnt with Gaussian prior (sigma^2 = 1.0), 5 iterations",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "maxent",
@@ -365,7 +365,7 @@
     {
       "id": "ilokano_maxent_sigma10",
       "description": "MaxEnt with Gaussian prior (sigma^2 = 10.0), 5 iterations",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "maxent",
@@ -381,7 +381,7 @@
     {
       "id": "ilokano_ft_defaults",
       "description": "Factorial Typology with default settings (no full listing)",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
@@ -393,7 +393,7 @@
     {
       "id": "ilokano_ft_full_listing",
       "description": "Factorial Typology with full listing enabled",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
@@ -405,7 +405,7 @@
     {
       "id": "TinyIllustrativeFile_rcd_defaults_html",
       "description": "RCD with default settings — HTML tableaux (semantic cell comparison)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -421,7 +421,7 @@
     {
       "id": "TinyIllustrativeFile_bcd_defaults_html",
       "description": "BCD with default settings — HTML tableaux (semantic cell comparison)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -438,7 +438,7 @@
     {
       "id": "TinyIllustrativeFile_lfcd_defaults_html",
       "description": "LFCD with default settings — HTML tableaux (semantic cell comparison)",
-      "input_file": "examples/TinyIllustrativeFile/input.txt",
+      "input_file": "examples/TinyIllustrativeFile.txt",
       "input_display_name": "TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "lfcd",
@@ -454,7 +454,7 @@
     {
       "id": "ilokano_rcd_defaults_html",
       "description": "RCD with default settings — HTML tableaux (Ilokano, semantic cell comparison)",
-      "input_file": "examples/IlokanoHiatusResolution/input.txt",
+      "input_file": "examples/IlokanoHiatusResolution.txt",
       "input_display_name": "IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",

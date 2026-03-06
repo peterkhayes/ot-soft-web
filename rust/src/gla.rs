@@ -983,8 +983,8 @@ mod tests {
     use crate::tableau::Tableau;
 
     fn load_tiny() -> String {
-        std::fs::read_to_string("../examples/TinyIllustrativeFile/input.txt")
-            .expect("Failed to load examples/TinyIllustrativeFile/input.txt")
+        std::fs::read_to_string("../examples/TinyIllustrativeFile.txt")
+            .expect("Failed to load examples/TinyIllustrativeFile.txt")
     }
 
     #[test]
