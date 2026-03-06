@@ -77,15 +77,21 @@ if data.get('running'):
         ;;
     run)
         # Build JSON body
-        BODY=$(python3 -c "
-import json
-body = {}
-f = '$FILTER'
-if f: body['filter'] = f
-if $NO_CLEANUP: body['no_cleanup'] = True
-if $VERBOSE: body['verbose'] = True
-print(json.dumps(body))
-" 2>/dev/null || echo '{}')
+        BODY='{'
+        SEP=""
+        if [ -n "$FILTER" ]; then
+            BODY="${BODY}${SEP}\"filter\":\"${FILTER}\""
+            SEP=","
+        fi
+        if [ "$NO_CLEANUP" = "true" ]; then
+            BODY="${BODY}${SEP}\"no_cleanup\":true"
+            SEP=","
+        fi
+        if [ "$VERBOSE" = "true" ]; then
+            BODY="${BODY}${SEP}\"verbose\":true"
+            SEP=","
+        fi
+        BODY="${BODY}}"
 
         echo "Sending run request to $BASE_URL/run ..."
         echo "  Body: $BODY"

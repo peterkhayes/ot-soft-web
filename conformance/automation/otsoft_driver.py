@@ -104,7 +104,36 @@ class OTSoftDriver:
     def _start_app(self, cmd: str):
         """Start OTSoft and wait for the main window to be ready."""
         self.app = Application(backend="win32").start(cmd)
-        self.main_win = self.app.window(title_re="OTSoft.*")
+        # VB6 OTSoft may show multiple windows on startup (e.g. splash/about).
+        # Wait a moment for them to appear, then dismiss any dialogs and find
+        # the main window (the one with a menu bar).
+        time.sleep(2)
+        _dismiss_msgboxes(self.app)
+        self._find_main_window()
+
+    def _find_main_window(self):
+        """Find the main OTSoft window among potentially multiple windows."""
+        windows = self.app.windows(title_re="OTSoft.*")
+        logger.info("Found %d OTSoft windows", len(windows))
+
+        if len(windows) == 1:
+            self.main_win = windows[0]
+        else:
+            # The main window has a menu bar; pick the largest window as fallback
+            for win in windows:
+                try:
+                    if win.menu():
+                        self.main_win = win
+                        break
+                except Exception:
+                    continue
+            else:
+                # Fall back to the largest window by area
+                self.main_win = max(
+                    windows,
+                    key=lambda w: w.rectangle().width() * w.rectangle().height(),
+                )
+
         self.main_win.wait("ready", timeout=LAUNCH_TIMEOUT)
         logger.info("OTSoft main window ready: %s", self.main_win.window_text())
 
