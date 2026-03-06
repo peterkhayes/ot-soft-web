@@ -151,13 +151,16 @@ class Handler(BaseHTTPRequestHandler):
 
         self._json_response({"status": "restarting", "pull": pull_output})
 
-        # Re-exec the server process with the same arguments.
-        # Small delay to let the HTTP response flush.
+        # Spawn a new server process, then exit this one.
+        # Use the absolute path to this script to avoid escaping issues on Windows.
         def restart():
             import time
             time.sleep(0.5)
-            logger.info("Restarting server...")
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            script = os.path.abspath(__file__)
+            cmd = [sys.executable, script] + sys.argv[1:]
+            logger.info("Restarting: %s", cmd)
+            subprocess.Popen(cmd, cwd=Handler.repo_root)
+            os._exit(0)
 
         threading.Thread(target=restart, daemon=True).start()
 
