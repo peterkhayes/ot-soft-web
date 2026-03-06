@@ -122,20 +122,14 @@ class OTSoftDriver:
             logger.info("  Window: %r (%dx%d)", d.window_text(),
                         d.rectangle().width(), d.rectangle().height())
 
-        # Close any small windows (splash/about dialogs)
-        if len(dialogs) > 1:
-            largest = max(dialogs, key=lambda w: w.rectangle().width() * w.rectangle().height())
-            for d in dialogs:
-                if d.handle != largest.handle:
-                    try:
-                        logger.info("Closing secondary window: %s", d.window_text())
-                        d.close()
-                    except Exception:
-                        pass
-            time.sleep(0.5)
+        # Find the main window — the one with actual size (ignore 0x0 helper windows)
+        main_dialog = max(
+            dialogs,
+            key=lambda w: w.rectangle().width() * w.rectangle().height(),
+        )
 
-        # Now there should be one window; use app.window() to get a WindowSpecification
-        self.main_win = self.app.window(title_re="OTSoft.*")
+        # Use app.window() with the handle to get a proper WindowSpecification
+        self.main_win = self.app.window(handle=main_dialog.handle)
         self.main_win.wait("ready", timeout=LAUNCH_TIMEOUT)
         logger.info("OTSoft main window ready: %s", self.main_win.window_text())
 
