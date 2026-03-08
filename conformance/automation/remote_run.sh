@@ -23,17 +23,24 @@ fi
 
 SSH_HOST=""
 SERVER_PORT="8377"
+AUTH_TOKEN=""
 while IFS="=" read -r key value; do
     key=$(echo "$key" | tr -d '\r')
     value=$(echo "$value" | tr -d '\r')
     case "$key" in
         SSH_HOST)    SSH_HOST="$value" ;;
         SERVER_PORT) SERVER_PORT="$value" ;;
+        AUTH_TOKEN)  AUTH_TOKEN="$value" ;;
     esac
 done < "$CONF"
 
 if [ -z "$SSH_HOST" ]; then
     echo "Error: remote.conf must define SSH_HOST." >&2
+    exit 1
+fi
+
+if [ -z "$AUTH_TOKEN" ]; then
+    echo "Error: remote.conf must define AUTH_TOKEN." >&2
     exit 1
 fi
 
@@ -59,18 +66,18 @@ done
 
 case "$MODE" in
     status)
-        curl -s "$BASE_URL/status" | python3 -m json.tool
+        curl -s -H "Authorization: Bearer $AUTH_TOKEN" "$BASE_URL/status" | python3 -m json.tool
         ;;
     reload)
         echo "Reloading server (git pull + restart)..."
-        RESP=$(curl -s -X POST "$BASE_URL/reload")
+        RESP=$(curl -s -X POST -H "Authorization: Bearer $AUTH_TOKEN" "$BASE_URL/reload")
         echo "$RESP" | python3 -m json.tool
         echo ""
         echo "Waiting for server to restart..."
         sleep 2
         # Poll until server is back
         for i in $(seq 1 10); do
-            if curl -s "$BASE_URL/status" > /dev/null 2>&1; then
+            if curl -s -H "Authorization: Bearer $AUTH_TOKEN" "$BASE_URL/status" > /dev/null 2>&1; then
                 echo "Server is back up."
                 exit 0
             fi
@@ -80,7 +87,7 @@ case "$MODE" in
         exit 1
         ;;
     results)
-        RESP=$(curl -s "$BASE_URL/results")
+        RESP=$(curl -s -H "Authorization: Bearer $AUTH_TOKEN" "$BASE_URL/results")
         # Print the output field as plain text, then the results as JSON
         echo "$RESP" | python3 -c "
 import sys, json
@@ -117,7 +124,7 @@ if data.get('running'):
         echo "  Body: $BODY"
         echo ""
 
-        RESP=$(curl -s -X POST -H "Content-Type: application/json" -d "$BODY" "$BASE_URL/run")
+        RESP=$(curl -s -X POST -H "Authorization: Bearer $AUTH_TOKEN" -H "Content-Type: application/json" -d "$BODY" "$BASE_URL/run")
         echo "$RESP" | python3 -m json.tool
 
         echo ""
@@ -128,7 +135,7 @@ if data.get('running'):
         # Poll until done
         while true; do
             sleep 3
-            STATUS=$(curl -s "$BASE_URL/status" 2>/dev/null || echo '{"running": true}')
+            STATUS=$(curl -s -H "Authorization: Bearer $AUTH_TOKEN" "$BASE_URL/status" 2>/dev/null || echo '{"running": true}')
             RUNNING=$(echo "$STATUS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('running', True))")
             if [ "$RUNNING" = "False" ]; then
                 break

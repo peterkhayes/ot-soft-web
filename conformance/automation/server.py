@@ -7,6 +7,11 @@ then send requests from Mac to trigger test runs.
 Usage (on Windows):
     python conformance\\automation\\server.py --otsoft-path "C:\\path\\to\\OTSoft.exe"
 
+All requests require a Bearer token in the Authorization header.
+The token is read from server.conf (AUTH_TOKEN=...) or can be passed via --auth-token.
+If no token is configured, the server will generate one on first startup and
+write it to server.conf.
+
 Endpoints:
     GET  /status          — check if server is running
     POST /run             — run tests (body: JSON with optional "filter", "no_cleanup", "verbose")
@@ -15,9 +20,11 @@ Endpoints:
 """
 
 import argparse
+import hmac
 import json
 import logging
 import os
+import secrets
 import subprocess
 import sys
 import threading
@@ -37,8 +44,20 @@ _lock = threading.Lock()
 class Handler(BaseHTTPRequestHandler):
     otsoft_path = ""
     repo_root = ""
+    auth_token = ""
+
+    def _check_auth(self) -> bool:
+        """Verify the Authorization header contains the correct Bearer token."""
+        auth = self.headers.get("Authorization", "")
+        expected = f"Bearer {Handler.auth_token}"
+        if hmac.compare_digest(auth, expected):
+            return True
+        self._json_response({"error": "unauthorized"}, status=401)
+        return False
 
     def do_GET(self):
+        if not self._check_auth():
+            return
         if self.path == "/status":
             self._json_response({"status": "ok", "running": _state["running"]})
         elif self.path == "/results":
@@ -51,6 +70,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json_response({"error": "not found"}, status=404)
 
     def do_POST(self):
+        if not self._check_auth():
+            return
         if self.path == "/reload":
             self._handle_reload()
             return
@@ -233,11 +254,42 @@ def find_repo_root():
     return os.getcwd()
 
 
+def read_server_conf(script_dir: str) -> dict[str, str]:
+    """Read key=value pairs from server.conf."""
+    conf_path = os.path.join(script_dir, "server.conf")
+    conf = {}
+    if os.path.isfile(conf_path):
+        with open(conf_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    conf[key.strip()] = value.strip()
+    return conf
+
+
+def ensure_auth_token(script_dir: str, conf: dict[str, str]) -> str:
+    """Return the auth token, generating and saving one if needed."""
+    token = conf.get("AUTH_TOKEN", "")
+    if token:
+        return token
+
+    token = secrets.token_urlsafe(32)
+    conf_path = os.path.join(script_dir, "server.conf")
+    with open(conf_path, "a") as f:
+        f.write(f"\nAUTH_TOKEN={token}\n")
+    logger.info("Generated new auth token and saved to server.conf")
+    return token
+
+
 def main():
     parser = argparse.ArgumentParser(description="Conformance test control server.")
     parser.add_argument("--otsoft-path", required=True, help="Path to OTSoft.exe")
     parser.add_argument("--port", type=int, default=8377, help="Port to listen on (default: 8377)")
     parser.add_argument("--repo-root", default=None, help="Repo root (auto-detected if omitted)")
+    parser.add_argument("--auth-token", default=None, help="Auth token (read from server.conf if omitted)")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -246,8 +298,12 @@ def main():
         datefmt="%H:%M:%S",
     )
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    conf = read_server_conf(script_dir)
+
     Handler.otsoft_path = args.otsoft_path
     Handler.repo_root = args.repo_root or find_repo_root()
+    Handler.auth_token = args.auth_token or ensure_auth_token(script_dir, conf)
 
     if not os.path.isfile(args.otsoft_path):
         logger.error("OTSoft.exe not found: %s", args.otsoft_path)
@@ -257,6 +313,7 @@ def main():
     logger.info("Control server listening on port %d", args.port)
     logger.info("OTSoft path: %s", Handler.otsoft_path)
     logger.info("Repo root: %s", Handler.repo_root)
+    logger.info("Auth token: %s...%s", Handler.auth_token[:4], Handler.auth_token[-4:])
     logger.info("Ready for requests from Mac.")
 
     try:
