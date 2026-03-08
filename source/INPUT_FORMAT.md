@@ -9,7 +9,7 @@ This document describes the input file format accepted by OTSoft, based on the V
 | `.txt` | Tab-delimited text | Primary format, described below |
 | `.xlsx` | Modern Excel | Read via Excel COM automation |
 | `.xls` | Legacy Excel | **Not supported** (must convert to `.xlsx`) |
-| `.in` | Traditional Ranker format | Legacy format from earlier software |
+| `.in` | Traditional Ranker format | **No longer supported** (as of March 2026; was legacy format from earlier software) |
 
 ## Tab-Delimited Text Format
 
@@ -48,7 +48,7 @@ The primary input format is a tab-delimited text file. Blank lines are skipped.
 | 1 | Input form (e.g., `/tat/`) | Only present on the first candidate row for each input. Blank for subsequent candidates of the same input. |
 | 2 | Candidate output (e.g., `ta`) | The surface form |
 | 3 | Frequency | Numeric value. For categorical algorithms (RCD, BCD, LFCD), the highest-frequency candidate per input becomes the winner. For probabilistic algorithms, frequencies are used as training proportions. |
-| 4+ | Violation counts | Integer violation counts for each constraint. Missing values default to 0. Can also contain structural descriptions (see below). |
+| 4+ | Violation counts | Integer violation counts for each constraint (may be negative). Missing values default to 0. |
 
 ### Example
 
@@ -81,16 +81,17 @@ For categorical algorithms (RCD, BCD, LFCD), the winner for each input is determ
 
 For probabilistic algorithms (GLA, MaxEnt, NHG), all candidates and their frequencies are used directly as training data proportions.
 
-## Structural Descriptions
+## Structural Descriptions (Removed)
 
-Instead of numeric violation counts, cells can contain **structural descriptions** — formal specifications that OTSoft uses to automatically compute violations. This is handled by `StructuralDescriptions.bas`.
+Structural descriptions were a feature that allowed cells to contain formal constraint specifications instead of numeric violation counts. **As of March 2026, this feature has been removed from VB6 OTSoft.** The code has been commented out with the note: "I am bailing on structural descriptions. I never use them, it's easy to do the same task in Excel, and it makes it hard to make the abbreviation line optional."
 
-Structural descriptions support:
-- Markedness constraints: specified as phonological patterns that trigger violations
-- Faithfulness constraints: require input-output correspondence; input and output must have equal length
-- Natural class files: external files defining phonological classes, referenced in structural descriptions
+## Abbreviation Row Auto-Detection
 
-When structural descriptions are present, OTSoft computes the violation counts automatically rather than reading them as integers.
+The parser checks whether row 2 contains violation data or constraint abbreviations. It does this by examining cells 4+ in row 2: if they are all integers (including negative integers) or empty, the row is treated as data (no abbreviation row). Otherwise it is treated as abbreviations. The values in the second row are trimmed before this check.
+
+## Negative Violations
+
+Violation counts may be negative integers. The `IsAnInteger` function strips a leading `-` before checking that all remaining characters are digits.
 
 ## A Priori Rankings
 

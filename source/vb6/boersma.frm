@@ -1408,8 +1408,9 @@ Function GLAPreliminaries() As Boolean
             'Moreover, it is only possible, for now, with MaxEnt.
                 If mnuCandidateProbabilityHistory.Checked = True Then
                     If optStochasticOT Then
-                        MsgBox "I'm sorry, but for computational reasons it is difficult to track the probability of candidates in Stochastic OT. Click again to resume."
-                        Let mnuCandidateProbabilityHistory.Checked = False
+                        'Don't interrupt.
+                        '    MsgBox "I'm sorry, but for computational reasons it is difficult to track the probability of candidates in Stochastic OT. Click again to resume."
+                            Let mnuCandidateProbabilityHistory.Checked = False
                     Else
                         Call OpenCandidateHistoryFile
                     End If
@@ -1912,18 +1913,20 @@ Sub FormDataPresentationArray()
         Next RivalIndex
     Next FormIndex
     
+    'Debug:
+        If Form1.mnuDebug.Checked = vbChecked Then
+            Dim DebugFile As Long
+            Let DebugFile = FreeFile
+            Open gInputFilePath + "DebugGLADataPrestationArray.txt" For Output As #DebugFile
+            For FrequencyIndex = 1 To mTotalFrequency
+                Print #DebugFile, FrequencyIndex; vbTab; mDataPresentationArray(FrequencyIndex).FormIndex;
+                Print #DebugFile, vbTab; mDataPresentationArray(FrequencyIndex).RivalIndex
+            Next FrequencyIndex
+            Close #DebugFile
+        End If
+        
     Exit Sub
     
-    'Debug:
-        Dim DebugFile As Long
-        Let DebugFile = FreeFile
-        Open gInputFilePath + "debugGLADataPrestationArray.txt" For Output As #DebugFile
-        For FrequencyIndex = 1 To mTotalFrequency
-            Print #DebugFile, FrequencyIndex; vbTab; mDataPresentationArray(FrequencyIndex).FormIndex;
-            Print #DebugFile, vbTab; mDataPresentationArray(FrequencyIndex).RivalIndex
-        Next FrequencyIndex
-        Close #DebugFile
-
 End Sub
 
 Function DetermineLearningSchedule() As Boolean
@@ -2097,7 +2100,9 @@ Sub InstallWinnerAsRival()
     For FormIndex = 1 To mNumberOfForms
         Let mFrequency(FormIndex, 0) = mWinnerFrequency(FormIndex)
         'Debug:
-            If mWinnerFrequency(FormIndex) > 0 Then Stop
+            If Form1.mnuDebug.Checked = vbChecked Then
+                If mWinnerFrequency(FormIndex) > 0 Then Stop
+            End If
         Let mRival(FormIndex, 0) = mWinner(FormIndex)
         For ConstraintIndex = 1 To mNumberOfConstraints
             Let mRivalViolations(FormIndex, 0, ConstraintIndex) = mWinnerViolations(FormIndex, ConstraintIndex)
@@ -2148,14 +2153,16 @@ Sub AdjustAPrioriRankings_Up()
     
     'Stop
     'Debug this routine:
-    '    Dim f As Long
-    '    Let f = FreeFile
-    '    Open gOutputFilePath + "DebugAPrioriRankingValuesFor" + gFileName + ".txt" For Output As f
-    '    For OuterConstraintIndex = 1 To mNumberofconstraints
-    '        Print #f, mabbrev(OuterConstraintIndex); vbtab;
-    '        Print #f, mRankingValue(OuterConstraintIndex)
-    '    Next OuterConstraintIndex
-    '    Close f
+        If Form1.mnuDebug.Checked Then
+            Dim f As Long
+            Let f = FreeFile
+            Open gOutputFilePath + "DebugAPrioriRankingValuesFor" + gFileName + ".txt" For Output As f
+            For OuterConstraintIndex = 1 To mNumberOfConstraints
+                Print #f, mAbbrev(OuterConstraintIndex); vbTab;
+                Print #f, mRankingValue(OuterConstraintIndex)
+            Next OuterConstraintIndex
+            Close f
+        End If
 
 End Sub
 
@@ -2187,14 +2194,15 @@ Sub AdjustAPrioriRankings_Down()
     Loop
     
     'Debug this routine:
-    '    Dim f As Long
-    '    Let f = FreeFile
-    '    Open gOutputFilePath + "DebugAPrioriRankingValuesFor" + gFileName + ".txt" For Output As f
-    '    For OuterConstraintIndex = 1 To mNumberofconstraints
-    '        Print #f, mabbrev(OuterConstraintIndex); vbtab;
-    '        Print #f, mRankingValue(OuterConstraintIndex)
-    '    Next OuterConstraintIndex
-    '    Close f
+        If Form1.mnuDebug.Checked Then
+            Dim f As Long
+            Let f = FreeFile
+            Open gOutputFilePath + "DebugAPrioriRankingValuesFor" + gFileName + ".txt" For Output As f
+            For OuterConstraintIndex = 1 To mNumberOfConstraints
+                Print #f, mAbbrev(OuterConstraintIndex); vbTab;
+                Print #f, mRankingValue(OuterConstraintIndex)
+            Next OuterConstraintIndex
+        End If
 
 End Sub
 
@@ -2279,47 +2287,47 @@ Sub GLACore()
     
     'Debug at starting point:
     
-        GoTo DebugExitPoint:
-        Dim DebugFile As Long
-        Let DebugFile = FreeFile
-        Open gOutputFilePath + "\DebugGLAAtStartOfCore.txt" For Output As #DebugFile
-            'Constraints:
-                For ConstraintIndex = 1 To mNumberOfConstraints
-                    Print #DebugFile, ConstraintIndex; vbTab;
-                Next ConstraintIndex
-                Print #DebugFile,
-        'Inputs:
-        For FormIndex = 1 To mNumberOfForms
-            Print #DebugFile, "Input #"; Trim(Str(FormIndex)); "    "; mInputForm(FormIndex)
-            Print #DebugFile, "      Winner:  "; mWinner(FormIndex);
-            Print #DebugFile, "   Frequency:  "; mWinnerFrequency(FormIndex)
-            Print #DebugFile, "         ";
-            'Winner
-                For ConstraintIndex = 1 To mNumberOfConstraints
-                    Print #DebugFile, mWinnerViolations(FormIndex, ConstraintIndex); vbTab;
-                Next ConstraintIndex
-                Print #DebugFile,
-            'Rivals:
-                For RivalIndex = 0 To mNumberOfRivals(FormIndex)
-                    Print #DebugFile, RivalIndex; "   Rival:  "; mRival(FormIndex, RivalIndex); _
-                        "   Frequency = "; mFrequency(FormIndex, RivalIndex);
-                    Print #DebugFile, "         ";
-                    'Violations:
-                        For ConstraintIndex = 1 To mNumberOfConstraints
-                            Print #DebugFile, mRivalViolations(FormIndex, RivalIndex, ConstraintIndex); vbTab;
-                        Next ConstraintIndex
-                        Print #DebugFile,
-                Next RivalIndex
-        Next FormIndex
-        Close #DebugFile
-DebugExitPoint:
+        If Form1.mnuDebug.Checked Then
+            Dim DebugFile As Long
+            Let DebugFile = FreeFile
+            Open gOutputFilePath + "DebugGLAAtStartOfCore.txt" For Output As #DebugFile
+                'Constraints:
+                    For ConstraintIndex = 1 To mNumberOfConstraints
+                        Print #DebugFile, ConstraintIndex; vbTab;
+                    Next ConstraintIndex
+                    Print #DebugFile,
+            'Inputs:
+            For FormIndex = 1 To mNumberOfForms
+                Print #DebugFile, "Input #"; Trim(Str(FormIndex)); "    "; mInputForm(FormIndex)
+                Print #DebugFile, "      Winner:  "; mWinner(FormIndex);
+                Print #DebugFile, "   Frequency:  "; mWinnerFrequency(FormIndex)
+                Print #DebugFile, "         ";
+                'Winner
+                    For ConstraintIndex = 1 To mNumberOfConstraints
+                        Print #DebugFile, mWinnerViolations(FormIndex, ConstraintIndex); vbTab;
+                    Next ConstraintIndex
+                    Print #DebugFile,
+                'Rivals:
+                    For RivalIndex = 0 To mNumberOfRivals(FormIndex)
+                        Print #DebugFile, RivalIndex; "   Rival:  "; mRival(FormIndex, RivalIndex); _
+                            "   Frequency = "; mFrequency(FormIndex, RivalIndex);
+                        Print #DebugFile, "         ";
+                        'Violations:
+                            For ConstraintIndex = 1 To mNumberOfConstraints
+                                Print #DebugFile, mRivalViolations(FormIndex, RivalIndex, ConstraintIndex); vbTab;
+                            Next ConstraintIndex
+                            Print #DebugFile,
+                    Next RivalIndex
+            Next FormIndex
+            Close #DebugFile
+        End If
     
     'Initialize counters.
         
         Let DummyCounter = 0        'Interrupts execution for various purposes
                                     '   (progress report, cancellation)
         Let TotalCycles = 0         'Reports total progress to user.
-        'prevent crashes by installing default
+        'Prevent crashes by installing default.
             If gReportingFrequency = 0 Then Let gReportingFrequency = 200
         
     'Get a progress report on the screen with the initial rankings.
@@ -2706,19 +2714,24 @@ Sub RankingValueAdjustment(MyLocalWinnerInGrammar As Long, MySelectedExemplarFor
 
    'Do this only if the two are different.
       If MyLocalWinnerInGrammar = MySelectedObservedRival Then Exit Sub
+      'xxx hmm, record the trial however?
         
     'If we are using the Magri update rule, we need to compute the promotion amount for this particular set of input, winner, rival.
         If mnuMagri.Checked = True Then
             Let PromotionAmount = MagriPromotionAmount(MySelectedExemplarForm, MyLocalWinnerInGrammar, MySelectedObservedRival)
         End If
             
-    'We are ready to compute the adjustments for each ranking value/weight
+    'We are ready to compute the adjustments for each ranking value/weight.
+    
         
-         For ConstraintIndex = 1 To mNumberOfConstraints
-         
-            If optMaxEnt Then
-            'If mnuGaussianPrior.Checked Then
+        If optMaxEnt Then
+        
+            'First, the MaxEnt version.
+            'Loop through all the constraints, adjusting their weights on the basis of the compared
+            '   candidates.
             
+            For ConstraintIndex = 1 To mNumberOfConstraints
+         
                 'We will do biased learning separately, to implement precisely what Jaeger specifies.
                     If mFaithfulness(ConstraintIndex) = True Then
                         'Likelihood-based change, which comes ultimately from the O - E theorem for gradient of the log likelihood.
@@ -2755,60 +2768,130 @@ Sub RankingValueAdjustment(MyLocalWinnerInGrammar As Long, MySelectedExemplarFor
                                 End If
                             End If
                         End If
+                        
+                Next ConstraintIndex
             
-            Else
+        Else
             
-                'This is the old GLA code, to be used for Stochastic OT.
-                    Select Case mRivalViolations(MySelectedExemplarForm, MyLocalWinnerInGrammar, ConstraintIndex) _
-                       - mRivalViolations(MySelectedExemplarForm, MySelectedObservedRival, ConstraintIndex)
-                       
-                       Case Is > 0
-                          'The (wrong) LocalWinner violates more.  To improve the grammar, *strengthen* this constraint, to punish the wrong local winner.
-        
-                        'KZ: plasticity adjustment depends on whether it's a faithfulness constraint or a markedness constraint:
-                            If mFaithfulness(ConstraintIndex) = True Then
-                                Let RankingValueChange = MyPlastFaith
-                                'Use the Magri update rule if it is in effect.
-                                    If mnuMagri.Checked = True Then
-                                        Let RankingValueChange = RankingValueChange * PromotionAmount
-                                    End If
+            'This is the old GLA code, to be used for Stochastic OT.
+            
+                     For ConstraintIndex = 1 To mNumberOfConstraints
+            Select Case mRivalViolations(MySelectedExemplarForm, MyLocalWinnerInGrammar, ConstraintIndex) _
+               - mRivalViolations(MySelectedExemplarForm, MySelectedObservedRival, ConstraintIndex)
+               Case Is > 0
+                  'The (wrong) LocalWinner violates more.  To improve the grammar,
+                  '  *strengthen* this constraint, to punish the wrong local winner.
+
+                'KZ: plasticity adjustment depends on whether it's a faithfulness constraint or a markedness constraint:
+                    If mFaithfulness(ConstraintIndex) = True Then
+                        'Use the Magri update rule if it is in effect.
+                            If mnuMagri.Checked = True Then
+                                Let mRankingValue(ConstraintIndex) = mRankingValue(ConstraintIndex) + MyPlastFaith * PromotionAmount
                             Else
-                                Let RankingValueChange = MyPlastMark
-                                    If mnuMagri.Checked = True Then
-                                        Let RankingValueChange = RankingValueChange * PromotionAmount
-                                    End If
+                                Let mRankingValue(ConstraintIndex) = mRankingValue(ConstraintIndex) + MyPlastFaith
                             End If
-                            
-                            If mnuDoGLAWithAPrioriRankings.Checked Then
-                                'Enforce the apriori rankings as needed:
-                                    Call AdjustAPrioriRankings_Up
+                        'Report progress if requested.
+                             If mnuFullHistory.Checked = True Then
+                                Print #mFullHistoryFile, Chr(9); MyPlastFaith; Chr(9); mRankingValue(ConstraintIndex);
+                             End If
+                    Else
+                        'Use the Magri update rule if it is in effect.
+                            If mnuMagri.Checked = True Then
+                                Let mRankingValue(ConstraintIndex) = mRankingValue(ConstraintIndex) + MyPlastMark * PromotionAmount
+                            Else
+                                Let mRankingValue(ConstraintIndex) = mRankingValue(ConstraintIndex) + MyPlastMark
                             End If
-        
-                       Case Is < 0
-                            'The (wrong) LocalWinner violates less.  To improve the grammar,
-                            '  *weaken* this constraint, so it will not punish the correct form so much.
-                            'The Magri update rule imposes no special regime for demotion, so no code here.
-        
-                            'KZ: plasticity adjustment depends on whether it's a faithfulness constraint or a markedness constraint:
-                                If mFaithfulness(ConstraintIndex) = True Then
-                                    Let RankingValueChange = -1 * MyPlastFaith
-                                Else
-                                    Let RankingValueChange = -1 * MyPlastMark
-                                End If
-        
-                    End Select
-                    
-                    'Ok, now we are ready to make the change.
-                        Let mRankingValue(ConstraintIndex) = mRankingValue(ConstraintIndex) + RankingValueChange
-                    
-                    'Enforce the apriori rankings as needed:
-                        If mnuDoGLAWithAPrioriRankings.Checked Then
-                            Call AdjustAPrioriRankings_Down
+                        'Report progress if requested.
+                             If mnuFullHistory.Checked = True Then
+                                Print #mFullHistoryFile, Chr(9); MyPlastMark; Chr(9); mRankingValue(ConstraintIndex);
+                             End If
+                    End If
+               
+               Case Is < 0
+
+                    'The (wrong) LocalWinner violates less.  To improve the grammar,
+                    '  *weaken* this constraint, so it will not punish the correct form
+                    '  so much.
+                    'The Magri update rule imposes no special regime for demotion, so no code here.
+
+                    'KZ: plasticity adjustment depends on whether it's a faithfulness
+                    'constraint or a markedness constraint:
+                        If mFaithfulness(ConstraintIndex) = True Then
+                            Let mRankingValue(ConstraintIndex) = mRankingValue(ConstraintIndex) - MyPlastFaith
+                            'Report progress if requested.
+                                 If mnuFullHistory.Checked = True Then
+                                    Print #mFullHistoryFile, Chr(9); "-"; Trim(Str(MyPlastFaith)); Chr(9); mRankingValue(ConstraintIndex);
+                                 End If
+                        Else
+                            Let mRankingValue(ConstraintIndex) = mRankingValue(ConstraintIndex) - MyPlastMark
+                            'Report progress if requested.
+                                 If mnuFullHistory.Checked = True Then
+                                    Print #mFullHistoryFile, Chr(9); "-"; Trim(Str(MyPlastMark)); Chr(9); mRankingValue(ConstraintIndex);
+                                 End If
                         End If
                     
-            End If      'Are we in MaxEnt or Stochastic OT?
+                Case Else
+                
+                    'No change for this constraint.  Report thus.
+                        If mnuFullHistory.Checked = True Then
+                            Print #mFullHistoryFile, Chr(9); Chr(9);
+                        End If
+
+            End Select
+
+         Next ConstraintIndex
+
+                
+            'For ConstraintIndex = 1 To mNumberOfConstraints
+            '        Select Case mRivalViolations(MySelectedExemplarForm, MyLocalWinnerInGrammar, ConstraintIndex) _
+            '           - mRivalViolations(MySelectedExemplarForm, MySelectedObservedRival, ConstraintIndex)
+            '
+            '           Case Is > 0
+            '              'The (wrong) LocalWinner violates more.  To improve the grammar,
+            '              '  *strengthen* this constraint, to punish the wrong local winner.
+       '
+       '                 'KZ: plasticity adjustment depends on whether it's a faithfulness constraint or a markedness constraint:
+       '                     If mFaithfulness(ConstraintIndex) = True Then
+       '                         Let RankingValueChange = MyPlastFaith
+       '                         'Use the Magri update rule if it is in effect.
+       '                             If mnuMagri.Checked = True Then
+       '                                 Let RankingValueChange = RankingValueChange * PromotionAmount
+       '                             End If
+       '                     Else
+       '                         Let RankingValueChange = MyPlastMark
+       '                             If mnuMagri.Checked = True Then
+       '                                 Let RankingValueChange = RankingValueChange * PromotionAmount
+       '                             End If
+       '                     End If
+       '
+       '                     If mnuDoGLAWithAPrioriRankings.Checked Then
+       '                         'Enforce the apriori rankings as needed:
+       '                             Call AdjustAPrioriRankings_Up
+       '                     End If
+       '
+       '                Case Is < 0
+       '                     'The (wrong) LocalWinner violates less.  To improve the grammar,
+       '                     '  *weaken* this constraint, so it will not punish the correct form so much.
+       '                     'The Magri update rule imposes no special regime for demotion, so no code here.
+       '
+       '                     'KZ: plasticity adjustment depends on whether it's a faithfulness constraint or a markedness constraint:
+       '                         If mFaithfulness(ConstraintIndex) = True Then
+       '                             Let RankingValueChange = -1 * MyPlastFaith
+       '                         Else
+       '                             Let RankingValueChange = -1 * MyPlastMark
+       '                         End If
+       '
+       '             End Select
+       '
+       '             'Enforce the apriori rankings as needed:
+       '                 If mnuDoGLAWithAPrioriRankings.Checked Then
+       '                     Call AdjustAPrioriRankings_Down
+       '                 End If
+       '
+        '    Next ConstraintIndex           'Adjust ranking value or weight of every constraint.
+                    
+        End If      'Are we in MaxEnt or Stochastic OT?
          
-         Next ConstraintIndex           'Adjust ranking value or weight of every constraint.
          
 End Sub
 
@@ -2895,18 +2978,21 @@ Sub ShuffleDataPresentationArray()
                 Let mDataPresentationArray(SwappeeIndex).RivalIndex = SwappantRivalIndex
         Next LearningDatumIndex
     
+    'Debug:
+        If Form1.mnuDebug.Checked Then
+            Dim DebugFile As Long
+            Let DebugFile = FreeFile
+            Open gOutputFilePath + "Debug_ShuffleDataPresentationArray.txt" For Append As #DebugFile
+            Dim FrequencyIndex As Long
+            For FrequencyIndex = 1 To mTotalFrequency
+                Print #DebugFile, FrequencyIndex; vbTab; mDataPresentationArray(FrequencyIndex).FormIndex;
+                Print #DebugFile, vbTab; mDataPresentationArray(FrequencyIndex).RivalIndex
+            Next FrequencyIndex
+            Close #DebugFile
+        End If
+    
     Exit Sub
     
-    'Debug:
-    '    Dim DebugFile As Long
-    '    Let DebugFile = FreeFile
-    '    Open gInputFilePath + "\debug.txt" For Append As #DebugFile
-    '    Dim FrequencyIndex As Long
-    '    For FrequencyIndex = 1 To mTotalFrequency
-    '        Print #DebugFile, FrequencyIndex; vbtab; mDataPresentationArray(FrequencyIndex).FormIndex;
-    '        Print #DebugFile, vbtab; mDataPresentationArray(FrequencyIndex).RivalIndex
-    '    Next FrequencyIndex
-    '    Close #DebugFile
 
 End Sub
 
@@ -3810,7 +3896,7 @@ Sub DebugRoutine(LowerBound As Long)
         '   folder in which the input file is located.
             Call Form1.CreateAFolderForOutputFiles
         
-        Open gOutputFilePath + "/DebugGLA.txt" For Output As #DebugFile
+        Open gOutputFilePath + "DebugGLA.txt" For Output As #DebugFile
         
         For FormIndex = 1 To mNumberOfForms
             Print #DebugFile, "Input #"; Trim(Str(FormIndex)); "    "; mInputForm(FormIndex)

@@ -2637,7 +2637,7 @@ RestartPoint:
                         If ConsecutiveTies = 100 Then
                             'Warn the user the first time this happens.
                                 If mInfinityWarning = False Then
-                                    MsgBox "I'm stuck in an endless loop.  In trying to find a winner for " + mInputForm(MyFormIndex) + " I have run the grammar 100 consecutive times, obtaining a tie each time. I cannot tell you what the problem is, but perhaps it resides in the constraint set. I am terminating the endless loop now, but the result the program obtains should not be considered reliable.  Please click Ok to continue."
+                                    'MsgBox "I'm stuck in an endless loop.  In trying to find a winner for " + mInputForm(MyFormIndex) + " I have run the grammar 100 consecutive times, obtaining a tie each time. I cannot tell you what the problem is, but perhaps it resides in the constraint set. I am terminating the endless loop now, but the result the program obtains should not be considered reliable.  Please click Ok to continue."
                                 End If
                             'Record the NoWinner result with an absurd winner index (minus billion) and get out.
                                 Let GenerateAForm = mcNoWinner
@@ -3523,7 +3523,7 @@ Sub PrintFinalDetails()
             Call PrintPara(mDocFile, mTmpFile, mHTMFile, "Average error per candidate:  " + ThreeDecPlaces(100 * mErrorTerm / mTotalNumberOfRivals) + " percent")
             Call PrintPara(mDocFile, mTmpFile, mHTMFile, "Log likelihood of the data: " + ThreeDecPlaces(mLogLikelihood))
             If mZeroPredictionWarning Then
-                Call PrintPara(mDocFile, mTmpFile, mHTMFile, "Caution:  at least one candidate with positive was assigned zero probability; since zero has no log this was approximated as .001.")
+                Call PrintPara(mDocFile, mTmpFile, mHTMFile, "Caution:  at least one candidate with positive frequency was assigned zero probability; since zero has no log this was approximated as .001.")
             End If
             Call PrintPara(mDocFile, mTmpFile, mHTMFile, "Learning time:  " + ThreeDecPlaces(mTimeMarker / 60) + " minutes")
     

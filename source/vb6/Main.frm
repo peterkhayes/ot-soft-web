@@ -524,6 +524,10 @@ Begin VB.Form Form1
       Begin VB.Menu mnuEditAuxiliary 
          Caption         =   "Edit OTSoftAuxiliarySoftwareLocations.txt"
       End
+      Begin VB.Menu mnuDebug 
+         Caption         =   "Print debugging files (developer use)"
+         Checked         =   -1  'True
+      End
    End
    Begin VB.Menu mnuHTML 
       Caption         =   "&HTML"
@@ -2041,7 +2045,7 @@ Sub cmdViewResults_Click()
                     Exit Sub
                 Else
                     'There is an old file available--does the user want to look at it?
-                        Select Case MsgBox("You haven't run the program yet.  Click Yes to see the results of the last time OTSoft was run, else click No and click Rank or Factorial Typology.", vbYesNo + vbExclamation)
+                        Select Case MsgBox("You haven't run the program yet.  Click Yes to see the results of the last time OTSoft was run, else click No and rerun the program.", vbYesNo + vbExclamation)
                             Case vbYes
                                 'Do nothing here; just keep going.
                             Case vbNo
@@ -3380,10 +3384,12 @@ Function DigestTheInputFile(InputFilePath As String, FileName As String, FileSuf
         '   as it does on an initial run.
             Let FactorialTypologyAlreadyRunOnThisFile = False
             
-        'This has three possibilities:  old Ranker file, tab-delimited text and Excel.  Also, correct impossible cases if possible."
+        'This has two possibilities: tab-delimited text and Excel.  Also, correct impossible cases if possible."
             Select Case FileSuffix
                 Case ".in"
-                    Call DigestTraditionalFile
+                    MsgBox "Sorry, this is a very old file format that OTSoft no longer supports.  Please look at the manual for how to make an Excel or .txt file. The program will close when you click ok."
+                    Close
+                    End
                 Case ".txt"
                     If DigestTabDelimitedTextFile(FileName, FileSuffix) = False Then
                         Let DigestTheInputFile = False
@@ -3408,28 +3414,23 @@ Function DigestTheInputFile(InputFilePath As String, FileName As String, FileSuf
                     Call DeduceWinnersFromFrequencies
             End Select
                     
-'The following is big trouble; 10/14/21.  Why call structural descriptions if you don't want it?
+        'March 2026. I am bailing on structural descriptions
                     
-GoTo AdHocSkip
-                    
-                    Call StructuralDescriptions.Main(mNumberOfForms, mInputForm(), mWinner(), mWinnerViolations(), _
-                        mNumberOfRivals(), mRival(), mRivalViolations(), _
-                        mNumberOfConstraints, mConstraintName(), mAbbrev())
-                    
-                    'Retrieve what it calculated
-                        For FormIndex = 1 To mNumberOfForms
-                            For ConstraintIndex = 1 To mNumberOfConstraints
-                                Let mWinnerViolations(FormIndex, ConstraintIndex) = StructuralDescriptions.mWinnerViolations(FormIndex, ConstraintIndex)
-                            Next ConstraintIndex
-                            For RivalIndex = 1 To mNumberOfRivals(FormIndex)
-                                For ConstraintIndex = 1 To mNumberOfConstraints
-                                    Let mRivalViolations(FormIndex, RivalIndex, ConstraintIndex) = StructuralDescriptions.mRivalViolations(FormIndex, RivalIndex, ConstraintIndex)
-                                Next ConstraintIndex
-                            Next RivalIndex
-                        Next FormIndex
-            
-AdHocSkip:
-            
+        '            Call StructuralDescriptions.Main(mNumberOfForms, mInputForm(), mWinner(), mWinnerViolations(), _
+        '                mNumberOfRivals(), mRival(), mRivalViolations(), _
+        '                mNumberOfConstraints, mConstraintName(), mAbbrev())
+        '
+        '            'Retrieve what it calculated
+        '                For FormIndex = 1 To mNumberOfForms
+        '                    For ConstraintIndex = 1 To mNumberOfConstraints
+        '                        Let mWinnerViolations(FormIndex, ConstraintIndex) = StructuralDescriptions.mWinnerViolations(FormIndex, ConstraintIndex)
+        '                    Next ConstraintIndex
+        '                    For RivalIndex = 1 To mNumberOfRivals(FormIndex)
+        '                        For ConstraintIndex = 1 To mNumberOfConstraints
+        '                            Let mRivalViolations(FormIndex, RivalIndex, ConstraintIndex) = StructuralDescriptions.mRivalViolations(FormIndex, RivalIndex, ConstraintIndex)
+        '                        Next ConstraintIndex
+        '                    Next RivalIndex
+        '                Next FormIndex
             
         'Let gHaveIOpenedTheFile = True
         Let DigestTheInputFile = True
@@ -3903,19 +3904,21 @@ EscapePoint:        'In case the line was remarked out.
                 Loop
                 
         'Debug
-        Dim DebugFile As Long
-        Let DebugFile = FreeFile
-        Open gOutputFilePath + "/DebugJustAfterReadingInput.txt" For Output As #DebugFile
-        Dim j As Long
-        For i = 1 To mNumberOfForms
-            Print #DebugFile, "Input:"; vbTab; mInputForm(i)
-            Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
-            For j = 1 To mNumberOfRivals(mNumberOfForms)
-                Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
-            Next j
-            Print #DebugFile,
-        Next i
-        Close #DebugFile
+        If mnuDebug.Checked = True Then
+            Dim DebugFile As Long
+            Let DebugFile = FreeFile
+            Open gOutputFilePath + "/DebugJustAfterReadingInput.txt" For Output As #DebugFile
+            Dim j As Long
+            For i = 1 To mNumberOfForms
+                Print #DebugFile, "Input:"; vbTab; mInputForm(i)
+                Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
+                For j = 1 To mNumberOfRivals(mNumberOfForms)
+                    Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
+                Next j
+                Print #DebugFile,
+            Next i
+            Close #DebugFile
+        End If
         
                     
                 
@@ -3927,20 +3930,20 @@ EscapePoint:        'In case the line was remarked out.
             Let lblProgressWindow.Caption = "" 'KZ: to clear the "processing..." message.
      
      
-        'Debug
-        'Dim DebugFile As Long
-        'Let DebugFile = FreeFile
-        'Open gOutputFilePath + "/DebugJustAfterReadingInput.txt" For Output As #DebugFile
-        'Dim j As Long
-        'For i = 1 To mNumberOfForms
-        '    Print #DebugFile, "Input:"; vbTab; mInputForm(i)
-        '    Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
-        '    For j = 1 To mNumberOfRivals(mNumberOfForms)
-        '        Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
-        '    Next j
-        '    Print #DebugFile,
-        'Next i
-        'Close #DebugFile
+        'Debug:
+            If mnuDebug.Checked Then
+                Let DebugFile = FreeFile
+                Open gOutputFilePath + "/DebugJustAfterReadingInput.txt" For Output As #DebugFile
+                For i = 1 To mNumberOfForms
+                    Print #DebugFile, "Input:"; vbTab; mInputForm(i)
+                    Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
+                    For j = 1 To mNumberOfRivals(mNumberOfForms)
+                        Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
+                    Next j
+                    Print #DebugFile,
+                Next i
+                Close #DebugFile
+            End If
      
      '   'Report success and quit.
             Let DigestTrueExcelFile = True
@@ -3975,7 +3978,7 @@ Function DigestTabDelimitedTextFile(FileName As String, FileSuffix As String) As
 
    'Digest an input file in tab-delimited text format.
    
-    'On Error GoTo CheckError
+    On Error GoTo CheckError
    
     Dim CheckThisLine As String, MyChomp As String, MyResidue As String
     Dim LineNumber As Long, ColumnNumber As Long, RowNumber As Long
@@ -3989,11 +3992,11 @@ Function DigestTabDelimitedTextFile(FileName As String, FileSuffix As String) As
         Dim AbbreviationRowIsUsed As Boolean
     
     'Open the file.
-        Dim InF As Long
-        Let InF = FreeFile
+        Dim InFile As Long
+        Let InFile = FreeFile
         'Check to make sure it exists.
             If Dir(gInputFilePath + FileName + FileSuffix) <> "" Then
-                Open gInputFilePath + FileName + FileSuffix For Input As #InF
+                Open gInputFilePath + FileName + FileSuffix For Input As #InFile
             Else
                 MsgBox "Sorry, I can't find the file " + gInputFilePath + gFileName + FileSuffix + ".  Press OK to continue.", vbExclamation
                 Let DigestTabDelimitedTextFile = False
@@ -4001,13 +4004,13 @@ Function DigestTabDelimitedTextFile(FileName As String, FileSuffix As String) As
             End If
             
     'We want to know if the user left out an abbreviation line, so input line 2 and find out.
-        Line Input #InF, CheckThisLine
-        Line Input #InF, CheckThisLine
+        Line Input #InFile, CheckThisLine
+        Line Input #InFile, CheckThisLine
         Do
             Let MyChomp = s.Chomp(CheckThisLine)
             Let SecondRowCount = SecondRowCount + 1
             ReDim Preserve SecondRow(SecondRowCount)
-            Let SecondRow(SecondRowCount) = MyChomp
+            Let SecondRow(SecondRowCount) = Trim(MyChomp)
             Let CheckThisLine = s.Residue(CheckThisLine)
             If Trim(CheckThisLine) = "" Then Exit Do
         Loop
@@ -4018,8 +4021,8 @@ Function DigestTabDelimitedTextFile(FileName As String, FileSuffix As String) As
         End If
     
     'Now that you know, reopen it.
-        Close #InF
-        Open gInputFilePath + FileName + FileSuffix For Input As #InF
+        Close #InFile
+        Open gInputFilePath + FileName + FileSuffix For Input As #InFile
     
     'Initialize the populations of these things, for second uses.
         Call InitializeArrays
@@ -4030,20 +4033,23 @@ Function DigestTabDelimitedTextFile(FileName As String, FileSuffix As String) As
     'Loop through all the lines.
         Do
 BlankRedo:
-            If EOF(InF) Then Exit Do
-            Line Input #InF, CheckThisLine
-            If VacuousLine(CheckThisLine) Then
-                GoTo BlankRedo
-            End If
-                    
+            If EOF(InFile) Then Exit Do
+            Line Input #InFile, CheckThisLine
+            
+            'Forgive the user for putting in blank lines.
+                If VacuousLine(CheckThisLine) Then
+                    GoTo BlankRedo
+                End If
+            
             'Augment the line number, and initialize the column number.
                 Let LineNumber = LineNumber + 1
                 Let ColumnNumber = 0
                 
+            'March 2026:  Abandoning structural descriptions.
             'Augment gTotalNumberOfRows, which will be used for structural descriptions.  It doesn't include the header rows.
-                If LineNumber >= 3 Or (AbbreviationRowIsUsed = False And LineNumber = 2) Then
-                    Let gTotalNumberOfRows = gTotalNumberOfRows + 1
-                End If
+            '    If LineNumber >= 3 Or (AbbreviationRowIsUsed = False And LineNumber = 2) Then
+            '        Let gTotalNumberOfRows = gTotalNumberOfRows + 1
+            '    End If
                 
             'Go through each line and parse it.  Chomping divides at first tab found.
             
@@ -4056,15 +4062,14 @@ RestartPoint:
             'Process what you just chomped.
                 Select Case LineNumber
                     Case 1  'This row for constraint names.
-                        'We have no interest in the first two columns,
-                        '   which can contain whatever the user wants.
+                        'We have no interest in the first two columns, which can contain whatever the user wants.
                             If ColumnNumber > 3 Then
                                 Let mNumberOfConstraints = mNumberOfConstraints + 1
                                 Let mConstraintName(mNumberOfConstraints) = MyChomp
-                                'Let this be the abbreviation, in case there is no abbreviation row.
+                                'Looking ahead, we let this be the abbreviation, in case there is no abbreviation row.
                                     Let mAbbrev(mNumberOfConstraints) = MyChomp
                             End If
-                    Case 2 And AbbreviationRowIsUsed    'This row for constraint abbreviations.
+                    Case 2 And AbbreviationRowIsUsed    'This row for constraint abbreviations.  Note that "And" is allow in Select Case conditions.
                             
                         'Again, we have no interest in the first two columns,
                         '   which can contain whatever the user wants.
@@ -4076,7 +4081,7 @@ RestartPoint:
                                     Let lblProgressWindow.Caption = ""  '
                                 'Record failure
                                     Let DigestTabDelimitedTextFile = False
-                                    Close #InF
+                                    Close #InFile
                                 'Report the trouble and solicit repair.
                                     Select Case MsgBox("The first row should contain full constraint names, the second row constraint abbreviations.  There's a constraint abbreviation that appears to lack a corresponding full name (or perhaps, you've left out one of these two rows)." + _
                                             Chr(10) + Chr(10) + _
@@ -4121,7 +4126,7 @@ RestartPoint:
                                         Let lblProgressWindow.Caption = ""  '
                                     'Record failure
                                         Let DigestTabDelimitedTextFile = False
-                                        Close #InF
+                                        Close #InFile
                                     'Report the trouble and solicit repair.
                                         Select Case MsgBox("Caution:  in row #" + Trim(LineNumber) + " of your input file, you have more columns of constraint violations than you have actual constraints.")
                                         '+ _
@@ -4178,179 +4183,170 @@ RestartPoint:
             
         Loop                                'Loop through all the lines.
     
-    Close #InF
+    Close #InFile
     
-    'This is causing trouble; turn it off for now.  (10/14/21)
-
-
-'GoTo TempGoToPoint
-    
-    
+    'As of March 2026, I'm turning off structural descriptions.  I never use them, it's easy to do the same task in Excel, and it
+    '   makes it hard to make the abbreviation line optional.
     
         'For STRUCTURAL DESCRIPTIONS, it helps to have a different coding of the file.
-            ReDim Preserve gRawColumns(mNumberOfConstraints, gTotalNumberOfRows)
-            
-            'Reopen the file.
-                Open gInputFilePath + FileName + FileSuffix For Input As #InF
-            
-            'Skip the header lines
-                If AbbreviationRowIsUsed Then
-                    Line Input #InF, CheckThisLine
-                    Line Input #InF, CheckThisLine
-                Else
-                    Line Input #InF, CheckThisLine
-                End If
-            
-            'First, read in all the material that lines up with the inputs and candidates:
-                For RowIndex = 1 To gTotalNumberOfRows
-                    If AbbreviationRowIsUsed Then
-                        Let RowNumber = RowIndex + 2
-                    Else
-                        Let RowNumber = RowIndex + 1
-                    End If
-                    Line Input #InF, CheckThisLine
-                    'Peel off the input, candidate, and frequency, which are not different.
-                        Let CheckThisLine = s.Residue(s.Residue(s.Residue(CheckThisLine)))
-                    'Grab the cell contents that (may or may not) embody formalized constraints.
-                        For ConstraintIndex = 1 To mNumberOfConstraints
-                            'Skip the forms and frequencies:
-                                Let ColumnNumber = ConstraintIndex + 3
-                            'Read a whole column until you get to a gap:
-                                Let gRawColumns(ConstraintIndex, RowIndex) = s.Chomp(CheckThisLine)
-                                Let CheckThisLine = s.Residue(CheckThisLine)
-                        Next ConstraintIndex
-                Next RowIndex
+        '    ReDim Preserve gRawColumns(mNumberOfConstraints, gTotalNumberOfRows)
+        '
+        '    'Reopen the file.
+        '        Open gInputFilePath + FileName + FileSuffix For Input As #InFile
+        '
+        '    'Skip the header lines
+        '        If AbbreviationRowIsUsed Then
+        '            Line Input #InFile, CheckThisLine
+        '            Line Input #InFile, CheckThisLine
+        '        Else
+        '            Line Input #InFile, CheckThisLine
+        '        End If
+        '
+        '    'First, read in all the material that lines up with the inputs and candidates:
+        '        For RowIndex = 1 To gTotalNumberOfRows
+        '            If AbbreviationRowIsUsed Then
+        '                Let RowNumber = RowIndex + 2
+        '            Else
+        '                Let RowNumber = RowIndex + 1
+        '            End If
+        '            Line Input #InFile, CheckThisLine
+        '            'Peel off the input, candidate, and frequency, which are not different.
+        '                Let CheckThisLine = s.Residue(s.Residue(s.Residue(CheckThisLine)))
+        '            'Grab the cell contents that (may or may not) embody formalized constraints.
+        '                For ConstraintIndex = 1 To mNumberOfConstraints
+        '                    'Skip the forms and frequencies:
+        '                        Let ColumnNumber = ConstraintIndex + 3
+        '                    'Read a whole column until you get to a gap:
+        '                        Let gRawColumns(ConstraintIndex, RowIndex) = s.Chomp(CheckThisLine)
+        '                        Let CheckThisLine = s.Residue(CheckThisLine)
+        '                Next ConstraintIndex
+        '        Next RowIndex
                 
             'It's possible that the material for constraint structural descriptions will go lower
             '  down the sheet than the inputs and candidate did.  So look for more.
             
             
-                Dim FoundOne As Boolean, Buffer As String, ExtraIndex As Long, InputFilePath As String
-                
-                Let RowIndex = gTotalNumberOfRows
-                Do
-                    Let FoundOne = False
-                    Let RowIndex = RowIndex + 1
-                    Let RowNumber = RowIndex + 2
-                    For ConstraintIndex = 1 To mNumberOfConstraints
-                        Let ColumnNumber = ConstraintIndex + 3
-                        'Let Buffer = Trim(ApExcel.Cells(RowNumber, ColumnNumber).Formula)
-                        If Buffer <> "" Then
-                            'You've found an entry going past the rows of the inputs and candidates.
-                            '   If it's the first one on this row, redimension array.
-                                    If FoundOne = False Then
-                                        Let gTotalNumberOfRows = gTotalNumberOfRows + 1
-                                        ReDim Preserve gRawColumns(mNumberOfConstraints, gTotalNumberOfRows)
-                                    End If
-                                'Record the new item:
-                                    Let FoundOne = True
-                                    Let gRawColumns(ConstraintIndex, RowIndex) = Buffer
-                        End If
-                    Next ConstraintIndex
-                    'If you didn't find any, keep looking for a while, reporting a gap to the
-                    '   reader.
-                        If FoundOne = False Then
-                            For ExtraIndex = 1 To 10
-                                Let RowNumber = (gTotalNumberOfRows + ExtraIndex) + 2
-                                For ConstraintIndex = 1 To mNumberOfConstraints
-                                    Let ColumnNumber = ConstraintIndex + 3
-                                    'Let Buffer = Trim(ApExcel.Cells(RowNumber, ColumnNumber).Formula)
-                                    If Buffer <> "" Then
-                                        'Don't keep this workbook object open.
-                                            'ApExcel.Workbooks.Close
-                                        'Clear progress window.
-                                            Let lblProgressWindow.Caption = ""  '
-                                        'Report the trouble and solicit repair.
-                                            Select Case MsgBox("There's a problem with your input file.  I find that for the constraint" + Chr(10) + Chr(10) + _
-                                                    "    " + mConstraintName(ConstraintIndex) + Chr(10) + Chr(10) + _
-                                                    "there is a column of structural descriptions that has a gap in it.  " + _
-                                                    "Since I can't deal with such gaps, , this needs to be fixed before I can proceed." + Chr(10) + Chr(10) + _
-                                                    "Click Yes to edit the file, No to exit OTSoft." + _
-                                                    Chr(10) + Chr(10) + _
-                                                    "Note:  the location of your input file is as follows:  " + _
-                                                    InputFilePath + FileName + FileSuffix, vbYesNo, "OTSoft " + gMyVersionNumber, vbExclamation)
-                                                Case vbYes
-                                                    Call mnuEditCurrentFile_Click
-                                                Case vbNo
-                                                    Call cmdExit_Click
-                                            End Select
-                                        'Record failure and get out.
-                                            'Let DigestTrueExcelFile = False
-                                            Exit Function
-                                    End If
-                                Next ConstraintIndex
-                            Next ExtraIndex
-                            Exit Do
-                        End If
-                Loop
-
-            Close #InF
-    
-TempGoToPoint:
+         '       Dim FoundOne As Boolean, Buffer As String, ExtraIndex As Long, InputFilePath As String
+         '
+         '       Let RowIndex = gTotalNumberOfRows
+         '       Do
+         '           Let FoundOne = False
+         '           Let RowIndex = RowIndex + 1
+         '           Let RowNumber = RowIndex + 2
+         '           For ConstraintIndex = 1 To mNumberOfConstraints
+         '               Let ColumnNumber = ConstraintIndex + 3
+         '               'Let Buffer = Trim(ApExcel.Cells(RowNumber, ColumnNumber).Formula)
+         '               If Buffer <> "" Then
+         '                   'You've found an entry going past the rows of the inputs and candidates.
+         '                   '   If it's the first one on this row, redimension array.
+         '                           If FoundOne = False Then
+         '                               Let gTotalNumberOfRows = gTotalNumberOfRows + 1
+         '                               ReDim Preserve gRawColumns(mNumberOfConstraints, gTotalNumberOfRows)
+         '                           End If
+         '                       'Record the new item:
+         '                           Let FoundOne = True
+         '                           Let gRawColumns(ConstraintIndex, RowIndex) = Buffer
+         '               End If
+         '           Next ConstraintIndex
+         '           'If you didn't find any, keep looking for a while, reporting a gap to the
+         '           '   reader.
+         '               If FoundOne = False Then
+         '                   For ExtraIndex = 1 To 10
+         '                       Let RowNumber = (gTotalNumberOfRows + ExtraIndex) + 2
+         '                       For ConstraintIndex = 1 To mNumberOfConstraints
+         '                           Let ColumnNumber = ConstraintIndex + 3
+         '                           'Let Buffer = Trim(ApExcel.Cells(RowNumber, ColumnNumber).Formula)
+         '                           If Buffer <> "" Then
+         '                               'Don't keep this workbook object open.
+         '                                   'ApExcel.Workbooks.Close
+         '                               'Clear progress window.
+         '                                   Let lblProgressWindow.Caption = ""  '
+         '                               'Report the trouble and solicit repair.
+         '                                   Select Case MsgBox("There's a problem with your input file.  I find that for the constraint" + Chr(10) + Chr(10) + _
+         '                                           "    " + mConstraintName(ConstraintIndex) + Chr(10) + Chr(10) + _
+         '                                           "there is a column of structural descriptions that has a gap in it.  " + _
+         '                                           "Since I can't deal with such gaps, , this needs to be fixed before I can proceed." + Chr(10) + Chr(10) + _
+         '                                           "Click Yes to edit the file, No to exit OTSoft." + _
+         '                                           Chr(10) + Chr(10) + _
+         '                                           "Note:  the location of your input file is as follows:  " + _
+         '                                           InputFilePath + FileName + FileSuffix, vbYesNo, "OTSoft " + gMyVersionNumber, vbExclamation)
+         '                                       Case vbYes
+         '                                           Call mnuEditCurrentFile_Click
+         '                                       Case vbNo
+         '                                           Call cmdExit_Click
+         '                                   End Select
+         '                               'Record failure and get out.
+         '                                   'Let DigestTrueExcelFile = False
+         '                                   Exit Function
+         '                           End If
+         '                       Next ConstraintIndex
+         '                   Next ExtraIndex
+         '                   Exit Do
+         '               End If
+         '       Loop
     
     'Record success.
         Let DigestTabDelimitedTextFile = True
        
     'Debug:  show what you got.
-        If True Then
-            Let D = FreeFile
-            Call CreateAFolderForOutputFiles
-            Open gOutputFilePath + "debug.txt" For Output As #D
-            'Constraint row:
-                Print #D, Chr(9); Chr(9);
-                For ConstraintIndex = 1 To mNumberOfConstraints
-                    Print #D, Chr(9); mConstraintName(ConstraintIndex);
-                Next ConstraintIndex
-                Print #D,
-            'Abbreviation row:
-                Print #D, Chr(9); Chr(9);
-                For ConstraintIndex = 1 To mNumberOfConstraints
-                    Print #D, Chr(9); mAbbrev(ConstraintIndex);
-                Next ConstraintIndex
-                Print #D,
-            'Inputs, candidates, violations
-                For FormIndex = 1 To mNumberOfForms
-                    For RivalIndex = 1 To mNumberOfRivals(FormIndex)
-                        'Inputs and candidates:
-                            If RivalIndex = 1 Then
-                                Print #D, mInputForm(FormIndex);
-                            End If
-                            Print #D, Chr(9); mRival(FormIndex, RivalIndex);
-                        'Frequencies:
-                            If mRivalFrequency(FormIndex, RivalIndex) = 0 Then
-                                Print #D, Chr(9);
-                            Else
-                                Print #D, Chr(9); mRivalFrequency(FormIndex, RivalIndex);
-                            End If
-                        For ConstraintIndex = 1 To mNumberOfConstraints
-                            'If mRivalViolations(FormIndex, RivalIndex, ConstraintIndex) = 0 Then
-                            '    Print #d, Chr(9);
-                            'Else
-                                Print #D, Chr(9); mRivalViolations(FormIndex, RivalIndex, ConstraintIndex);
-                            'End If
-                        Next ConstraintIndex
-                        Print #D,
-                    Next RivalIndex
-                Next FormIndex
-            Close #D
-            'Stop
-       End If
-       
-      
-    'Debug for raw text content:
-        If False Then
-            Let D = FreeFile
-            Call CreateAFolderForOutputFiles
-            Open gOutputFilePath + "debug.txt" For Output As #D
-            For ConstraintIndex = 1 To mNumberOfConstraints
-                Print #D, mConstraintName(ConstraintIndex)
-                For RowIndex = 1 To gTotalNumberOfRows
-                    Print #D, "    "; RowIndex; Chr(9); gRawColumns(ConstraintIndex, RowIndex)
-                Next RowIndex
-                Print #D,
-            Next ConstraintIndex
-            Close
+        If mnuDebug.Checked Then
+             Let D = FreeFile
+             Call CreateAFolderForOutputFiles
+             Open gOutputFilePath + "DebugTheReadingOfATextFile.txt" For Output As #D
+             'Constraint row:
+                 Print #D, Chr(9); Chr(9);
+                 For ConstraintIndex = 1 To mNumberOfConstraints
+                     Print #D, Chr(9); mConstraintName(ConstraintIndex);
+                 Next ConstraintIndex
+                 Print #D,
+             'Abbreviation row:
+                 Print #D, Chr(9); Chr(9);
+                 For ConstraintIndex = 1 To mNumberOfConstraints
+                     Print #D, Chr(9); mAbbrev(ConstraintIndex);
+                 Next ConstraintIndex
+                 Print #D,
+             'Inputs, candidates, violations
+                 For FormIndex = 1 To mNumberOfForms
+                     For RivalIndex = 1 To mNumberOfRivals(FormIndex)
+                         'Inputs and candidates:
+                             If RivalIndex = 1 Then
+                                 Print #D, mInputForm(FormIndex);
+                             End If
+                             Print #D, Chr(9); mRival(FormIndex, RivalIndex);
+                         'Frequencies:
+                             If mRivalFrequency(FormIndex, RivalIndex) = 0 Then
+                                 Print #D, Chr(9);
+                             Else
+                                 Print #D, Chr(9); mRivalFrequency(FormIndex, RivalIndex);
+                             End If
+                         For ConstraintIndex = 1 To mNumberOfConstraints
+                             'If mRivalViolations(FormIndex, RivalIndex, ConstraintIndex) = 0 Then
+                             '    Print #d, Chr(9);
+                             'Else
+                                 Print #D, Chr(9); mRivalViolations(FormIndex, RivalIndex, ConstraintIndex);
+                             'End If
+                         Next ConstraintIndex
+                         Print #D,
+                     Next RivalIndex
+                 Next FormIndex
+             Close #D
+             'Stop
         End If
+       
+    'Debug for raw text content.  Not needed if no structural descriptions.
+    '    If mnuDebug.Checked Then
+    '        Let D = FreeFile
+    '        Call CreateAFolderForOutputFiles
+    '        Open gOutputFilePath + "DebugTextInputFileRawRowsAndColumns.txt" For Output As #D
+    '        For ConstraintIndex = 1 To mNumberOfConstraints
+    '            Print #D, mConstraintName(ConstraintIndex)
+    '            For RowIndex = 1 To gTotalNumberOfRows
+    '                Print #D, "    "; RowIndex; Chr(9); gRawColumns(ConstraintIndex, RowIndex)
+    '            Next RowIndex
+    '            Print #D,
+    '        Next ConstraintIndex
+    '        Close
+    '    End If
         
     'Only error-checking code follows, so exit the function.
         Exit Function
@@ -4364,8 +4360,8 @@ CheckError:
             End
         Case Else
             MsgBox "Program error.  Please contact Bruce Hayes at bhayes@humnet.ucla.edu, including a copy of your input file and specifying error #43922.", vbCritical
-    End Select
             End
+    End Select
 
     MsgBox "I can't find this input file.  Please look for it using the Work With Different File button.", vbCritical
 
@@ -4391,14 +4387,14 @@ Function SecondRowIsViolations(SecondRow() As String) As Boolean
         End If
         
     'There should be integers in cells 4 through end.
-    '    For i = 4 To UBound(SecondRow())
-    '        If SecondRow(i) = "" Or s.IsAnInteger(SecondRow(i)) Then
-    '            'Do nothing, looks ok so far.
-    '        Else
-    '            Let SecondRowIsViolations = False
-    '            Exit Function
-    '        End If
-    '    Next i
+        For i = 4 To UBound(SecondRow())
+            If SecondRow(i) = "" Or s.IsAnInteger(SecondRow(i)) Then
+                'Do nothing, looks ok so far.
+            Else
+                Let SecondRowIsViolations = False
+                Exit Function
+            End If
+        Next i
     
     'Passed all tests, so return True
         Let SecondRowIsViolations = True
@@ -4545,207 +4541,6 @@ Sub DeduceWinnersFromFrequencies()
        
         
             
-End Sub
-
-Sub DigestTraditionalFile()
-    
-   On Error GoTo CheckError
-   
-   Dim CheckThisLine As String
-   Dim LineNumber As Long
-   Dim FormIndex As Long, ConstraintIndex As Long, AprioriRankingsIndex As Long, i As Long
-
-   Dim blnUserFrequency As Boolean  'KZ: keeps track of whether user entered a frequency.
-   Dim TradInFile As Long
-   
-   Let TradInFile = FreeFile
-    
-    'Don't try to open a file if it's not there.
-        If Dir(gInputFilePath + gFileName + gFileSuffix) <> "" Then
-            Open gInputFilePath + gFileName + gFileSuffix For Input As #TradInFile
-        Else
-            MsgBox "Sorry, I can't find the file " + gInputFilePath + gFileName + gFileSuffix + ".  Click OK to continue.", vbExclamation
-            Let gHaveIOpenedTheFile = False
-            Exit Sub
-        End If
-    
-    'Initialize the populations of these things, for second uses.
-        Let mNumberOfForms = 0
-        For FormIndex = 1 To mMaximumNumberOfForms
-            Let mNumberOfRivals(FormIndex) = 0
-        Next FormIndex
-        Let mNumberOfConstraints = 0
-        Let mNumberOfAPrioriRankings = 0
-        
-    Do
-BlankLineReturnPoint:
-       If EOF(TradInFile) Then Exit Do
-       Input #TradInFile, CheckThisLine
-       Let LineNumber = LineNumber + 1
-InputReturnPoint:
-       Let CheckThisLine = Trim(CheckThisLine)
-       If LCase$(Left$(CheckThisLine, 10)) = "user name:" Then
-          Let mUserName = Mid$(CheckThisLine, 13)
-       ElseIf Trim(CheckThisLine) = "" Then
-          GoTo BlankLineReturnPoint
-       ElseIf LCase$(Left$(CheckThisLine, 13)) = "constraint:  " Then
-             'You've hit a constraint entry.  Record the constraint, along with
-           '  its abbreviation.
-                Let mNumberOfConstraints = mNumberOfConstraints + 1
-                Let mConstraintName(mNumberOfConstraints) = Mid$(CheckThisLine, 14)
-           'Look for the abbreviation.
-            Let LineNumber = LineNumber + 1
-            If EOF(TradInFile) Then
-               MsgBox "There's a problem at line " + Str(LineNumber) + "of your input" + _
-                    "file.   I need a line that begins Abbreviation: followed by two spaces." + _
-                    "but I reached the end of the file before finding it. Please fix your input file and try again.", vbCritical
-               End
-            Else
-RestartPoint222:
-               Input #TradInFile, CheckThisLine
-               If CheckThisLine = "" Then GoTo RestartPoint222
-               If LCase$(Left$(CheckThisLine, 15)) <> "abbreviation:  " Then
-                  MsgBox "There's a problem at line " + Str(LineNumber) + "of your input file." + _
-                  "I need a line that begins: Abbreviation: followed by two spaces." + _
-                  "But instead I got:  " + CheckThisLine + "  Please fix your input file and try again.", vbCritical
-                  End
-               Else
-                  Let mAbbrev(mNumberOfConstraints) = Mid$(CheckThisLine, 16)
-               End If
-        
-            End If
-       ElseIf LCase$(Left$(CheckThisLine, 17)) = "a priori ranking:" Then
-          Let mNumberOfAPrioriRankings = mNumberOfAPrioriRankings + 1
-          Input #TradInFile, mAPrioriRankingsList(mNumberOfAPrioriRankings, 0)
-          Input #TradInFile, mAPrioriRankingsList(mNumberOfAPrioriRankings, 1)
-            'The a priori rankings were done differently in the old .in files.  Convert, so they can be used.
-              For i = 1 To mNumberOfAPrioriRankings
-                  Let gAPrioriRankingsTable(mAPrioriRankingsList(AprioriRankingsIndex, 0), mAPrioriRankingsList(AprioriRankingsIndex, 1)) = True
-              Next i
-       ElseIf LCase$(Left$(CheckThisLine, 8)) = "input:  " Then
-            'You've just reached a line labeled 'input', i.e. a form used as data.
-            '  Extract the input, the winner, the rivals, and the constraints they violate.
-                 Let mNumberOfForms = mNumberOfForms + 1
-                 Let mInputForm(mNumberOfForms) = Trim(Mid$(CheckThisLine, 9))
-                 Input #TradInFile, CheckThisLine
-                      If EOF(TradInFile) Then
-                            MsgBox "There is a problem with your input file:  the program reached the end of the file, without getting the full information for a particular form.  Check the file and fix.", vbCritical
-                            End
-                      End If
-              'Extract the winner and its violations.
-                  Let LineNumber = LineNumber + 1
-                  Let CheckThisLine = Trim(CheckThisLine)
-                  If LCase$(Left$(CheckThisLine, 9)) <> "winner:  " Then
-                     MsgBox "At line " + Str(LineNumber) + "I need a line that begins Winner: followed by two spaces.  Please fix input file and try again.", vbCritical
-                     Stop
-                  Else
-                     'KZ: added the following line because winner is being treated as a rival (see right below):
-                        Let mNumberOfRivals(mNumberOfForms) = mNumberOfRivals(mNumberOfForms) + 1
-                     'KZ: changed this from Winner() to mRival(); DeduceWinners sub later figures out the real winner:
-                        Let mRival(mNumberOfForms, mNumberOfRivals(mNumberOfForms)) = Trim(Mid$(CheckThisLine, 10))
-                     'KZ: we need to start labelling the rivals at 1 so that DeduceWinnersFromRivals will work.
-                        Let mNumberOfRivals(mNumberOfForms) = 1
-                     'Now extract the violations for all of the constraints, checking at all stages that you have the right data.
-                        Let blnUserFrequency = False 'KZ: did user specify a frequency?
-                         For ConstraintIndex = 1 To mNumberOfConstraints
-                            Let LineNumber = LineNumber + 1
-                            Input #TradInFile, CheckThisLine
-                            'Ignore Frequency information, for just now:
-                                If LCase$(Left$(CheckThisLine, 9)) = "frequency" Then
-                                'KZ: read in frequency:
-                                    Let mRivalFrequency(mNumberOfForms, mNumberOfRivals(mNumberOfForms)) = _
-                                     Trim(Mid$(CheckThisLine, 13))
-                                    blnUserFrequency = True
-                                    Let ConstraintIndex = ConstraintIndex - 1
-                                Else
-                                    If CheckThisLine <> mAbbrev(ConstraintIndex) Then
-                                       MsgBox "I'm stuck at or near line " + Str(LineNumber) + "of the file. I'm looking for the abbreviated constraint label " + mAbbrev(ConstraintIndex) + ", but I got " + CheckThisLine + " instead.  Please fix your file then restart.", vbCritical
-                                       End
-                                    Else
-                                       'KZ: if no frequency entered for winner, assume it's 1
-                                        If blnUserFrequency = False Then 'KZ: don't overwrite an existing frequency.
-                                             Let mRivalFrequency(mNumberOfForms, mNumberOfRivals(mNumberOfForms)) = 1
-                                        End If
-                                       'KZ: so that DeduceWinnerFromFrequencies will work, intall this as a rival (#TradInFile)
-                                            Input #TradInFile, mRivalViolations(mNumberOfForms, 1, ConstraintIndex)
-                                       'KZ: but just to be on the safe side, also make it the winner:
-                                            Let mWinnerViolations(mNumberOfForms, ConstraintIndex) = mRivalViolations(mNumberOfForms, 1, ConstraintIndex)
-                                    End If
-                                End If
-                         Next ConstraintIndex
-                  End If                'Are we processing a "winner"?
-                 
-              'Extract the rivals and their violations.
-                    Do
-                        Let LineNumber = LineNumber + 1
-Line364RestartPoint:
-                      If EOF(TradInFile) Then Exit Do
-                      Input #TradInFile, CheckThisLine
-                      Let CheckThisLine = Trim(CheckThisLine)
-                      If LCase$(Left$(CheckThisLine, 8)) = "input:  " Then
-                         'Go back to processing inputs:
-                            GoTo InputReturnPoint
-                      ElseIf LCase$(Left$(CheckThisLine, 15)) = "free variant:  " Then
-                         'Process a free variant (no longer used, but what if there are old input files that have it?
-                      ElseIf CheckThisLine = "" Then
-                         'Ignore blank lines
-                            GoTo Line364RestartPoint
-                      ElseIf LCase$(Left$(CheckThisLine, 8)) <> "rival:  " Then
-                         'Complain if there is something you can't identify.
-                            MsgBox "At line " + Str(LineNumber) + "I need line that begins   Rival:    followed by two spaces.  Please fix input file and try again.", vbCritical
-                            End
-                      Else
-                         'Process a rival candidate.
-                            Let mNumberOfRivals(mNumberOfForms) = mNumberOfRivals(mNumberOfForms) + 1
-                            Let mRival(mNumberOfForms, mNumberOfRivals(mNumberOfForms)) = Trim(Mid$(CheckThisLine, 9))
-                         'Extract the violations for all of the constraints, checking at all stages that you have the right data.
-                            Let blnUserFrequency = False 'KZ: did user specify frequency?
-                            For ConstraintIndex = 1 To mNumberOfConstraints
-                               Let LineNumber = LineNumber + 1
-                               Input #TradInFile, CheckThisLine
-                                   If LCase$(Left$(CheckThisLine, 9)) = "frequency" Then
-                                        'KZ: read in frequency:
-                                            Let mRivalFrequency(mNumberOfForms, mNumberOfRivals(mNumberOfForms)) = Trim(Mid$(CheckThisLine, 13))
-                                            Let blnUserFrequency = True
-                                            Let ConstraintIndex = ConstraintIndex - 1
-                                   Else
-                                       If CheckThisLine <> mAbbrev(ConstraintIndex) Then
-                                          MsgBox "I'm stuck at or near line " + Str(LineNumber) + "of the file.  I'm looking for the short constraint label " + mAbbrev(ConstraintIndex) + ", but I got " + CheckThisLine + " instead.  Please fix your file and restart.", vbCritical
-                                          End
-                                       Else
-                                          'KZ: if no frequency entered for rival, assume it's 0:
-                                            If blnUserFrequency = False Then  'KZ: don't overwrite existing frequency.
-                                                  Let mRivalFrequency(mNumberOfForms, mNumberOfRivals(mNumberOfForms)) = 0
-                                            End If
-                                          'KZ: modified for debug
-                                            Input #TradInFile, CheckThisLine
-                                            Let mRivalViolations(mNumberOfForms, mNumberOfRivals(mNumberOfForms), ConstraintIndex) = CheckThisLine
-                                       End If
-                               End If
-                            Next ConstraintIndex
-                      End If                        'Grand if:  possible headings in the input file.
-                  Loop
-       Else
-          MsgBox "I couldn't understand line number " + Str(LineNumber) + " in your file: " + CheckThisLine + "Please check your input file for correct format.", vbCritical
-          End
-       End If
-    Loop
-    
-    
-    
-    
-    
-    'Close the input file.
-        Close #TradInFile
-    'Record that you've opened this file.
-        Let gHaveIOpenedTheFile = True
-    
-    Exit Sub
-
-CheckError:
-    MsgBox "I can't find this input file.  Please look for it using the Work With Different File button.", vbCritical
-    Exit Sub
-
 End Sub
 
 
@@ -5398,19 +5193,21 @@ Sub Rank()
         If optGLA.Value = True Then
         
                 'Debug  1/1/26
-                '    Dim DebugFile As Long
-                '    Let DebugFile = FreeFile
-                '    Open gOutputFilePath + "DebugOnWayToGLA.txt" For Output As #DebugFile
-                '    Dim i As Long, j As Long
-                '    For i = 1 To mNumberOfForms
-                '        Print #DebugFile, "Input:"; vbTab; mInputForm(i)
-                '        Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
-                '        For j = 1 To mNumberOfRivals(mNumberOfForms)
-                '            Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
-                '        Next j
-                '        Print #DebugFile,
-                '    Next i
-                '    Close #DebugFile
+                If mnuDebug.Checked Then
+                    Dim DebugFile As Long
+                    Let DebugFile = FreeFile
+                    Open gOutputFilePath + "DebugOnWayToGLA.txt" For Output As #DebugFile
+                    Dim i As Long, j As Long
+                    For i = 1 To mNumberOfForms
+                        Print #DebugFile, "Input:"; vbTab; mInputForm(i)
+                        Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
+                        For j = 1 To mNumberOfRivals(mNumberOfForms)
+                            Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
+                        Next j
+                        Print #DebugFile,
+                    Next i
+                    Close #DebugFile
+                End If
         
             'Specfically, we will use the GLA to do Stochastic OT.
                 Let GLA.optStochasticOT.Value = True
@@ -5436,19 +5233,20 @@ Sub Rank()
                      Let cmdFacType.Enabled = True
                 Exit Sub
                     'Debug
-                    'Dim DebugFile As Long
-                    'Let DebugFile = FreeFile
-                    'Open gOutputFilePath + "DebugOnWayToMaxent.txt" For Output As #DebugFile
-                    'Dim i As Long, j As Long
-                    'For i = 1 To mNumberOfForms
-                    '    Print #DebugFile, "Input:"; vbTab; mInputForm(i)
-                    '    Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
-                    '    For j = 1 To mNumberOfRivals(mNumberOfForms)
-                    '        Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
-                    '    Next j
-                    '    Print #DebugFile,
-                    'Next i
-                    'Close #DebugFile
+                    If mnuDebug.Checked = True Then
+                        'Dim DebugFile As Long
+                        Let DebugFile = FreeFile
+                        Open gOutputFilePath + "DebugOnWayToMaxent.txt" For Output As #DebugFile
+                        For i = 1 To mNumberOfForms
+                            Print #DebugFile, "Input:"; vbTab; mInputForm(i)
+                            Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
+                            For j = 1 To mNumberOfRivals(mNumberOfForms)
+                                Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
+                            Next j
+                            Print #DebugFile,
+                        Next i
+                        Close #DebugFile
+                    End If
 
                     'Old code:
                     'Call MyMaxEnt.Main(mNumberOfForms, mInputForm(), mWinner(), mWinnerFrequency(), mWinnerViolations(), _
@@ -5460,19 +5258,20 @@ Sub Rank()
                     'Exit Sub
         ElseIf optNoisyHarmonicGrammar.Value = True Then
                 'Debug
-                '    'Dim DebugFile As Long
-                '    Let DebugFile = FreeFile
-                '    Open gOutputFilePath + "DebugOnWayToNHG.txt" For Output As #DebugFile
-                '    'Dim i As Long, j As Long
-                '    For i = 1 To mNumberOfForms
-                '        Print #DebugFile, "Input:"; vbTab; mInputForm(i)
-                '        Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
-                '        For j = 1 To mNumberOfRivals(mNumberOfForms)
-                '            Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
-                '        Next j
-                '        Print #DebugFile,
-                '    Next i
-                '    Close #DebugFile
+                    If mnuDebug.Checked Then
+                        Let DebugFile = FreeFile
+                        Open gOutputFilePath + "DebugOnWayToNHG.txt" For Output As #DebugFile
+                        'Dim i As Long, j As Long
+                        For i = 1 To mNumberOfForms
+                            Print #DebugFile, "Input:"; vbTab; mInputForm(i)
+                            Print #DebugFile, vbTab; "Winner:  ["; vbTab; mWinner(i); "]"; vbTab; "Frequency"; vbTab; mWinnerFrequency(i)
+                            For j = 1 To mNumberOfRivals(mNumberOfForms)
+                                Print #DebugFile, vbTab; "RivalIndex:"; vbTab; Trim(Str(j)); vbTab; "Rival:"; vbTab; mRival(i, j); vbTab; "Frequency:"; vbTab; mRivalFrequency(i, j)
+                            Next j
+                            Print #DebugFile,
+                        Next i
+                        Close #DebugFile
+                    End If
             Call NoisyHarmonicGrammar.Main(mNumberOfForms, mInputForm(), mWinner(), mWinnerFrequency(), mWinnerViolations(), _
                 mNumberOfRivals(), mRival(), mRivalFrequency(), mRivalViolations(), _
                 mNumberOfConstraints, mConstraintName(), mAbbrev, _
@@ -5960,6 +5759,7 @@ Function CheckSubsetRelations() As Boolean
         Let StrinFile = FreeFile
         
         'Open an output file.
+            'MsgBox gOutputFilePath + "StringencyRelationsAmongContraintsFor" + gFileName + ".txt"
             Open gOutputFilePath + "StringencyRelationsAmongContraintsFor" + gFileName + ".txt" For Output As #StrinFile
         'Print a header.
             Print #StrinFile, "The following constraints show a stringency relationship -- not necessarily a logical one, but in the data given."

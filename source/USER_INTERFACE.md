@@ -135,6 +135,8 @@ If "Classical OT" selected:
 | Item | Action |
 |------|--------|
 | Edit current file | Opens the loaded input file in the system editor (Excel for .xlsx) |
+| Edit OTSoftAuxiliarySoftwareLocations.txt | Opens the auxiliary software locations file |
+| Print debugging files (developer use) | Toggle debug file output; checked by default. When enabled, various debug files are written to the output folder during algorithm runs. |
 
 ### View Menu (`mnuWordProcessorChoice`)
 
@@ -413,7 +415,7 @@ Shows version ("OTSoft 2.7"), credits (Bruce Hayes, Bruce Tesar, Kie Zuraw), and
 Files are loaded by **drag-and-drop** onto the main window (not via a file dialog). The application accepts:
 - `.txt` — Tab-delimited text (primary format)
 - `.xlsx` — Modern Excel workbooks
-- `.in` — Legacy Ranker format
+- `.in` — Legacy Ranker format (**no longer supported** as of March 2026; shows error and exits)
 
 On load, the file is parsed by `DigestTheInputFile()`, which:
 1. Detects the format from the file extension

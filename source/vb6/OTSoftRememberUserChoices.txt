@@ -5,7 +5,7 @@ Last file read:  suffix (.txt/.in)
 Last file read:  path (e.g. c:\program files\otsoft\)
 C:\Dropbox\AO\OTSoft\Input\aaaTestingSuite\FinnishGenitivePluralsAnttila\
 last ranking algorithm used (constraint demotion/low faith/gla):
-Maximum entropy
+GLA
 Diagnostics if ranking fails (yes/no):
 no
 Ranking argumentation(yes/no):
@@ -39,11 +39,13 @@ no
 Times to go through forms
  1000000 
 Initial plasticity
- 0.0001 
+ 0.01 
 Final plasticity
  0.0001 
 Number of times to test grammar
  100000 
+Allow weights to go negative
+False
 Include Tableaux in GLA Output (yes/no)
 no
 Input forms to GLA in exact proportion to their frequency (yes/no)
@@ -62,8 +64,10 @@ For NHG, apply noise after multiplication by violations
 no
 Exponential NHG
 no
+Demigaussian NHG
+no
 resolve ties by dropping the trial
-yes
+no
 Frequency at which learning state should be reported
  200 
 shading color for html output (use normal html color codes, i.e. six-digit hexadecimal)

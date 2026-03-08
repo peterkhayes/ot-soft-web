@@ -380,16 +380,23 @@ For each learning stage (1 to 4):
         3. COMPARE generated form with selected exemplar
 
         4. UPDATE WEIGHTS (if generated ≠ observed):
-           For each constraint C:
-               If winner_violations[C] ≠ loser_violations[C]:
-                   delta = plasticity × (loser_viols - winner_viols)
-                   ranking_value[C] += delta
-                   (PlastMark for Markedness, PlastFaith for Faithfulness)
 
-        5. ENFORCE A PRIORI RANKINGS (if active):
-           Ensure a priori-ranked constraints differ by ≥ 20 units
+           MaxEnt mode:
+               For each constraint C:
+                   (see existing MaxEnt weight update logic)
 
-        6. RECORD HISTORY (if requested)
+           Stochastic OT mode:
+               For each constraint C:
+                   diff = winner_viols[C] - observed_viols[C]
+                   If diff > 0 (wrong winner violates more → promote):
+                       ranking_value[C] += plasticity
+                       (PlastMark for Markedness, PlastFaith for Faithfulness)
+                       If Magri update rule: multiply by PromotionAmount
+                   If diff < 0 (wrong winner violates less → demote):
+                       ranking_value[C] -= plasticity
+                   Record adjustment and new value to full history file (if enabled)
+
+        5. RECORD HISTORY (if requested)
 ```
 
 #### Variants

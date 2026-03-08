@@ -14,10 +14,13 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 
 - [x] Tab-delimited text file parsing (`.txt`)
 - [ ] Excel file parsing (`.xlsx`)
-- [ ] Legacy Ranker format (`.in`)
-- [ ] Structural descriptions (automatic violation computation)
+- [x] ~~Legacy Ranker format (`.in`)~~ — removed from VB6 as of March 2026; no longer needs porting
+- [x] ~~Structural descriptions (automatic violation computation)~~ — removed from VB6 as of March 2026; no longer needs porting
+- [ ] Negative violation counts — `IsAnInteger` now accepts leading `-`; update Rust parser to allow negative integers in violation cells
+- [ ] Trim second-row values — VB6 now trims whitespace from second-row cells before abbreviation-row auto-detection
+- [ ] Re-enable `SecondRowIsViolations` integer check — VB6 re-enabled the loop that validates second-row cells are integers (works with new negative integer support)
 - [x] A priori rankings file parsing
-- [ ] Natural class file parsing
+- [x] ~~Natural class file parsing~~ — related to structural descriptions, removed from VB6
 
 ## Categorical Ranking Algorithms
 
@@ -59,6 +62,12 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] Candidate probability history (HistoryOfCandidateProbabilities.txt — GLA MaxEnt mode only)
 - [x] Output probability history (HistoryOfOutputProbabilities.txt — Batch MaxEnt)
 - [x] History of weights (HistoryOfWeights.txt — Batch MaxEnt, per-iteration weight log)
+- [ ] GLA Stochastic OT: full history now logs per-constraint adjustment amounts and resulting values (not just final values)
+- [ ] GLA Stochastic OT: ranking value adjustment refactored — a priori ranking enforcement (`AdjustAPrioriRankings_Up/Down`) removed from within the per-constraint loop; verify Rust implementation matches new behavior
+- [ ] GLA Stochastic OT: `RankingValueChange` accumulator removed — adjustments now applied inline to `mRankingValue` directly
+
+- [ ] NHG: suppress infinite-loop MsgBox for 100 consecutive ties (VB6 now silently handles this; verify Rust behavior matches)
+- [ ] NHG: fix zero-prediction warning text — "at least one candidate with positive frequency was assigned" (was missing the word "frequency")
 
 ## Factorial Typology
 

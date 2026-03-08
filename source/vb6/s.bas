@@ -75,15 +75,20 @@ End Sub
 Public Function IsAnInteger(MyString As String) As Boolean
     Dim Buffer As String, i As Long
     Let Buffer = Trim(MyString)
-    For i = 1 To Len(Buffer)
-        Select Case Mid(Buffer, i, 1)
-            Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
-                'do nothing
-            Case Else
-                Let IsAnInteger = False
-                Exit Function
-        End Select
-    Next i
+    'Sometimes people use negative vioilations.
+        If Left(Buffer, 1) = "-" Then
+            Let Buffer = Mid(Buffer, 2)
+        End If
+    'All the rest should be digits.
+        For i = 1 To Len(Buffer)
+            Select Case Mid(Buffer, i, 1)
+                Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+                    'do nothing
+                Case Else
+                    Let IsAnInteger = False
+                    Exit Function
+            End Select
+        Next i
     Let IsAnInteger = True
     
 End Function
