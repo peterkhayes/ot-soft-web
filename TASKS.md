@@ -177,7 +177,7 @@ Issues identified during comparison review by the original author (BPH), March 2
 
 ### 2. Factorial Typology
 
-- [ ] Fix "Nothing is implicated" to exclude never-derivable candidates (VB6 omits candidates that never win from this list, since their non-implication is trivial; web version lists them)
+- [x] "Nothing is implicated" discrepancy — investigated: VB6 *includes* never-derivable candidates in the non-implicators list; web correctly *excludes* them. Our behavior is more logical (non-derivable candidates are trivially non-implicating). No change needed.
 
 ### 3. MaxEnt
 

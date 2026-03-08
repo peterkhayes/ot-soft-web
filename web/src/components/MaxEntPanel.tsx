@@ -44,6 +44,7 @@ interface MaxEntParams {
   sigmaSquared: number
   generateHistory: boolean
   generateOutputProbHistory: boolean
+  sortByWeight: boolean
 }
 const MAXENT_DEFAULTS: MaxEntParams = {
   iterations: 5,
@@ -53,6 +54,7 @@ const MAXENT_DEFAULTS: MaxEntParams = {
   sigmaSquared: 1,
   generateHistory: false,
   generateOutputProbHistory: false,
+  sortByWeight: true,
 }
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
@@ -65,6 +67,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
     sigmaSquared,
     generateHistory,
     generateOutputProbHistory,
+    sortByWeight,
   } = params
   const [result, setResult] = useState<MaxEntState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -86,11 +89,13 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         const constraintCount = tableau.constraint_count()
         const formCount = tableau.form_count()
 
-        // Build weights array sorted by weight descending
         const weights = Array.from({ length: constraintCount }, (_, i) => {
           const c = tableau.get_constraint(i)!
           return { abbrev: c.abbrev, fullName: c.full_name, weight: r.get_weight(i), index: i }
-        }).sort((a, b) => b.weight - a.weight)
+        })
+        if (sortByWeight) {
+          weights.sort((a, b) => b.weight - a.weight)
+        }
 
         // Build forms with candidates
         const forms = Array.from({ length: formCount }, (_, formIdx) => {
@@ -249,6 +254,14 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
 
       <div className="nhg-options">
         <div className="nhg-options-label">Output options</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={sortByWeight}
+            onChange={(e) => setParams({ sortByWeight: e.target.checked })}
+          />
+          Sort constraints by weight
+        </label>
         <label className="nhg-checkbox">
           <input
             type="checkbox"

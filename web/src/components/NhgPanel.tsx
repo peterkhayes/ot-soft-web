@@ -18,7 +18,8 @@ interface NhgResultState {
   weights: { fullName: string; abbrev: string; weight: number }[]
   forms: {
     input: string
-    candidates: { form: string; obsPct: number; genPct: number }[]
+    totalFreq: number
+    candidates: { form: string; frequency: number; obsPct: number; genPct: number }[]
   }[]
   logLikelihood: number
   history?: string
@@ -149,12 +150,13 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             const cand = form.get_candidate(candIdx)!
             return {
               form: cand.form,
+              frequency: cand.frequency,
               obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
               genPct: r.get_test_prob(formIdx, candIdx) * 100,
             }
           })
 
-          return { input: form.input, candidates }
+          return { input: form.input, totalFreq, candidates }
         })
 
         setResult({
@@ -541,11 +543,14 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             <h3 className="results-subheader">Matchup to Input Frequencies</h3>
             {successResult.forms.map((form, fi) => (
               <div className="maxent-form" key={fi}>
-                <div className="form-label">/{form.input}/</div>
+                <div className="form-label">
+                  /{form.input}/ <span className="form-freq">({form.totalFreq} cases)</span>
+                </div>
                 <table className="predictions-table">
                   <thead>
                     <tr>
                       <th></th>
+                      <th className="pct-col">Count</th>
                       <th className="pct-col">Obs%</th>
                       <th className="pct-col">Gen%</th>
                     </tr>
@@ -557,6 +562,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
                           {cand.obsPct > 0 && <span className="winner-marker">▶</span>}
                           {cand.form}
                         </td>
+                        <td className="pct-col">{cand.frequency}</td>
                         <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
                         <td className="pct-col">{cand.genPct.toFixed(1)}%</td>
                       </tr>

@@ -1234,6 +1234,12 @@ button:disabled {
     margin-bottom: var(--space-sm);
 }
 
+.form-freq {
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--slate);
+}
+
 .stratum {
     margin-bottom: var(--space-lg);
     padding: var(--space-md);
