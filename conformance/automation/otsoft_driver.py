@@ -33,7 +33,7 @@ def _dismiss_msgboxes(app) -> list[str]:
     """
     Find and dismiss any visible MsgBox dialogs belonging to the app.
 
-    Returns a list of dismissed window titles.
+    Returns a list of dismissed message strings (title + body text).
     """
     dismissed = []
     try:
@@ -43,9 +43,17 @@ def _dismiss_msgboxes(app) -> list[str]:
                     continue
                 ok_btn = win.child_window(title="OK", class_name="Button")
                 if ok_btn.exists(timeout=0):
-                    text = win.window_text()
-                    logger.info("Dismissing MsgBox: %s", text)
-                    dismissed.append(text)
+                    title = win.window_text()
+                    # Collect body text from child Static controls
+                    body_parts = [
+                        t.strip()
+                        for t in win.texts()
+                        if t.strip() and t.strip() != title and t.strip() != "OK"
+                    ]
+                    body = " ".join(body_parts) if body_parts else "(no body text)"
+                    message = f"{title}: {body}"
+                    logger.warning("MsgBox dismissed — %s", message)
+                    dismissed.append(message)
                     ok_btn.click()
                     time.sleep(0.3)
             except Exception:

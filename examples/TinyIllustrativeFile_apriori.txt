@@ -1,5 +1,5 @@
-	*NoOns	*Coda	Max	Dep
-*NoOns			1
+	*No Onset	*Coda	Max(t)	Dep(?)
+*No Onset			1
 *Coda
-Max
-Dep
+Max(t)
+Dep(?)
