@@ -16,11 +16,21 @@ However, maintain **visual** fidelity only loosely. Keep the available options, 
 
 All data and computational logic should live in the Rust codebase. The Web codebase should only include presentational logic.
 
-## Workflow Commands
-
-- `/port-feature` ports a VB6 feature to the modern stack.
-- `/conformance` manages conformance tests against VB6 golden files.
-
 ## Commands
 
-Always use `make` targets rather than invoking `cargo`, `npm`, or other tools directly. See the Makefile for available targets (`make test`, `make lint`, `make build`, `make check`, `make serve`, etc.).
+Always use `make` targets rather than invoking `cargo`, `npm`, or other tools directly.
+
+| Command | Purpose |
+|---------|---------|
+| `make build` | Compile Rust to WASM |
+| `make test` | Run Rust tests |
+| `make lint` | Clippy lint (warnings = errors) |
+| `make check` | Rust type-check only |
+| `make web-test` | Run web tests (Vitest + Playwright) |
+| `make web-check` | TypeScript type-check |
+| `make web-lint` | ESLint the web frontend |
+| `make web-fmt` | Format web code (Prettier) |
+| `make precommit` | All checks (lint, test, build, web) |
+| `make serve` | Start Vite dev server |
+| `make dev` | Build WASM + start dev server |
+| `make conformance-test` | Run conformance tests vs VB6 golden files |

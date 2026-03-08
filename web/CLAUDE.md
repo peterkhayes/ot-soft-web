@@ -85,4 +85,4 @@ Every new algorithm panel must have a corresponding `web/tests/flows/<name>.test
 
 ### Updating snapshots
 
-After an intentional formatter change, run `vitest --update-snapshots` (or `npm test -- --update-snapshots`) to regenerate inline snapshots.
+After an intentional formatter change, run `make web-test-update` to regenerate inline snapshots.
