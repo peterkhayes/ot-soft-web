@@ -1,7 +1,7 @@
 //! Conformance tests: compare Rust output against VB6 OTSoft golden files.
 //!
 //! Golden files are collected by running VB6 OTSoft on Windows — see
-//! `conformance/CHECKLIST.md` for instructions.
+//! `conformance/CLAUDE.md` for instructions.
 //!
 //! Tests skip gracefully when golden files are missing, so `cargo test` always
 //! passes even before any golden files have been collected.
