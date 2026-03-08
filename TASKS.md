@@ -161,6 +161,40 @@ This is a multi-part fix:
 
 ---
 
+## Author Review Feedback
+
+Issues identified during comparison review by the original author (BPH), March 2026. Reference files in `~/Downloads/ComparisonsForPeter/`.
+
+### General UX
+
+- [ ] Add "Done" indicator when an algorithm finishes (VB6 puts "Done" on the run button)
+- [ ] Progress reporting for long-running jobs (requires WASM progress callbacks)
+
+### 1. RCD
+
+- [ ] Add sorted/unsorted tableaux toggle (VB6 has a menu item for sorted display; web always shows unsorted)
+- [ ] Excel file parsing (`.xlsx`) — already tracked above in Input Parsing
+
+### 2. Factorial Typology
+
+- [ ] Fix "Nothing is implicated" to exclude never-derivable candidates (VB6 omits candidates that never win from this list, since their non-implication is trivial; web version lists them)
+
+### 3. MaxEnt
+
+- [ ] Make constraint sorting by weight optional (currently always sorted descending in `MaxEntPanel.tsx`; add a toggle, default on)
+- [ ] Investigate control parameter differences vs VB6 (author notes they "seem very different")
+
+### 4. Noisy Harmonic Grammar
+
+- [ ] Show actual counts of input and output cases alongside percentages (VB6 reports raw counts; web shows only percentages)
+
+### 5. Stochastic OT
+
+- [ ] Investigate output display differences vs VB6 (author notes "distinct, subset output display")
+- [x] Results quality — author confirms web version produces better results than VB6 (suspected VB6 bug)
+
+---
+
 ## Suggested Next Tasks
 
 Roughly ordered by value and dependency:
@@ -169,6 +203,8 @@ Roughly ordered by value and dependency:
 
 2. **Collect VB6 golden files** — Run VB6 OTSoft on Windows following `conformance/CHECKLIST.md` to populate the missing golden files. Most conformance test cases currently skip.
 
-3. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
+3. **Author review feedback** — Address items in the Author Review Feedback section above.
 
-4. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
+4. **Praat export** — Generate `.OTGrammar` and `.PairDistribution` files for use in Praat.
+
+5. **Excel file parsing** — Support `.xlsx` input files in addition to tab-delimited `.txt`.
