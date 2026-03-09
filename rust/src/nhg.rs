@@ -233,6 +233,8 @@ pub struct NhgResult {
     weights: Vec<f64>,
     /// Predicted probabilities from testing: test_probs[form_idx][cand_idx]
     test_probs: Vec<Vec<f64>>,
+    /// Raw win counts from testing: test_counts[form_idx][cand_idx]
+    test_counts: Vec<Vec<usize>>,
     /// Log likelihood of training data under the tested grammar
     log_likelihood: f64,
     /// Pre-formatted schedule description for output
@@ -254,6 +256,14 @@ pub struct NhgResult {
 impl NhgResult {
     pub fn get_weight(&self, constraint_index: usize) -> f64 {
         self.weights.get(constraint_index).copied().unwrap_or(0.0)
+    }
+
+    pub fn get_test_count(&self, form_index: usize, cand_index: usize) -> usize {
+        self.test_counts
+            .get(form_index)
+            .and_then(|f| f.get(cand_index))
+            .copied()
+            .unwrap_or(0)
     }
 
     pub fn get_test_prob(&self, form_index: usize, cand_index: usize) -> f64 {
@@ -689,6 +699,7 @@ impl Tableau {
         NhgResult {
             weights,
             test_probs,
+            test_counts: counts,
             log_likelihood,
             schedule_description: schedule.format_description(),
             test_trials,

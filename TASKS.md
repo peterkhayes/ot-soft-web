@@ -25,7 +25,7 @@
 - [ ] Progress reporting for long-running jobs (requires WASM progress callbacks)
 - [x] Add sorted/unsorted tableaux toggle (VB6 has this; web always shows unsorted)
 - [ ] Make MaxEnt constraint sorting by weight optional (add toggle, default on)
-- [ ] NHG: show actual counts alongside percentages
+- [x] NHG: show actual counts alongside percentages
 - [ ] Add "Diagnostics if ranking fails" option
 - [ ] Add HTML output options for shading customization
 

@@ -19,7 +19,7 @@ interface NhgResultState {
   forms: {
     input: string
     totalFreq: number
-    candidates: { form: string; frequency: number; obsPct: number; genPct: number }[]
+    candidates: { form: string; frequency: number; obsPct: number; genCount: number; genPct: number }[]
   }[]
   logLikelihood: number
   zeroPredictionWarning: boolean
@@ -153,6 +153,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
               form: cand.form,
               frequency: cand.frequency,
               obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
+              genCount: r.get_test_count(formIdx, candIdx),
               genPct: r.get_test_prob(formIdx, candIdx) * 100,
             }
           })
@@ -560,6 +561,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
                       <th></th>
                       <th className="pct-col">Count</th>
                       <th className="pct-col">Obs%</th>
+                      <th className="pct-col">Gen</th>
                       <th className="pct-col">Gen%</th>
                     </tr>
                   </thead>
@@ -572,6 +574,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
                         </td>
                         <td className="pct-col">{cand.frequency}</td>
                         <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
+                        <td className="pct-col">{cand.genCount}</td>
                         <td className="pct-col">{cand.genPct.toFixed(1)}%</td>
                       </tr>
                     ))}
