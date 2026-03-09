@@ -43,19 +43,6 @@ d. Run `make web-lint`, `make web-check`, and `make web-test` to confirm the web
 
 ---
 
-## Step 5 — Update documentation
+## Step 5 — Validate, document, and finish
 
-Update all relevant docs:
-
-- Mark completed items in `TASKS.md` and add any newly discovered tasks.
-- Update any `CLAUDE.md` files whose descriptions have become inaccurate (e.g. new modules, changed file structure, new patterns).
-
----
-
-## Step 6 — Finish
-
-After every completed task, always do all of these steps in order:
-
-1. `make precommit` — run all checks (Rust lint + tests + build, web lint + format check + type-check + tests)
-2. `git commit` — write a descriptive message
-3. `git push` — push to remote
+Follow Steps 3–5 of `/do-task` (validate, update documentation, finish).
