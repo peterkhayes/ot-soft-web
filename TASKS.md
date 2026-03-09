@@ -23,7 +23,7 @@
 
 - [ ] Add "Done" indicator when an algorithm finishes
 - [ ] Progress reporting for long-running jobs (requires WASM progress callbacks)
-- [ ] Add sorted/unsorted tableaux toggle (VB6 has this; web always shows unsorted)
+- [x] Add sorted/unsorted tableaux toggle (VB6 has this; web always shows unsorted)
 - [ ] Make MaxEnt constraint sorting by weight optional (add toggle, default on)
 - [ ] NHG: show actual counts alongside percentages
 - [ ] Add "Diagnostics if ranking fails" option

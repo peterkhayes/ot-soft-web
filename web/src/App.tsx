@@ -1,9 +1,9 @@
 import '../style.css'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { Tableau } from '../pkg/ot_soft.js'
-import { AxisMode } from '../pkg/ot_soft.js'
+import { AxisMode, format_sorted_input_file, parse_tableau } from '../pkg/ot_soft.js'
 import FactorialTypologyPanel from './components/FactorialTypologyPanel.tsx'
 import type { Framework } from './components/FrameworkPanel.tsx'
 import FrameworkPanel from './components/FrameworkPanel.tsx'
@@ -122,6 +122,32 @@ function App() {
     } catch {}
     setAxisModeRaw(mode)
   }
+
+  const [sortByHarmony, setSortByHarmonyRaw] = useState(() => {
+    try {
+      const stored = localStorage.getItem('otsoft:params:sort-by-harmony')
+      if (stored !== null) return stored === 'true'
+    } catch {}
+    return true // VB6 default: checked
+  })
+  function setSortByHarmony(v: boolean) {
+    try {
+      localStorage.setItem('otsoft:params:sort-by-harmony', String(v))
+    } catch {}
+    setSortByHarmonyRaw(v)
+  }
+
+  // Compute sorted tableau when sort-by-harmony is enabled.
+  // Uses RCD to determine constraint ranking order, matching VB6 default behavior.
+  const sortedTableau = useMemo(() => {
+    if (!sortByHarmony || !currentTableauText) return null
+    try {
+      const sortedText = format_sorted_input_file(currentTableauText, '', 'rcd')
+      return parse_tableau(sortedText)
+    } catch {
+      return null
+    }
+  }, [sortByHarmony, currentTableauText])
 
   // loadCountRef is used as a React key on algorithm panels to force a full remount
   // (resetting their internal state) whenever a new tableau is loaded.
@@ -249,12 +275,24 @@ function App() {
                       ))}
                     </div>
                   )}
+                  {!parseError && (
+                    <div className="axis-mode-selector">
+                      <label className="axis-mode-option">
+                        <input
+                          type="checkbox"
+                          checked={sortByHarmony}
+                          onChange={(e) => setSortByHarmony(e.target.checked)}
+                        />
+                        Sort candidates by harmony
+                      </label>
+                    </div>
+                  )}
                   {parseError ? (
                     <div className="tableau-container">
                       {'Error parsing tableau:\n\n' + parseError}
                     </div>
                   ) : (
-                    <TableauPanel tableau={currentTableau!} axisMode={axisMode} />
+                    <TableauPanel tableau={sortedTableau ?? currentTableau!} axisMode={axisMode} />
                   )}
                 </section>
               </ExpandableSection>
