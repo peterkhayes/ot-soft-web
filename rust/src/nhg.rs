@@ -246,6 +246,8 @@ pub struct NhgResult {
     full_history: Option<String>,
     /// True if any candidate with positive frequency was assigned zero probability during testing.
     zero_prediction_warning: bool,
+    /// True if during training, tie-skipping hit 100 consecutive ties and force-exited the loop.
+    infinity_warning: bool,
 }
 
 #[wasm_bindgen]
@@ -276,6 +278,10 @@ impl NhgResult {
 
     pub fn zero_prediction_warning(&self) -> bool {
         self.zero_prediction_warning
+    }
+
+    pub fn infinity_warning(&self) -> bool {
+        self.infinity_warning
     }
 
     /// Format results as text output for download.
@@ -333,6 +339,10 @@ impl NhgResult {
         ));
         if self.zero_prediction_warning {
             out.push_str("   Caution:  at least one candidate with positive frequency was assigned zero probability; since zero has no log this was approximated as .001.\n");
+        }
+        if self.infinity_warning {
+            out.push_str("\n   Caution: at some point in setting the weights, the program went into an endless loop of harmony ties and force-exited this loop.\n");
+            out.push_str("   The results of this event on learning are unpredictable.\n");
         }
         out.push_str("\n\n");
 
@@ -464,6 +474,8 @@ impl Tableau {
         let mut rng = Rng::new(gaussian_mode);
         let total_cycles = schedule.total_cycles();
 
+        let mut infinity_warning = false;
+
         crate::ot_log!("Starting NHG with {} constraints, {} training exemplars, {} cycles",
             nc, pool_size, total_cycles);
 
@@ -539,6 +551,10 @@ impl Tableau {
                         opts,
                         &mut rng,
                     );
+
+                    if generated == NO_WINNER {
+                        infinity_warning = true;
+                    }
 
                     // Update weights if generated form differs from observed
                     if generated != NO_WINNER && generated != selected_cand {
@@ -680,6 +696,7 @@ impl Tableau {
             history: history_buf,
             full_history: full_history_buf,
             zero_prediction_warning,
+            infinity_warning,
         }
     }
 }

@@ -11,7 +11,7 @@
 ### Other bugs
 
 - [x] NHG: fix zero-prediction warning text (missing the word "frequency")
-- [ ] NHG: suppress infinite-loop MsgBox for 100 consecutive ties (VB6 now silently handles this)
+- [x] NHG: suppress infinite-loop MsgBox for 100 consecutive ties (VB6 now silently handles this)
 
 ### VB6 v2.7 behavior changes
 
