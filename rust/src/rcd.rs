@@ -65,19 +65,21 @@ fn html_cell_class(is_shaded: bool, is_last_col: bool, has_right_border: bool) -
 /// - 1–9 violations → repeated asterisks (e.g., `**` for 2)
 /// - ≥10 violations → the number
 /// - Fatal violations → asterisks up to `winner_viols + 1`, then `!`, then remaining
-fn format_html_viol(viols: usize, winner_viols: usize, is_fatal: bool) -> String {
+fn format_html_viol(viols: i32, winner_viols: i32, is_fatal: bool) -> String {
     if viols == 0 {
         return "&nbsp;".to_string();
     }
-    if viols >= 10 {
+    if !(0..10).contains(&viols) {
         return if is_fatal { format!("{}!", viols) } else { viols.to_string() };
     }
+    // Safe: we already returned for viols < 0 above
+    let v = viols as usize;
     if is_fatal {
-        let before = winner_viols + 1;
-        let after = viols.saturating_sub(before);
+        let before = (winner_viols + 1).max(0) as usize;
+        let after = v.saturating_sub(before);
         format!("{}!{}", "*".repeat(before), "*".repeat(after))
     } else {
-        "*".repeat(viols)
+        "*".repeat(v)
     }
 }
 
@@ -88,7 +90,7 @@ fn format_html_viol(viols: usize, winner_viols: usize, is_fatal: bool) -> String
 /// VB6 centering: `leading = floor(col_width/2) - digit_count`, value, then
 /// `trailing = col_width - floor(col_width/2)` for non-fatal, or `-1` for fatal (to
 /// accommodate the `!`).
-fn format_violation(col_width: usize, viols: usize, is_fatal: bool) -> String {
+fn format_violation(col_width: usize, viols: i32, is_fatal: bool) -> String {
     if viols == 0 {
         return " ".repeat(col_width);
     }

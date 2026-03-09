@@ -102,8 +102,8 @@ impl FactorialTypologyResult {
 /// rival_viols[form_idx][rival_idx][constraint_idx]
 /// apriori[i][j] = true means constraint i must outrank constraint j
 fn fast_rcd(
-    winner_viols: &[&[usize]],
-    rival_viols: &[Vec<Vec<usize>>],
+    winner_viols: &[&[i32]],
+    rival_viols: &[Vec<Vec<i32>>],
     nc: usize,
     apriori: &[Vec<bool>],
 ) -> bool {
@@ -298,8 +298,8 @@ impl Tableau {
 
             for cand_idx in 0..ncands {
                 // Build winner/rival views for this single-form test
-                let winner_v: &[usize] = &form.candidates[cand_idx].violations;
-                let rivals: Vec<Vec<usize>> = form
+                let winner_v: &[i32] = &form.candidates[cand_idx].violations;
+                let rivals: Vec<Vec<i32>> = form
                     .candidates
                     .iter()
                     .enumerate()
@@ -307,8 +307,8 @@ impl Tableau {
                     .map(|(_, c)| c.violations.clone())
                     .collect();
 
-                let winner_slice: &[&[usize]] = &[winner_v];
-                let rival_slice: &[Vec<Vec<usize>>] = &[rivals];
+                let winner_slice: &[&[i32]] = &[winner_v];
+                let rival_slice: &[Vec<Vec<i32>>] = &[rivals];
 
                 if fast_rcd(winner_slice, rival_slice, nc, apriori) {
                     form_possible.push(cand_idx);
@@ -334,14 +334,14 @@ impl Tableau {
                     // the selected candidate is the winner and all others are rivals.
 
                     let test_n = form_idx + 1;
-                    let mut winner_vecs: Vec<Vec<usize>> = Vec::with_capacity(test_n);
-                    let mut rival_vecs: Vec<Vec<Vec<usize>>> = Vec::with_capacity(test_n);
+                    let mut winner_vecs: Vec<Vec<i32>> = Vec::with_capacity(test_n);
+                    let mut rival_vecs: Vec<Vec<Vec<i32>>> = Vec::with_capacity(test_n);
 
                     // Forms already in pattern
                     for (fi, &selected) in old_pattern.iter().enumerate() {
                         let form = &self.forms[fi];
                         winner_vecs.push(form.candidates[selected].violations.clone());
-                        let rivals: Vec<Vec<usize>> = form
+                        let rivals: Vec<Vec<i32>> = form
                             .candidates
                             .iter()
                             .enumerate()
@@ -354,7 +354,7 @@ impl Tableau {
                     // New form
                     let new_form = &self.forms[form_idx];
                     winner_vecs.push(new_form.candidates[new_cand].violations.clone());
-                    let rivals: Vec<Vec<usize>> = new_form
+                    let rivals: Vec<Vec<i32>> = new_form
                         .candidates
                         .iter()
                         .enumerate()
@@ -364,7 +364,7 @@ impl Tableau {
                     rival_vecs.push(rivals);
 
                     // Build slices for fast_rcd
-                    let winner_slices: Vec<&[usize]> =
+                    let winner_slices: Vec<&[i32]> =
                         winner_vecs.iter().map(|v| v.as_slice()).collect();
 
                     if fast_rcd(&winner_slices, &rival_vecs, nc, apriori) {
@@ -840,8 +840,8 @@ mod tests {
     #[test]
     fn test_fast_rcd_basic() {
         // Single form: winner=[0,1], rivals=[[1,0]] → C2>>C1 → success
-        let winner = vec![0usize, 1usize];
-        let rivals = vec![vec![1usize, 0usize]];
+        let winner = vec![0i32, 1];
+        let rivals = vec![vec![1i32, 0]];
         assert!(fast_rcd(&[&winner], &[rivals], 2, &[]));
     }
 
@@ -850,9 +850,9 @@ mod tests {
         // Single form: winner=[1,0,0], rivals=[[0,1,0],[0,0,1]]
         // winner violates C1 more than rival1 AND C2 more than rival2
         // This creates a cycle → failure
-        let _winner = vec![1usize, 1usize, 0usize];
-        let _rival1 = vec![0usize, 0usize, 1usize];
-        let _rival2 = vec![0usize, 2usize, 0usize];
+        let _winner = vec![1i32, 1, 0];
+        let _rival1 = vec![0i32, 0, 1];
+        let _rival2 = vec![0i32, 2, 0];
         // C1 demotes because winner violates C1 more than rival1
         // C2 demotes because winner violates C2 more than rival2 (1 > 0... wait, winner C2=1, rival2 C2=2)
         // Let me think: winner=[1,1,0], rival1=[0,0,1], rival2=[0,2,0]
@@ -864,9 +864,9 @@ mod tests {
         // vs rival1: C1 winner(1) > rival1(0) → C1 demotable
         // vs rival2: C2 winner(1) > rival2(0) → C2 demotable
         // All demotable → failure
-        let winner2 = vec![1usize, 1usize];
-        let rival1_2 = vec![0usize, 2usize];
-        let rival2_2 = vec![2usize, 0usize];
+        let winner2 = vec![1i32, 1];
+        let rival1_2 = vec![0i32, 2];
+        let rival2_2 = vec![2i32, 0];
         assert!(!fast_rcd(
             &[&winner2],
             &[vec![rival1_2, rival2_2]],

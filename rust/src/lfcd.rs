@@ -25,7 +25,7 @@ use crate::tableau::Tableau;
 /// useful ranking information.
 ///
 /// Reproduces VB6 LFCD.bas:Superset
-fn is_superset_rival(winner_viols: &[usize], rival_viols: &[usize]) -> bool {
+fn is_superset_rival(winner_viols: &[i32], rival_viols: &[i32]) -> bool {
     winner_viols.iter()
         .zip(rival_viols.iter())
         .all(|(&w, &r)| w <= r)

@@ -53,7 +53,7 @@ impl Constraint {
 pub struct Candidate {
     pub(crate) form: String,
     pub(crate) frequency: usize,
-    pub(crate) violations: Vec<usize>,
+    pub(crate) violations: Vec<i32>,
 }
 
 #[wasm_bindgen]
@@ -68,7 +68,7 @@ impl Candidate {
         self.frequency
     }
 
-    pub fn get_violation(&self, constraint_index: usize) -> Option<usize> {
+    pub fn get_violation(&self, constraint_index: usize) -> Option<i32> {
         self.violations.get(constraint_index).copied()
     }
 }
@@ -206,12 +206,12 @@ impl Tableau {
             }
 
             // Parse violations (columns 4 onwards)
-            let mut violations: Vec<usize> = Vec::new();
+            let mut violations: Vec<i32> = Vec::new();
             for i in 0..constraints.len() {
                 let col_index = 3 + i;
                 if col_index < parts.len() {
                     let viol_str = parts[col_index].trim();
-                    violations.push(viol_str.parse::<usize>().unwrap_or(0));
+                    violations.push(viol_str.parse::<i32>().unwrap_or(0));
                 } else {
                     violations.push(0);
                 }
@@ -426,5 +426,18 @@ mod tests {
         let result = Tableau::parse(input);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("without an input"));
+    }
+
+    #[test]
+    fn test_parse_negative_violations() {
+        let input = "\t\t\tCon1\tCon2\n\t\t\tC1\tC2\ninp\tout1\t1\t-2\t3\n\tout2\t0\t1\t-1";
+        let tableau = Tableau::parse(input).expect("Should parse negative violations");
+        let form = tableau.get_form(0).unwrap();
+        let cand0 = form.get_candidate(0).unwrap();
+        assert_eq!(cand0.get_violation(0), Some(-2));
+        assert_eq!(cand0.get_violation(1), Some(3));
+        let cand1 = form.get_candidate(1).unwrap();
+        assert_eq!(cand1.get_violation(0), Some(1));
+        assert_eq!(cand1.get_violation(1), Some(-1));
     }
 }
