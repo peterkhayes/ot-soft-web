@@ -97,6 +97,37 @@ impl InputForm {
     }
 }
 
+/// Check if a string is a valid integer (possibly negative), matching VB6's `IsAnInteger`.
+fn is_an_integer(s: &str) -> bool {
+    let s = s.trim();
+    if s.is_empty() {
+        return false;
+    }
+    let digits = s.strip_prefix('-').unwrap_or(s);
+    !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Detect whether the second row of a tableau is data (violations) rather than abbreviations.
+///
+/// Reproduces VB6's `SecondRowIsViolations`: returns true if the first two cells are non-empty
+/// and cells 4+ (constraint columns) are all integers or empty.
+fn second_row_is_violations(cells: &[&str], num_constraints: usize) -> bool {
+    // VB6 checks: cell 1 (input) and cell 2 (candidate) must be non-empty
+    if cells.len() < 2 || cells[0].trim().is_empty() || cells[1].trim().is_empty() {
+        return false;
+    }
+    // Cells 4+ (0-indexed: 3+) must all be integers or empty
+    for i in 3..3 + num_constraints {
+        if i < cells.len() {
+            let val = cells[i].trim();
+            if !val.is_empty() && !is_an_integer(val) {
+                return false;
+            }
+        }
+    }
+    true
+}
+
 /// Represents an OT tableau
 #[wasm_bindgen]
 #[derive(Debug)]
@@ -107,16 +138,16 @@ pub struct Tableau {
 
 #[wasm_bindgen]
 impl Tableau {
-    /// Parse a tableau from tab-delimited text
-    /// Expected format:
-    /// - Row 1: Constraint full names (first 3 columns blank)
-    /// - Row 2: Constraint abbreviations (first 3 columns blank)
-    /// - Row 3+: Input, Output, Frequency, Violations...
+    /// Parse a tableau from tab-delimited text.
+    ///
+    /// Row 1 is always constraint full names. Row 2 is auto-detected: if it looks
+    /// like data (non-empty input/candidate cells, integer violation columns), it is
+    /// treated as the first data row; otherwise it is treated as constraint abbreviations.
     pub fn parse(text: &str) -> Result<Tableau, String> {
         let lines: Vec<&str> = text.lines().collect();
 
-        if lines.len() < 3 {
-            return Err("Tableau must have at least 3 lines (full names, abbrevs, and one data row)".to_string());
+        if lines.len() < 2 {
+            return Err("Tableau must have at least 2 lines (constraint names and one data row)".to_string());
         }
 
         // Parse constraint names (line 1)
@@ -127,40 +158,59 @@ impl Tableau {
             .filter(|s| !s.trim().is_empty())
             .collect();
 
-        // Parse constraint abbreviations (line 2)
-        let abbrevs: Vec<&str> = lines[1]
-            .split('\t')
-            .skip(3)
-            .filter(|s| !s.trim().is_empty())
-            .collect();
-
-        if full_names.len() != abbrevs.len() {
-            return Err(format!(
-                "Mismatch between full names ({}) and abbreviations ({})",
-                full_names.len(),
-                abbrevs.len()
-            ));
-        }
-
         if full_names.is_empty() {
             return Err("No constraints found in tableau".to_string());
         }
 
-        let constraints: Vec<Constraint> = full_names
-            .iter()
-            .zip(abbrevs.iter())
-            .map(|(full, abbr)| Constraint {
-                full_name: full.trim().to_string(),
-                abbrev: abbr.trim().to_string(),
-            })
-            .collect();
+        // Auto-detect whether row 2 is abbreviations or data.
+        // VB6 logic (SecondRowIsViolations): if the first two cells are non-empty
+        // and cells 4+ are all integers or empty, then row 2 is data, not abbreviations.
+        let second_row_cells: Vec<&str> = lines[1].split('\t').collect();
+        let second_row_is_data = second_row_is_violations(&second_row_cells, full_names.len());
 
-        // Parse data rows (lines 3+)
+        let (constraints, data_start) = if second_row_is_data {
+            // No abbreviation row — use full names as abbreviations
+            let constraints: Vec<Constraint> = full_names
+                .iter()
+                .map(|full| Constraint {
+                    full_name: full.trim().to_string(),
+                    abbrev: full.trim().to_string(),
+                })
+                .collect();
+            (constraints, 1) // Data starts at line 2 (index 1)
+        } else {
+            // Row 2 is abbreviations
+            let abbrevs: Vec<&str> = lines[1]
+                .split('\t')
+                .skip(3)
+                .filter(|s| !s.trim().is_empty())
+                .collect();
+
+            if full_names.len() != abbrevs.len() {
+                return Err(format!(
+                    "Mismatch between full names ({}) and abbreviations ({})",
+                    full_names.len(),
+                    abbrevs.len()
+                ));
+            }
+
+            let constraints: Vec<Constraint> = full_names
+                .iter()
+                .zip(abbrevs.iter())
+                .map(|(full, abbr)| Constraint {
+                    full_name: full.trim().to_string(),
+                    abbrev: abbr.trim().to_string(),
+                })
+                .collect();
+            (constraints, 2) // Data starts at line 3 (index 2)
+        };
+
+        // Parse data rows
         let mut forms: Vec<InputForm> = Vec::new();
         let mut current_input: Option<String> = None;
         let mut current_candidates: Vec<Candidate> = Vec::new();
 
-        for line in lines.iter().skip(2) {
+        for line in lines.iter().skip(data_start) {
             // Skip completely empty lines
             if line.trim().is_empty() {
                 continue;
@@ -401,7 +451,7 @@ mod tests {
     fn test_parse_empty_input() {
         let result = Tableau::parse("");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("at least 3 lines"));
+        assert!(result.unwrap_err().contains("at least 2 lines"));
     }
 
     #[test]
@@ -439,5 +489,34 @@ mod tests {
         let cand1 = form.get_candidate(1).unwrap();
         assert_eq!(cand1.get_violation(0), Some(1));
         assert_eq!(cand1.get_violation(1), Some(-1));
+    }
+
+    #[test]
+    fn test_parse_no_abbreviation_row() {
+        // No abbreviation row: row 2 has non-empty input/candidate and integer violations
+        let input = "\t\t\tCon1\tCon2\na\tb\t1\t0\t1\n\tc\t0\t1\t0";
+        let tableau = Tableau::parse(input).expect("Should parse without abbreviation row");
+        assert_eq!(tableau.constraint_count(), 2);
+        // Abbreviations should be same as full names
+        assert_eq!(tableau.get_constraint(0).unwrap().abbrev(), "Con1");
+        assert_eq!(tableau.get_constraint(1).unwrap().abbrev(), "Con2");
+        // Should have parsed 1 form with 2 candidates
+        assert_eq!(tableau.form_count(), 1);
+        let form = tableau.get_form(0).unwrap();
+        assert_eq!(form.input(), "a");
+        assert_eq!(form.candidate_count(), 2);
+        assert_eq!(form.get_candidate(0).unwrap().form(), "b");
+        assert_eq!(form.get_candidate(0).unwrap().get_violation(0), Some(0));
+        assert_eq!(form.get_candidate(0).unwrap().get_violation(1), Some(1));
+    }
+
+    #[test]
+    fn test_parse_with_abbreviation_row() {
+        // With abbreviation row: row 2 has empty input cell and non-integer constraint abbrevs
+        let input = "\t\t\tCon1\tCon2\n\t\t\tC1\tC2\na\tb\t1\t0\t1";
+        let tableau = Tableau::parse(input).expect("Should parse with abbreviation row");
+        assert_eq!(tableau.get_constraint(0).unwrap().abbrev(), "C1");
+        assert_eq!(tableau.get_constraint(1).unwrap().abbrev(), "C2");
+        assert_eq!(tableau.form_count(), 1);
     }
 }

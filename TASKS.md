@@ -17,8 +17,8 @@ This file tracks the status of porting features from the VB6 source to Rust/Wasm
 - [x] ~~Legacy Ranker format (`.in`)~~ — removed from VB6 as of March 2026; no longer needs porting
 - [x] ~~Structural descriptions (automatic violation computation)~~ — removed from VB6 as of March 2026; no longer needs porting
 - [x] Negative violation counts — `IsAnInteger` now accepts leading `-`; Rust parser updated to use `i32` for violations
-- [ ] Trim second-row values — VB6 now trims whitespace from second-row cells before abbreviation-row auto-detection
-- [ ] Re-enable `SecondRowIsViolations` integer check — VB6 re-enabled the loop that validates second-row cells are integers (works with new negative integer support)
+- [x] Trim second-row values — VB6 now trims whitespace from second-row cells before abbreviation-row auto-detection
+- [x] Re-enable `SecondRowIsViolations` integer check — abbreviation row auto-detection implemented: if row 2 has non-empty input/candidate and integer violation columns, it's treated as data
 - [x] A priori rankings file parsing
 - [x] ~~Natural class file parsing~~ — related to structural descriptions, removed from VB6
 
