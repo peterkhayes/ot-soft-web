@@ -244,6 +244,8 @@ pub struct NhgResult {
     history: Option<String>,
     /// Optional full (annotated) history: input, generated, heard, then delta+value per constraint.
     full_history: Option<String>,
+    /// True if any candidate with positive frequency was assigned zero probability during testing.
+    zero_prediction_warning: bool,
 }
 
 #[wasm_bindgen]
@@ -270,6 +272,10 @@ impl NhgResult {
 
     pub fn full_history(&self) -> Option<String> {
         self.full_history.clone()
+    }
+
+    pub fn zero_prediction_warning(&self) -> bool {
+        self.zero_prediction_warning
     }
 
     /// Format results as text output for download.
@@ -325,6 +331,9 @@ impl NhgResult {
             "   Log likelihood of data: {:.6}\n",
             self.log_likelihood
         ));
+        if self.zero_prediction_warning {
+            out.push_str("   Caution:  at least one candidate with positive frequency was assigned zero probability; since zero has no log this was approximated as .001.\n");
+        }
         out.push_str("\n\n");
 
         // Section 2: Matchup to Input Frequencies
@@ -636,8 +645,10 @@ impl Tableau {
             .collect();
 
         // ── Log likelihood ───────────────────────────────────────────────────────────────
-        // Matches VB6: Σ frequency * log(predicted_proportion)
+        // Matches VB6 CalculateLogLikelihood: Σ frequency * log(predicted_proportion)
+        // When prediction is zero, VB6 substitutes 0.001 (per Zuraw and Hayes 2017, Lg.)
         let mut log_likelihood = 0.0f64;
+        let mut zero_prediction_warning = false;
         for (fi, form) in self.forms.iter().enumerate() {
             let total_freq: f64 = form.candidates.iter().map(|c| c.frequency as f64).sum();
             if total_freq <= 0.0 {
@@ -648,8 +659,11 @@ impl Tableau {
                     let pred = test_probs[fi][ci];
                     if pred > 0.0 {
                         log_likelihood += cand.frequency as f64 * pred.ln();
+                    } else {
+                        // Zero prediction → log would be -∞; approximate as 0.001 per VB6
+                        log_likelihood += cand.frequency as f64 * 0.001_f64.ln();
+                        zero_prediction_warning = true;
                     }
-                    // Zero prediction → log_likelihood would be -∞; skip per VB6 warning
                 }
             }
         }
@@ -665,6 +679,7 @@ impl Tableau {
             exponential_nhg,
             history: history_buf,
             full_history: full_history_buf,
+            zero_prediction_warning,
         }
     }
 }

@@ -22,6 +22,7 @@ interface NhgResultState {
     candidates: { form: string; frequency: number; obsPct: number; genPct: number }[]
   }[]
   logLikelihood: number
+  zeroPredictionWarning: boolean
   history?: string
   fullHistory?: string
   error?: undefined
@@ -163,6 +164,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
           weights,
           forms,
           logLikelihood: r.log_likelihood(),
+          zeroPredictionWarning: r.zero_prediction_warning(),
           history: r.history() ?? undefined,
           fullHistory: r.full_history() ?? undefined,
         })
@@ -537,6 +539,12 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
             <div className="log-prob">
               Log likelihood of data: {successResult.logLikelihood.toFixed(4)}
             </div>
+            {successResult.zeroPredictionWarning && (
+              <div className="warning">
+                Caution: at least one candidate with positive frequency was assigned zero
+                probability; since zero has no log this was approximated as .001.
+              </div>
+            )}
           </div>
 
           <div className="maxent-tableaux">

@@ -1222,6 +1222,15 @@ button:disabled {
     font-family: var(--font-mono);
 }
 
+.log-prob + .warning {
+    margin-top: var(--space-sm);
+    font-size: 0.85rem;
+    color: #8b6914;
+    background: #fff8dc;
+    border-left: 4px solid #f0c040;
+    padding: 0.4em 0.8em;
+}
+
 .maxent-form {
     margin-bottom: var(--space-lg);
 }
