@@ -4,7 +4,7 @@
 
 ### Conformance test failures
 
-- [ ] [`bcd_specific` — wrong title](tasks/conformance-bcd-specific.md)
+- [x] [`bcd_specific` — wrong title](tasks/conformance-bcd-specific.md)
 - [ ] [`rcd_no_fred` — extra trailing blank line](tasks/conformance-rcd-no-fred.md)
 - [ ] [`rcd_apriori` — missing section, numbering, mass deletion, ordering](tasks/conformance-rcd-apriori.md)
 

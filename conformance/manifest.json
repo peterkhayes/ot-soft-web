@@ -83,7 +83,6 @@
     {
       "id": "TinyIllustrativeFile_bcd_specific",
       "description": "BCD with Favor Specificity heuristic enabled",
-      "skip": "Rust title includes '(Specific)' but VB6 does not",
       "input_file": "examples/TinyIllustrativeFile.txt",
 
       "apriori_file": null,
