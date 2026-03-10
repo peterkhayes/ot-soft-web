@@ -490,7 +490,9 @@ impl RCDResult {
             }
         }
 
-        output
+        // Normalize trailing newlines to match VB6 output (exactly one trailing blank line)
+        let trimmed = output.trim_end_matches('\n');
+        format!("{}\n\n", trimmed)
     }
 
     /// Check if mass deletion of unnecessary constraints still allows RCD to succeed

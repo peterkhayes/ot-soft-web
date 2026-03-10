@@ -20,7 +20,6 @@
     {
       "id": "TinyIllustrativeFile_rcd_no_fred",
       "description": "RCD with FRed disabled (sections 4 and 5 omitted)",
-      "skip": "Rust output has extra trailing blank line; needs investigation",
       "input_file": "examples/TinyIllustrativeFile.txt",
 
       "apriori_file": null,
