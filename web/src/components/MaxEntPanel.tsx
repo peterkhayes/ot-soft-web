@@ -127,6 +127,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       opts.weight_max = weightMax
       opts.use_prior = usePrior
       opts.sigma_squared = sigmaSquared
+      opts.sort_by_weight = sortByWeight
       const formattedOutput = format_maxent_output(
         tableauText,
         inputFilename || 'tableau.txt',

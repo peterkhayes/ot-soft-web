@@ -74,7 +74,7 @@ impl MaxEntResult {
 
     /// Format results as text output for download.
     /// Reproduces the structure of OTSoft's MaxEnt text output.
-    pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
+    pub fn format_output(&self, tableau: &Tableau, filename: &str, sort_by_weight: bool) -> String {
         let nc = tableau.constraints.len();
         let mut out = String::new();
 
@@ -107,10 +107,13 @@ impl MaxEntResult {
         // Section 1: Constraint weights
         out.push_str("1. Constraint Weights\n\n");
 
-        // Sort by weight descending for display
-        let sorted_constraints = crate::tableau::sorted_indices_descending(&self.weights);
+        let constraint_order: Vec<usize> = if sort_by_weight {
+            crate::tableau::sorted_indices_descending(&self.weights)
+        } else {
+            (0..self.weights.len()).collect()
+        };
 
-        for &c_idx in &sorted_constraints {
+        for &c_idx in &constraint_order {
             let constraint = &tableau.constraints[c_idx];
             out.push_str(&format!(
                 "   {:<42}{:.3}\n",

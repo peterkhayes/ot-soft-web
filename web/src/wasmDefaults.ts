@@ -28,7 +28,6 @@ export interface MaxEntDefaults {
   sigmaSquared: number
   generateHistory: boolean
   generateOutputProbHistory: boolean
-  // UI-only (no Rust equivalent)
   sortByWeight: boolean
 }
 
@@ -44,7 +43,7 @@ export function maxentDefaults(): MaxEntDefaults {
       sigmaSquared: d.sigma_squared,
       generateHistory: d.generate_history,
       generateOutputProbHistory: d.generate_output_prob_history,
-      sortByWeight: true,
+      sortByWeight: d.sort_by_weight,
     }
     d.free()
   }

@@ -178,6 +178,8 @@ pub struct MaxEntOptions {
     pub generate_history: bool,
     /// Generate a history of output probabilities at every GIS iteration.
     pub generate_output_prob_history: bool,
+    /// Sort constraints by weight (descending) in output. VB6 default: false.
+    pub sort_by_weight: bool,
 }
 
 impl Default for MaxEntOptions {
@@ -196,6 +198,7 @@ impl MaxEntOptions {
             sigma_squared: 1.0,
             generate_history: false,
             generate_output_prob_history: false,
+            sort_by_weight: false,
         }
     }
 }
@@ -406,7 +409,7 @@ pub fn run_maxent(text: &str, opts: &MaxEntOptions) -> Result<MaxEntResult, Stri
 pub fn format_maxent_output(text: &str, filename: &str, opts: &MaxEntOptions) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let result = tableau.run_maxent(opts);
-    Ok(result.format_output(&tableau, filename))
+    Ok(result.format_output(&tableau, filename, opts.sort_by_weight))
 }
 
 /// Run Noisy Harmonic Grammar on a tableau
