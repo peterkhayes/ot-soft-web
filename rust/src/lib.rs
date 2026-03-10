@@ -189,7 +189,7 @@ impl MaxEntOptions {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            iterations: 100,
+            iterations: 5,  // VB6 default: txtPrecision = "5"
             weight_min: 0.0,
             weight_max: 50.0,
             use_prior: false,

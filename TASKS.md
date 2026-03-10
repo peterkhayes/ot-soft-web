@@ -32,7 +32,7 @@
 ### Investigation needed
 
 - [x] Investigate Stochastic OT output display differences vs VB6
-- [ ] Investigate MaxEnt control parameter differences vs VB6
+- [x] Investigate MaxEnt control parameter differences vs VB6 (fixed iterations default; prior intentionally exposed)
 
 ### GLA output formatting gaps (from Stochastic OT investigation)
 
