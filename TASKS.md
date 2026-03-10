@@ -1,5 +1,7 @@
 # OTSoft: Open Tasks
 
+## Bugs
+
 ## UX
 
 - [Done indicator for algorithm completion](tasks/done-indicator.md)
