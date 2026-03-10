@@ -6,6 +6,7 @@ import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
+import { type NhgDefaults, nhgDefaults } from '../wasmDefaults.ts'
 import TextFileEditor from './TextFileEditor.tsx'
 
 interface NhgPanelProps {
@@ -35,47 +36,10 @@ interface NhgErrorState {
 
 type NhgState = NhgResultState | NhgErrorState
 
-interface NhgParams {
-  cycles: number
-  initialPlasticity: number
-  finalPlasticity: number
-  testTrials: number
-  noiseByCell: boolean
-  postMultNoise: boolean
-  noiseForZeroCells: boolean
-  lateNoise: boolean
-  exponentialNhg: boolean
-  demiGaussians: boolean
-  negativeWeightsOk: boolean
-  resolveTiesBySkipping: boolean
-  exactProportions: boolean
-  generateHistory: boolean
-  generateFullHistory: boolean
-  useCustomSchedule: boolean
-  customSchedule: string
-}
-const NHG_DEFAULTS: NhgParams = {
-  cycles: 5000,
-  initialPlasticity: 2.0,
-  finalPlasticity: 0.002,
-  testTrials: 2000,
-  noiseByCell: false,
-  postMultNoise: false,
-  noiseForZeroCells: false,
-  lateNoise: false,
-  exponentialNhg: false,
-  demiGaussians: false,
-  negativeWeightsOk: false,
-  resolveTiesBySkipping: false,
-  exactProportions: false,
-  generateHistory: false,
-  generateFullHistory: false,
-  useCustomSchedule: false,
-  customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
-}
+type NhgParams = NhgDefaults
 
 function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
-  const [params, setParams] = useLocalStorage<NhgParams>('otsoft:params:nhg', NHG_DEFAULTS)
+  const [params, setParams] = useLocalStorage<NhgParams>('otsoft:params:nhg', nhgDefaults())
   const {
     cycles,
     initialPlasticity,
@@ -193,7 +157,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     }
   }
 
-  const atDefaults = isAtDefaults(params, NHG_DEFAULTS)
+  const atDefaults = isAtDefaults(params, nhgDefaults())
   const successResult: NhgResultState | null =
     result && !result.error ? (result as NhgResultState) : null
 
@@ -496,7 +460,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         )}
         <button
           className="reset-button"
-          onClick={() => setParams(NHG_DEFAULTS)}
+          onClick={() => setParams(nhgDefaults())}
           disabled={atDefaults}
         >
           <svg

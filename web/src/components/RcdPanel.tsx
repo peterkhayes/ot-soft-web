@@ -19,6 +19,7 @@ import {
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
+import { type RcdDefaults, rcdDefaults } from '../wasmDefaults.ts'
 import HasseDiagram from './HasseDiagram.tsx'
 import TextFileEditor from './TextFileEditor.tsx'
 
@@ -53,20 +54,7 @@ type RcdState = RcdResultState | RcdErrorState
 
 type Algorithm = 'rcd' | 'bcd' | 'bcd-specific' | 'lfcd'
 
-interface RcdParams {
-  algorithm: Algorithm
-  includeFred: boolean
-  useMib: boolean
-  showDetails: boolean
-  includeMiniTableaux: boolean
-}
-const RCD_DEFAULTS: RcdParams = {
-  algorithm: 'rcd',
-  includeFred: true,
-  useMib: false,
-  showDetails: true,
-  includeMiniTableaux: true,
-}
+type RcdParams = RcdDefaults
 
 const ALGORITHM_LABELS: Record<Algorithm, string> = {
   rcd: 'RCD',
@@ -89,14 +77,14 @@ function RcdPanel({
   axisMode = AxisMode.SwitchAll,
 }: RcdPanelProps) {
   const [rcdResult, setRcdResult] = useState<RcdState | null>(null)
-  const [params, setParams] = useLocalStorage<RcdParams>('otsoft:params:rcd', RCD_DEFAULTS)
+  const [params, setParams] = useLocalStorage<RcdParams>('otsoft:params:rcd', rcdDefaults())
   const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux } = params
   const [aprioriText, setAprioriText] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const download = useDownload()
 
   const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
-  const atDefaults = isAtDefaults(params, RCD_DEFAULTS)
+  const atDefaults = isAtDefaults(params, rcdDefaults())
 
   function handleRun() {
     setIsLoading(true)
@@ -389,7 +377,7 @@ function RcdPanel({
         )}
         <button
           className="reset-button"
-          onClick={() => setParams(RCD_DEFAULTS)}
+          onClick={() => setParams(rcdDefaults())}
           disabled={atDefaults}
         >
           <svg

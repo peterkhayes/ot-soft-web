@@ -13,6 +13,7 @@ import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
+import { type GlaDefaults, glaDefaults } from '../wasmDefaults.ts'
 import HasseDiagram from './HasseDiagram.tsx'
 import TextFileEditor from './TextFileEditor.tsx'
 
@@ -45,49 +46,10 @@ interface GlaErrorState {
 
 type GlaState = GlaResultState | GlaErrorState
 
-interface GlaParams {
-  maxentMode: boolean
-  cycles: number
-  initialPlasticity: number
-  finalPlasticity: number
-  testTrials: number
-  negativeWeightsOk: boolean
-  gaussianPrior: boolean
-  sigma: number
-  magriUpdateRule: boolean
-  exactProportions: boolean
-  aprioriText: string
-  aprioriGap: number
-  generateHistory: boolean
-  generateFullHistory: boolean
-  generateCandidateProbHistory: boolean
-  useCustomSchedule: boolean
-  customSchedule: string
-  multipleRunsCount: 10 | 100 | 1000
-}
-const GLA_DEFAULTS: GlaParams = {
-  maxentMode: false,
-  cycles: 1000000,
-  initialPlasticity: 2.0,
-  finalPlasticity: 0.001,
-  testTrials: 10000,
-  negativeWeightsOk: false,
-  gaussianPrior: false,
-  sigma: 1.0,
-  magriUpdateRule: false,
-  exactProportions: false,
-  aprioriText: '',
-  aprioriGap: 20,
-  generateHistory: false,
-  generateFullHistory: false,
-  generateCandidateProbHistory: false,
-  useCustomSchedule: false,
-  customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
-  multipleRunsCount: 10,
-}
+type GlaParams = GlaDefaults
 
 function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
-  const [params, setParams] = useLocalStorage<GlaParams>('otsoft:params:gla', GLA_DEFAULTS)
+  const [params, setParams] = useLocalStorage<GlaParams>('otsoft:params:gla', glaDefaults())
   const {
     maxentMode,
     cycles,
@@ -244,7 +206,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     }, 0)
   }
 
-  const atDefaults = isAtDefaults(params, GLA_DEFAULTS)
+  const atDefaults = isAtDefaults(params, glaDefaults())
   const successResult: GlaResultState | null =
     result && !result.error ? (result as GlaResultState) : null
   const valueLabel = successResult?.maxentMode ? 'Weight' : 'Ranking Value'
@@ -645,7 +607,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         </button>
         <button
           className="reset-button"
-          onClick={() => setParams(GLA_DEFAULTS)}
+          onClick={() => setParams(glaDefaults())}
           disabled={atDefaults}
         >
           <svg

@@ -11,6 +11,7 @@ import {
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { makeOutputFilename } from '../utils.ts'
+import { type FtDefaults, ftDefaults } from '../wasmDefaults.ts'
 import TextFileEditor from './TextFileEditor.tsx'
 
 interface FactorialTypologyPanelProps {
@@ -60,17 +61,7 @@ interface FtErrorState {
 
 type FtState = FtResultState | FtErrorState
 
-interface FtParams {
-  includeFullListing: boolean
-  includeFtsum: boolean
-  includeCompactSum: boolean
-}
-
-const FT_DEFAULTS: FtParams = {
-  includeFullListing: false,
-  includeFtsum: false,
-  includeCompactSum: false,
-}
+type FtParams = FtDefaults
 
 function FactorialTypologyPanel({
   tableau,
@@ -79,7 +70,7 @@ function FactorialTypologyPanel({
 }: FactorialTypologyPanelProps) {
   const [result, setResult] = useState<FtState | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [params, setParams] = useLocalStorage<FtParams>('otsoft:params:ft', FT_DEFAULTS)
+  const [params, setParams] = useLocalStorage<FtParams>('otsoft:params:ft', ftDefaults())
   const download = useDownload()
   const { includeFullListing, includeFtsum, includeCompactSum } = params
   const [aprioriText, setAprioriText] = useState('')

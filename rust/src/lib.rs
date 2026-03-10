@@ -239,7 +239,7 @@ impl FredOptions {
         Self {
             include_fred: true,
             use_mib: false,
-            show_details: false,
+            show_details: true,  // VB6: chkDetailedArguments.Value = 1 (Checked)
             include_mini_tableaux: true,
         }
     }

@@ -22,8 +22,8 @@ pub fn format_sorted_input(tableau: &Tableau, result: &RCDResult) -> String {
     let sorted_constraint_indices = build_sorted_constraint_indices(tableau, result);
     let mut out = String::new();
 
-    // Header row 1: constraint full names
-    out.push_str("\t\t");
+    // Header row 1: constraint full names (3 leading tabs for input/candidate/freq columns)
+    out.push_str("\t\t\t");
     for (i, &ci) in sorted_constraint_indices.iter().enumerate() {
         if i > 0 {
             out.push('\t');
@@ -33,7 +33,7 @@ pub fn format_sorted_input(tableau: &Tableau, result: &RCDResult) -> String {
     out.push('\n');
 
     // Header row 2: constraint abbreviations
-    out.push_str("\t\t");
+    out.push_str("\t\t\t");
     for (i, &ci) in sorted_constraint_indices.iter().enumerate() {
         if i > 0 {
             out.push('\t');
@@ -139,11 +139,11 @@ mod tests {
 
         // First line: full names in stratum order
         // RCD on tiny example: stratum 1 = {*NoOns, *Coda}, stratum 2 = {Max, Dep}
-        let header_names: Vec<&str> = lines[0].split('\t').skip(2).collect();
+        let header_names: Vec<&str> = lines[0].split('\t').skip(3).collect();
         assert_eq!(header_names, vec!["*No Onset", "*Coda", "Max(t)", "Dep(?)"]);
 
         // Second line: abbreviations in same order
-        let header_abbrevs: Vec<&str> = lines[1].split('\t').skip(2).collect();
+        let header_abbrevs: Vec<&str> = lines[1].split('\t').skip(3).collect();
         assert_eq!(header_abbrevs, vec!["*NoOns", "*Coda", "Max", "Dep"]);
     }
 

@@ -5,6 +5,7 @@ import { format_maxent_output, MaxEntOptions, run_maxent } from '../../pkg/ot_so
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
+import { type MaxEntDefaults, maxentDefaults } from '../wasmDefaults.ts'
 
 interface MaxEntPanelProps {
   tableau: Tableau
@@ -36,29 +37,10 @@ interface MaxEntErrorState {
 
 type MaxEntState = MaxEntResultState | MaxEntErrorState
 
-interface MaxEntParams {
-  iterations: number
-  weightMin: number
-  weightMax: number
-  usePrior: boolean
-  sigmaSquared: number
-  generateHistory: boolean
-  generateOutputProbHistory: boolean
-  sortByWeight: boolean
-}
-const MAXENT_DEFAULTS: MaxEntParams = {
-  iterations: 5,
-  weightMin: 0,
-  weightMax: 50,
-  usePrior: false,
-  sigmaSquared: 1,
-  generateHistory: false,
-  generateOutputProbHistory: false,
-  sortByWeight: true,
-}
+type MaxEntParams = MaxEntDefaults
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
-  const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', MAXENT_DEFAULTS)
+  const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', maxentDefaults())
   const {
     iterations,
     weightMin,
@@ -157,7 +139,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
     }
   }
 
-  const atDefaults = isAtDefaults(params, MAXENT_DEFAULTS)
+  const atDefaults = isAtDefaults(params, maxentDefaults())
   const constraintCount = tableau.constraint_count()
   const constraintAbbrevs = Array.from(
     { length: constraintCount },
@@ -364,7 +346,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         )}
         <button
           className="reset-button"
-          onClick={() => setParams(MAXENT_DEFAULTS)}
+          onClick={() => setParams(maxentDefaults())}
           disabled={atDefaults}
         >
           <svg
