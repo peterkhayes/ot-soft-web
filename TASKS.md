@@ -1,9 +1,5 @@
 # OTSoft: Open Tasks
 
-## Bugs
-
-- [rcd_apriori — necessity with a priori rankings](tasks/conformance-rcd-apriori.md) *(blocked: suspected VB6 bug)*
-
 ## UX
 
 - [Done indicator for algorithm completion](tasks/done-indicator.md)

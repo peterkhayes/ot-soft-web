@@ -18,6 +18,7 @@ Each test case has:
 - **id**: Unique identifier (e.g. `TinyIllustrativeFile_rcd_defaults`)
 - **description**: Human-readable description
 - **skip** (optional): Reason string — skips the case with a logged message
+- **ignore_sections** (optional): List of section header substrings to strip before comparison. Sections matching `N. <header containing substring>` through the next numbered section are removed from both expected and actual output. Use for known VB6 bugs where we intentionally diverge.
 - **input_file**: Path to input file relative to repo root
 - **apriori_file**: Path to a priori rankings file, or `null`
 - **algorithm**: One of `rcd`, `bcd`, `lfcd`, `maxent`, `factorial_typology`

@@ -40,6 +40,11 @@ struct TestCase {
     /// Temporarily skip this case (with a reason string for documentation).
     #[serde(default)]
     skip: Option<String>,
+    /// Section headers to strip before comparison (known VB6 divergences).
+    /// Each entry is a substring matched against section headers like "4. Status of...".
+    /// The entire section (up to the next numbered section or EOF) is removed from both outputs.
+    #[serde(default)]
+    ignore_sections: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Default, PartialEq)]
@@ -118,6 +123,32 @@ fn normalize(text: &str) -> String {
     // VB6 and Rust may differ in spacing between sections.
     let blank_re = Regex::new(r"\n{4,}").unwrap();
     blank_re.replace_all(&text, "\n\n\n").into_owned()
+}
+
+/// Strip entire numbered sections whose headers contain any of the given substrings.
+///
+/// Sections are delimited by lines matching `\d+\. ` (e.g. "4. Status of...").
+/// Everything from a matching header up to (but not including) the next section
+/// header (or EOF) is removed.
+fn strip_sections(text: &str, ignore: &[String]) -> String {
+    if ignore.is_empty() {
+        return text.to_string();
+    }
+
+    let section_header = Regex::new(r"^\d+\.\s").unwrap();
+    let mut result = Vec::new();
+    let mut skipping = false;
+
+    for line in text.lines() {
+        if section_header.is_match(line) {
+            skipping = ignore.iter().any(|pat| line.contains(pat.as_str()));
+        }
+        if !skipping {
+            result.push(line);
+        }
+    }
+
+    result.join("\n")
 }
 
 // ── HTML cell-grid extraction ───────────────────────────────────────────────
@@ -253,6 +284,38 @@ fn compare_html_tables(
     }
 
     None
+}
+
+/// Compare normalized text outputs and return a diff description if they differ.
+fn text_diff(expected: &str, actual: &str, case_id: &str) -> Option<String> {
+    if expected == actual {
+        return None;
+    }
+
+    let expected_lines: Vec<&str> = expected.lines().collect();
+    let actual_lines: Vec<&str> = actual.lines().collect();
+    let mut diff = format!(
+        "{case_id}: output mismatch ({} expected lines, {} actual lines)\n",
+        expected_lines.len(),
+        actual_lines.len()
+    );
+    // Show first differing line
+    for (i, (e, a)) in expected_lines.iter().zip(actual_lines.iter()).enumerate() {
+        if e != a {
+            diff.push_str(&format!("  first diff at line {}:\n", i + 1));
+            diff.push_str(&format!("  expected: {e:?}\n"));
+            diff.push_str(&format!("  actual:   {a:?}\n"));
+            break;
+        }
+    }
+    if expected_lines.len() != actual_lines.len() {
+        diff.push_str(&format!(
+            "  line count: expected {}, actual {}\n",
+            expected_lines.len(),
+            actual_lines.len()
+        ));
+    }
+    Some(diff)
 }
 
 // ── Dispatch: run algorithm and format output ───────────────────────────────
@@ -413,47 +476,20 @@ fn conformance_tests() {
             }
         };
 
-        if case.format == OutputFormat::Html {
+        let diff_msg = if case.format == OutputFormat::Html {
             // HTML conformance: compare extracted cell grids semantically
             let expected_tables = extract_html_tables(&golden_text);
             let actual_tables = extract_html_tables(&rust_output);
-
-            if let Some(diff) = compare_html_tables(&expected_tables, &actual_tables, &case.id) {
-                failures.push(diff);
-            }
+            compare_html_tables(&expected_tables, &actual_tables, &case.id)
         } else {
             // Text conformance: normalized byte comparison
-            let expected = normalize(&golden_text);
-            let actual = normalize(&rust_output);
+            let expected = strip_sections(&normalize(&golden_text), &case.ignore_sections);
+            let actual = strip_sections(&normalize(&rust_output), &case.ignore_sections);
+            text_diff(&expected, &actual, &case.id)
+        };
 
-            if expected != actual {
-                // Build a useful diff summary
-                let expected_lines: Vec<&str> = expected.lines().collect();
-                let actual_lines: Vec<&str> = actual.lines().collect();
-                let mut diff = format!(
-                    "{}: output mismatch ({} expected lines, {} actual lines)\n",
-                    case.id,
-                    expected_lines.len(),
-                    actual_lines.len()
-                );
-                // Show first differing line
-                for (i, (e, a)) in expected_lines.iter().zip(actual_lines.iter()).enumerate() {
-                    if e != a {
-                        diff.push_str(&format!("  first diff at line {}:\n", i + 1));
-                        diff.push_str(&format!("  expected: {:?}\n", e));
-                        diff.push_str(&format!("  actual:   {:?}\n", a));
-                        break;
-                    }
-                }
-                if expected_lines.len() != actual_lines.len() {
-                    diff.push_str(&format!(
-                        "  line count: expected {}, actual {}\n",
-                        expected_lines.len(),
-                        actual_lines.len()
-                    ));
-                }
-                failures.push(diff);
-            }
+        if let Some(diff) = diff_msg {
+            failures.push(diff);
         }
 
         ran += 1;
