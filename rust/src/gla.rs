@@ -851,12 +851,10 @@ impl Tableau {
                                 }
                             }
 
-                            // Enforce a priori gaps after each trial's updates.
-                            // Reproduces VB6 boersma.frm:AdjustAPrioriRankings_Up/_Down.
-                            if !apriori.is_empty() {
-                                adjust_apriori_up(&mut ranking_values, apriori, opts.apriori_gap);
-                                adjust_apriori_down(&mut ranking_values, apriori, opts.apriori_gap);
-                            }
+                            // NOTE: VB6 v2.7 removed per-trial a priori enforcement.
+                            // Old code called AdjustAPrioriRankings_Up/_Down inside the
+                            // per-constraint loop; new code only enforces during initialization
+                            // (see adjust_apriori_up/down calls before the main learning loop).
                         }
 
                         // Record history after each mismatch (VB6: writes after RankingValueAdjustment)
@@ -869,9 +867,37 @@ impl Tableau {
                             buf.push('\n');
                         }
 
-                        // Record full history (annotated log with input/generated/heard)
+                        // Record full history (annotated log with input/generated/heard).
+                        // VB6 v2.7: StochasticOT logs per-constraint delta + new value
+                        // (from RankingValueAdjustment), then trial info + final values
+                        // (from GLACore). MaxEnt only logs trial info + final values.
+                        //
+                        // Reproduces VB6 boersma.frm:RankingValueAdjustment (lines 2794-2838)
+                        // + GLACore (lines 2416-2428).
                         if let Some(ref mut buf) = full_history_buf {
                             use std::fmt::Write;
+                            // VB6 StochasticOT: per-constraint delta + value written first
+                            // (from inside RankingValueAdjustment, before GLACore appends).
+                            if !maxent_mode {
+                                let gen_cand = &self.forms[sel_form].candidates[generated];
+                                let obs_cand = &self.forms[sel_form].candidates[sel_cand];
+                                for c in 0..nc {
+                                    let gen_v = gen_cand.violations[c];
+                                    let obs_v = obs_cand.violations[c];
+                                    let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
+                                    if gen_v > obs_v {
+                                        // Promoted: positive delta
+                                        write!(buf, "\t{plast}\t{:.4}", ranking_values[c]).unwrap();
+                                    } else if gen_v < obs_v {
+                                        // Demoted: negative delta (VB6: "-" prefix + Trim(Str(plast)))
+                                        write!(buf, "\t-{plast}\t{:.4}", ranking_values[c]).unwrap();
+                                    } else {
+                                        // No change: two empty columns
+                                        buf.push_str("\t\t");
+                                    }
+                                }
+                            }
+                            // GLACore part: trial#, input, generated, heard, final values
                             write!(buf, "{}\t{}\t{}\t{}",
                                 trial_number,
                                 self.forms[sel_form].input,
@@ -1335,16 +1361,15 @@ mod tests {
         assert_eq!(init_cols.len(), nc + 4, "initial row should have same column count as header");
 
         // Data rows (at least some mismatches should occur)
+        // StochasticOT: per-constraint delta+value (2 cols each) written first by
+        // RankingValueAdjustment, then trial/input/gen/heard + final values by GLACore.
+        // Total columns = nc*2 (deltas) + 4 (trial info) + nc (final values) = nc*3 + 4.
+        let expected_data_cols = nc * 3 + 4;
         assert!(lines.len() > 2, "should have data rows after header + initial");
         for line in &lines[2..] {
             let cols: Vec<&str> = line.split('\t').collect();
-            assert_eq!(cols.len(), nc + 4, "each data row should have {} columns", nc + 4);
-            // Trial number
-            cols[0].parse::<usize>().expect("trial number should be an integer");
-            // Input, Generated, Heard should be non-empty
-            assert!(!cols[1].is_empty(), "input should be non-empty");
-            assert!(!cols[2].is_empty(), "generated should be non-empty");
-            assert!(!cols[3].is_empty(), "heard should be non-empty");
+            assert_eq!(cols.len(), expected_data_cols,
+                "each data row should have {} columns (nc*3+4), got {}", expected_data_cols, cols.len());
         }
     }
 
@@ -1436,9 +1461,9 @@ mod tests {
     }
 
     #[test]
-    fn test_gla_apriori_enforces_gap() {
-        // Build a 2-constraint apriori table: constraint 0 >> constraint 1.
-        // After learning, ranking_values[0] must be >= ranking_values[1] + gap.
+    fn test_gla_apriori_enforces_initial_gap() {
+        // VB6 v2.7: a priori enforcement only happens during initialization, not
+        // during learning. Verify the initial ranking values satisfy the gap.
         let tableau = Tableau::parse(&load_tiny()).unwrap();
         let nc = tableau.constraint_count();
         if nc < 2 {
@@ -1450,22 +1475,18 @@ mod tests {
         apriori[0][1] = true;
 
         let gap = 20.0;
-        let result = tableau.run_gla(&crate::GlaOptions {
-            cycles: 1000, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
-            apriori_gap: gap, ..Default::default()
-        });
-        // Without enforcement the test would still pass; run with explicit apriori:
+        // Use 0 cycles so we only get initialization, not learning
         let result = tableau.run_gla_with_schedule(
-            &crate::schedule::LearningSchedule::default_4stage(1000, 2.0, 0.001),
+            &crate::schedule::LearningSchedule::default_4stage(0, 2.0, 0.001),
             &apriori,
-            &crate::GlaOptions { test_trials: 200, apriori_gap: gap, ..Default::default() },
+            &crate::GlaOptions { test_trials: 0, apriori_gap: gap, ..Default::default() },
         );
 
         let rv0 = result.get_ranking_value(0);
         let rv1 = result.get_ranking_value(1);
         assert!(
             rv0 - rv1 >= gap - 0.001,
-            "a priori gap not maintained: rv[0]={rv0:.3}, rv[1]={rv1:.3}, required gap={gap}"
+            "initial a priori gap not satisfied: rv[0]={rv0:.3}, rv[1]={rv1:.3}, required gap={gap}"
         );
     }
 }

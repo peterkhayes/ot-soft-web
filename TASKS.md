@@ -15,7 +15,7 @@
 
 ### VB6 v2.7 behavior changes
 
-- [ ] [GLA Stochastic OT — verify Rust matches v2.7 refactors](tasks/gla-stochastic-ot-v27-changes.md)
+- [x] [GLA Stochastic OT — verify Rust matches v2.7 refactors](tasks/gla-stochastic-ot-v27-changes.md)
 
 ---
 
