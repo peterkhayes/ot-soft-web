@@ -31,8 +31,13 @@
 
 ### Investigation needed
 
-- [ ] Investigate Stochastic OT output display differences vs VB6
+- [x] Investigate Stochastic OT output display differences vs VB6
 - [ ] Investigate MaxEnt control parameter differences vs VB6
+
+### GLA output formatting gaps (from Stochastic OT investigation)
+
+- [ ] Add "Testing the Grammar: Details" section to GLA output (test cycles, avg error, schedule table, log likelihood)
+- [ ] Add "Active Constraints" section to GLA output
 
 ---
 

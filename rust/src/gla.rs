@@ -345,10 +345,11 @@ impl GlaResult {
         out.push_str("\n\n");
 
         // Section 1: Ranking Values / Weights Found (original constraint order)
+        // VB6 PrintGLAResults: uses FourDecPlaces (##,##0.0000)
         out.push_str(&format!("1. {} Found\n\n", value_label));
         for (c_idx, constraint) in tableau.constraints.iter().enumerate() {
             out.push_str(&format!(
-                "   {:<42}{:.3}\n",
+                "   {:<42}{:.4}\n",
                 constraint.full_name(),
                 self.ranking_values[c_idx]
             ));
@@ -361,6 +362,8 @@ impl GlaResult {
         out.push_str("\n\n");
 
         // Section 2: Matchup to Input Frequencies
+        // Reproduces VB6 GLATestGrammar print section.
+        // VB6 shows proportions (0–1) with 4 decimal places, plus raw counts.
         out.push_str("2. Matchup to Input Frequencies\n\n");
         for (form_idx, form) in tableau.forms.iter().enumerate() {
             let total_freq: f64 = form.candidates.iter().map(|c| c.frequency as f64).sum();
@@ -373,48 +376,61 @@ impl GlaResult {
                 .max(2);
 
             // Column headers depend on mode
+            // VB6 StochasticOT: "Input Fr. Gen Fr.  Input #     Gen. #"
+            // VB6 MaxEnt:       "Input Fr.  P     Input #"
             if self.maxent_mode {
                 out.push_str(&format!(
-                    "  {:<width$}  {:>9}  {:>9}\n",
-                    "", "Input%", "Prob",
+                    "  {:<width$}  {:>10}  {:>10}  {:>8}\n",
+                    "", "Input Fr.", "Prob", "Input #",
                     width = max_cand_width
                 ));
             } else {
                 out.push_str(&format!(
-                    "  {:<width$}  {:>9}  {:>9}\n",
-                    "", "Input%", "Gen%",
+                    "  {:<width$}  {:>10}  {:>10}  {:>8}  {:>8}\n",
+                    "", "Input Fr.", "Gen Fr.", "Input #", "Gen. #",
                     width = max_cand_width
                 ));
             }
 
             for (cand_idx, cand) in form.candidates.iter().enumerate() {
-                let obs_pct = if total_freq > 0.0 {
-                    cand.frequency as f64 / total_freq * 100.0
+                let obs_prop = if total_freq > 0.0 {
+                    cand.frequency as f64 / total_freq
                 } else {
                     0.0
                 };
-                let gen_pct = self.test_probs
+                let gen_prop = self.test_probs
                     .get(form_idx)
                     .and_then(|f| f.get(cand_idx))
                     .copied()
-                    .unwrap_or(0.0)
-                    * 100.0;
+                    .unwrap_or(0.0);
                 let marker = if cand.frequency > 0 { ">" } else { " " };
-                out.push_str(&format!(
-                    "  {}{:<width$}  {:>8.1}%  {:>8.1}%\n",
-                    marker, cand.form, obs_pct, gen_pct,
-                    width = max_cand_width
-                ));
+
+                if self.maxent_mode {
+                    out.push_str(&format!(
+                        "  {}{:<width$}  {:>10.4}  {:>10.4}  {:>8}\n",
+                        marker, cand.form, obs_prop, gen_prop, cand.frequency,
+                        width = max_cand_width
+                    ));
+                } else {
+                    // Generated number = proportion × test_trials
+                    let gen_count = (gen_prop * self.test_trials as f64).round() as usize;
+                    out.push_str(&format!(
+                        "  {}{:<width$}  {:>10.4}  {:>10.4}  {:>8}  {:>8}\n",
+                        marker, cand.form, obs_prop, gen_prop, cand.frequency, gen_count,
+                        width = max_cand_width
+                    ));
+                }
             }
             out.push('\n');
         }
 
         // Section 3: Sorted ranking values / weights
+        // VB6 PrintGLAResults: uses FourDecPlaces (##,##0.0000)
         out.push_str(&format!("3. {} (sorted)\n\n", value_label));
         let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
         for &c_idx in &sorted {
             out.push_str(&format!(
-                "   {:<42}{:.3}\n",
+                "   {:<42}{:.4}\n",
                 tableau.constraints[c_idx].full_name(),
                 self.ranking_values[c_idx]
             ));
