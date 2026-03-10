@@ -1,6 +1,6 @@
 # OTSoft (modern version)
 
-This repository ports an older program that does linguistic analysis to a modern web tech stack. See `TASKS.md` for current porting status.
+This repository ports an older program that does linguistic analysis to a modern web tech stack. See `TASKS.md` for open tasks.
 
 ## Principles
 

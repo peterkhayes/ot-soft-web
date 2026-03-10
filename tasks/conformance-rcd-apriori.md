@@ -1,3 +1,10 @@
+---
+status: blocked
+type: bug
+priority: high
+depends_on: []
+---
+
 # `rcd_apriori` — Missing "A Priori Rankings" section + wrong section numbers + incomplete mass deletion message + wrong constraint necessity ordering
 
 **Symptom:** VB6 output has "2. A Priori Rankings" between Result and Tableaux, shifting all subsequent section numbers up by 1. Our output skips this section entirely.

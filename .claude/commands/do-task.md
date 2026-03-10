@@ -40,7 +40,9 @@ Fix any failures before proceeding.
 
 Update all relevant docs:
 
-- Mark completed items in `TASKS.md` and add any newly discovered tasks.
+- Set `status: done` in the task's frontmatter in `tasks/`.
+- Remove the completed task from `TASKS.md`.
+- Add any newly discovered tasks (create a file in `tasks/` with frontmatter, add a line to `TASKS.md`).
 - Update any `CLAUDE.md` files whose descriptions have become inaccurate (e.g. new modules, changed file structure, new patterns).
 
 ---
