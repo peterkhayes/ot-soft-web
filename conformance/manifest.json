@@ -50,7 +50,7 @@
     {
       "id": "TinyIllustrativeFile_rcd_apriori",
       "description": "RCD with a priori rankings (*NoOns >> Max)",
-      "skip": "Rust output missing 'A Priori Rankings' section in output",
+      "skip": "Necessity results still differ from VB6 (suspected VB6 bug at Main.frm:5974)",
       "input_file": "examples/TinyIllustrativeFile.txt",
 
       "apriori_file": "examples/TinyIllustrativeFile_apriori.txt",

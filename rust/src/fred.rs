@@ -446,7 +446,7 @@ impl FRedResult {
 
 impl FRedResult {
     /// Format Section 4 of the RCD output: "Ranking Arguments, based on FRed".
-    pub(crate) fn format_section4(&self) -> String {
+    pub(crate) fn format_section_fred(&self, section_num: usize) -> String {
         let mut out = String::new();
 
         let basis_name = if self.use_skeletal_basis {
@@ -460,7 +460,7 @@ impl FRedResult {
             "minimize the set of final ranking arguments"
         };
 
-        out.push_str("4. Ranking Arguments, based on the Fusional Reduction Algorithm\n\n");
+        out.push_str(&format!("{}. Ranking Arguments, based on the Fusional Reduction Algorithm\n\n", section_num));
         out.push_str(&format!(
             "This run sought to obtain the {basis_name}, intended to {purpose}.\n\n\n\n"
         ));

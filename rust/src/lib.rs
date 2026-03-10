@@ -354,7 +354,7 @@ pub fn format_rcd_output(
         tableau.run_rcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_output(&tableau, filename))
+    Ok(result.format_output_with_options(&tableau, filename, "Recursive Constraint Demotion", &apriori))
 }
 
 /// Run FRed (Fusional Reduction Algorithm) on a tableau.
@@ -384,7 +384,7 @@ pub fn format_fred_output(text: &str, _filename: &str, apriori_text: &str, use_m
         let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
         tableau.run_fred_with_apriori(use_mib, &apriori)
     };
-    Ok(result.format_section4())
+    Ok(result.format_section_fred(4))
 }
 
 /// Run BCD on a parsed tableau
@@ -459,7 +459,7 @@ pub fn format_rcd_html_output(
         tableau.run_rcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_html_output_with_options(&tableau, filename, "Recursive Constraint Demotion", axis_mode))
+    Ok(result.format_html_output_full(&tableau, filename, "Recursive Constraint Demotion", axis_mode, &apriori))
 }
 
 /// Format BCD results as an HTML document for download.
@@ -500,11 +500,12 @@ pub fn format_lfcd_html_output(
         tableau.run_lfcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_html_output_with_options(
+    Ok(result.format_html_output_full(
         &tableau,
         filename,
         "Low Faithfulness Constraint Demotion",
         axis_mode,
+        &apriori,
     ))
 }
 
@@ -558,10 +559,11 @@ pub fn format_lfcd_output(
         tableau.run_lfcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_output_with_algorithm(
+    Ok(result.format_output_with_options(
         &tableau,
         filename,
         "Low Faithfulness Constraint Demotion",
+        &apriori,
     ))
 }
 

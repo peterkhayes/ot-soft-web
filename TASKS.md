@@ -6,7 +6,7 @@
 
 - [x] [`bcd_specific` — wrong title](tasks/conformance-bcd-specific.md)
 - [x] [`rcd_no_fred` — extra trailing blank line](tasks/conformance-rcd-no-fred.md)
-- [ ] [`rcd_apriori` — missing section, numbering, mass deletion, ordering](tasks/conformance-rcd-apriori.md)
+- [ ] [`rcd_apriori` — missing section, numbering, mass deletion, ordering](tasks/conformance-rcd-apriori.md) *(partially done: A–F complete, G open — suspected VB6 bug in necessity with a priori)*
 
 ### Other bugs
 
