@@ -13,7 +13,6 @@
 - [Pairwise Ranking Probabilities as HTML table](tasks/pairwise-table-native.md)
 - [Mobile: section numbers positioning](tasks/mobile-section-numbers.md)
 - [Options button layout consistency](tasks/options-button-layout.md)
-- [Reduce test output verbosity](tasks/test-output-verbosity.md)
 
 ## Features
 

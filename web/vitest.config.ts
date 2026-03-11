@@ -14,5 +14,7 @@ export default defineConfig({
       provider: 'playwright',
       instances: [{ browser: 'chromium' }],
     },
+    testTimeout: 180_000, // GLA tests run ~2 million cycles in-browser
+    onConsoleLog: () => (process.env.VERBOSE_TESTS ? undefined : false), // suppress WASM console.log noise
   },
 })

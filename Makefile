@@ -1,4 +1,4 @@
-.PHONY: build test serve dev clean help web-install web-build web-test web-test-update web-lint web-lint-fix web-fmt web-fmt-check precommit lint conformance-test
+.PHONY: build test test-verbose serve dev clean help web-install web-build web-test web-test-verbose web-test-update web-lint web-lint-fix web-fmt web-fmt-check precommit lint conformance-test
 
 # Default target
 .DEFAULT_GOAL := help
@@ -16,8 +16,13 @@ build: ## Build Rust to WebAssembly
 	@cd rust && wasm-pack build --target web --out-dir ../web/pkg
 	@echo "✓ Build complete"
 
-test: ## Run Rust tests
+test: ## Run Rust tests (quiet; use make test-verbose for full output)
 	@echo "Running Rust tests..."
+	@cd rust && cargo test --quiet
+	@echo "✓ Tests complete"
+
+test-verbose: ## Run Rust tests with full output
+	@echo "Running Rust tests (verbose)..."
 	@cd rust && cargo test
 	@echo "✓ Tests complete"
 
@@ -33,8 +38,11 @@ web-install: ## Install web dependencies and Playwright browser (run once after 
 web-build: ## Build web frontend for production
 	@cd web && npm run build
 
-web-test: ## Run web frontend tests (Vitest + Playwright; requires make web-install)
+web-test: ## Run web frontend tests (quiet; use make web-test-verbose for full output)
 	@cd web && npm test
+
+web-test-verbose: ## Run web frontend tests with console output
+	@cd web && VERBOSE_TESTS=1 npm test
 
 web-test-update: ## Run web tests and update inline snapshots
 	@cd web && npx vitest run -u

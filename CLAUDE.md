@@ -23,10 +23,12 @@ Always use `make` targets rather than invoking `cargo`, `npm`, or other tools di
 | Command | Purpose |
 |---------|---------|
 | `make build` | Compile Rust to WASM |
-| `make test` | Run Rust tests |
+| `make test` | Run Rust tests (quiet) |
+| `make test-verbose` | Run Rust tests with full output |
 | `make lint` | Clippy lint (warnings = errors) |
 | `make check` | Rust type-check only |
-| `make web-test` | Run web tests (Vitest + Playwright) |
+| `make web-test` | Run web tests (quiet, no console noise) |
+| `make web-test-verbose` | Run web tests with WASM console output |
 | `make web-check` | TypeScript type-check |
 | `make web-lint` | ESLint the web frontend |
 | `make web-fmt` | Format web code (Prettier) |
