@@ -223,6 +223,14 @@ pub struct GlaResult {
     sigma: f64,
     /// Whether the Magri update rule was active (StochasticOT only)
     magri_update_rule: bool,
+    /// Whether negative weights were permitted
+    negative_weights_ok: bool,
+    /// Sum of squared error between input and generated proportions
+    error_term: f64,
+    /// Total number of candidates across all forms
+    total_rivals: usize,
+    /// Learning time in seconds
+    learning_time_secs: f64,
     /// A priori ranking table used during learning (empty if none).
     apriori: Vec<Vec<bool>>,
     /// Minimum gap enforced between a priori ranked constraints.
@@ -248,6 +256,10 @@ impl GlaResult {
             gaussian_prior: false,
             sigma: 0.0,
             magri_update_rule: false,
+            negative_weights_ok: false,
+            error_term: 0.0,
+            total_rivals: 0,
+            learning_time_secs: 0.0,
             apriori: Vec::new(),
             apriori_gap: 20.0,
             history: None,
@@ -424,9 +436,39 @@ impl GlaResult {
             out.push('\n');
         }
 
-        // Section 3: Sorted ranking values / weights
+        let mut section_num = 2;
+
+        // Section 3 (Stochastic OT only): Testing the Grammar: Details
+        // Reproduces VB6 boersma.frm:GLATestGrammar (lines 4167-4177).
+        if !self.maxent_mode {
+            section_num += 1;
+            out.push_str(&format!("{}. Testing the Grammar: Details\n\n", section_num));
+            out.push_str(&format!(
+                "The grammar was tested for {} cycles.\n",
+                self.test_trials
+            ));
+            if self.total_rivals > 0 {
+                out.push_str(&format!(
+                    "Average error per candidate: {:.3} percent\n",
+                    100.0 * self.error_term / self.total_rivals as f64
+                ));
+            }
+            out.push_str(&format!(
+                "Learning time: {:.3} minutes\n",
+                self.learning_time_secs / 60.0
+            ));
+            if self.negative_weights_ok {
+                out.push_str("Negative weights were permitted.\n");
+            } else {
+                out.push_str("Negative weights were not permitted.\n");
+            }
+            out.push_str("\n\n");
+        }
+
+        // Sorted ranking values / weights
         // VB6 PrintGLAResults: uses FourDecPlaces (##,##0.0000)
-        out.push_str(&format!("3. {} (sorted)\n\n", value_label));
+        section_num += 1;
+        out.push_str(&format!("{}. {} (sorted)\n\n", section_num, value_label));
         let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
         for &c_idx in &sorted {
             out.push_str(&format!(
@@ -436,19 +478,19 @@ impl GlaResult {
             ));
         }
 
-        // Section 4: Pairwise ranking probabilities (Stochastic OT only)
+        // Pairwise ranking probabilities (Stochastic OT only)
         if !self.maxent_mode {
             out.push_str("\n\n");
             out.push_str(&self.format_pairwise_probabilities(tableau));
         }
 
-        // Section 5: A priori rankings (if any)
+        // A priori rankings (if any)
         // Reproduces VB6 Main.frm:PrintOutTheAprioriRankings
         if !self.apriori.is_empty() {
             let nc = tableau.constraints.len();
             let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
 
-            let section_num = if self.maxent_mode { 4 } else { 5 };
+            section_num += 1;
             out.push_str(&format!("\n\n{section_num}. A Priori Rankings\n\n"));
             out.push_str("In the following table, \"yes\" means that the constraint of the indicated\n");
             out.push_str("row was marked a priori to dominate the constraint in the given column.\n\n");
@@ -500,7 +542,7 @@ impl GlaResult {
         let abbrevs: Vec<String> = sorted.iter().map(|&i| tableau.constraints[i].abbrev()).collect();
 
         let mut out = String::new();
-        out.push_str("4. Ranking Value to Ranking Probability Conversion\n\n");
+        out.push_str("5. Ranking Value to Ranking Probability Conversion\n\n");
         out.push_str("The computed ranking values imply the pairwise ranking probabilities given below.\n");
         out.push_str("In the table, the probability given is that of the constraint in the row headings\n");
         out.push_str("outranking the constraint in the column headings.\n\n");
@@ -768,6 +810,8 @@ impl Tableau {
 
         let mut rng = Rng::new(GaussianMode::Standard);
 
+        let learning_start = chrono::Utc::now();
+
         let mode_name = if maxent_mode { "MaxEnt" } else { "StochasticOT" };
         let total_cycles = schedule.total_cycles();
         crate::ot_log!("Starting GLA ({}) with {} constraints, {} training exemplars, {} cycles",
@@ -945,6 +989,11 @@ impl Tableau {
             }
         }
 
+        let learning_time_secs = {
+            let elapsed = chrono::Utc::now() - learning_start;
+            elapsed.num_milliseconds() as f64 / 1000.0
+        };
+
         // ── Test grammar ──────────────────────────────────────────────────────
         let test_probs = if maxent_mode {
             // MaxEnt: exact predicted probabilities (reproduces GenerateMaxEntPredictions)
@@ -982,6 +1031,25 @@ impl Tableau {
             }).collect()
         };
 
+        // ── Error term ────────────────────────────────────────────────────────
+        // Reproduces VB6 GLATestGrammar error calculation:
+        // Σ (input_proportion - generated_proportion)²
+        let mut error_term = 0.0f64;
+        let mut total_rivals: usize = 0;
+        for (fi, form) in self.forms.iter().enumerate() {
+            let total_freq: f64 = form.candidates.iter().map(|c| c.frequency as f64).sum();
+            total_rivals += form.candidates.len();
+            for (ci, cand) in form.candidates.iter().enumerate() {
+                let obs_prop = if total_freq > 0.0 {
+                    cand.frequency as f64 / total_freq
+                } else {
+                    0.0
+                };
+                let gen_prop = test_probs[fi][ci];
+                error_term += (obs_prop - gen_prop).powi(2);
+            }
+        }
+
         // ── Log likelihood ────────────────────────────────────────────────────
         // Σ frequency × log(predicted_proportion)
         let mut log_likelihood = 0.0f64;
@@ -1008,6 +1076,10 @@ impl Tableau {
             gaussian_prior,
             sigma,
             magri_update_rule,
+            negative_weights_ok,
+            error_term,
+            total_rivals,
+            learning_time_secs,
             apriori: apriori.to_vec(),
             apriori_gap: opts.apriori_gap,
             history: history_buf,
@@ -1218,7 +1290,7 @@ mod tests {
         });
 
         let table = result.format_pairwise_probabilities(&tableau);
-        assert!(table.contains("4. Ranking Value to Ranking Probability Conversion"));
+        assert!(table.contains("5. Ranking Value to Ranking Probability Conversion"));
         assert!(table.contains("outranking the constraint in the column headings"));
 
         // Should contain constraint abbreviations
@@ -1240,8 +1312,42 @@ mod tests {
         });
 
         let output = result.format_output(&tableau, "test.txt");
-        assert!(output.contains("4. Ranking Value to Ranking Probability Conversion"),
+        assert!(output.contains("5. Ranking Value to Ranking Probability Conversion"),
             "Stochastic OT output should include pairwise probability section");
+    }
+
+    #[test]
+    fn test_gla_sot_format_output_includes_testing_details() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        });
+
+        let output = result.format_output(&tableau, "test.txt");
+        assert!(output.contains("3. Testing the Grammar: Details"),
+            "Stochastic OT output should include testing details section");
+        assert!(output.contains("The grammar was tested for 200 cycles."),
+            "should show test cycle count");
+        assert!(output.contains("Average error per candidate:"),
+            "should show average error");
+        assert!(output.contains("Learning time:"),
+            "should show learning time");
+        assert!(output.contains("Negative weights were not permitted."),
+            "should show negative weights status");
+    }
+
+    #[test]
+    fn test_gla_maxent_format_output_excludes_testing_details() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(&crate::GlaOptions {
+            maxent_mode: true, cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, ..Default::default()
+        });
+
+        let output = result.format_output(&tableau, "test.txt");
+        assert!(!output.contains("Testing the Grammar: Details"),
+            "MaxEnt output should NOT include testing details section");
     }
 
     #[test]

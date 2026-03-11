@@ -8,7 +8,6 @@
 - [Progress reporting for long-running jobs](tasks/progress-reporting.md)
 - [Diagnostics if ranking fails](tasks/diagnostics-ranking-fails.md)
 - [HTML shading customization](tasks/html-shading-options.md)
-- [GLA "Testing the Grammar: Details" section](tasks/gla-testing-details.md)
 - [GLA "Active Constraints" section](tasks/gla-active-constraints.md)
 
 ## Features
