@@ -80,6 +80,7 @@ function RcdPanel({
   const [params, setParams] = useLocalStorage<RcdParams>('otsoft:params:rcd', rcdDefaults())
   const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux } = params
   const [aprioriText, setAprioriText] = useState<string>('')
+  const [showApriori, setShowApriori] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const download = useDownload()
 
@@ -285,13 +286,26 @@ function RcdPanel({
       {supportsApriori && (
         <div className="nhg-options">
           <div className="nhg-options-label">A priori rankings</div>
-          <TextFileEditor
-            value={aprioriText}
-            onChange={setAprioriText}
-            hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
-            placeholder="Load from file or paste content here…"
-            testId="rcd-apriori-file-input"
-          />
+          <label className="nhg-checkbox">
+            <input
+              type="checkbox"
+              checked={showApriori}
+              onChange={(e) => {
+                setShowApriori(e.target.checked)
+                if (!e.target.checked) setAprioriText('')
+              }}
+            />
+            Use a priori rankings
+          </label>
+          {showApriori && (
+            <TextFileEditor
+              value={aprioriText}
+              onChange={setAprioriText}
+              hint="Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+              placeholder="Load from file or paste content here…"
+              testId="rcd-apriori-file-input"
+            />
+          )}
         </div>
       )}
 

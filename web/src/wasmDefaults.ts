@@ -63,6 +63,7 @@ export interface GlaDefaults {
   generateFullHistory: boolean
   generateCandidateProbHistory: boolean
   // UI-only (no Rust equivalent)
+  showApriori: boolean
   useCustomSchedule: boolean
   customSchedule: string
   multipleRunsCount: 10 | 100 | 1000
@@ -88,6 +89,7 @@ export function glaDefaults(): GlaDefaults {
       generateHistory: d.generate_history,
       generateFullHistory: d.generate_full_history,
       generateCandidateProbHistory: d.generate_candidate_prob_history,
+      showApriori: false,
       useCustomSchedule: false,
       customSchedule: DEFAULT_SCHEDULE_TEMPLATE,
       multipleRunsCount: 10,

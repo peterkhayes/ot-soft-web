@@ -262,8 +262,8 @@ test('RCD: a priori rankings file upload', async () => {
 
   await page.getByText('Classical OT', { exact: true }).click()
 
-  // A priori editor is visible for RCD
-  await expect.element(page.getByTestId('rcd-apriori-file-input')).toBeInTheDocument()
+  // Enable a priori rankings checkbox
+  await page.getByRole('checkbox', { name: 'Use a priori rankings' }).first().click()
 
   // Upload an empty apriori file (no rankings enforced — same result as no file)
   const abbrevs = ['*NoOns', '*Coda', 'Max', 'Dep']

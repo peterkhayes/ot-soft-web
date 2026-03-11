@@ -218,11 +218,11 @@ test('GLA: a priori rankings section appears in Stochastic OT, not MaxEnt', asyn
   await page.getByText('Stochastic OT', { exact: true }).click()
 
   // A priori section should be visible in StochasticOT mode
-  await expect.element(page.getByText('A priori rankings')).toBeVisible()
+  await expect.element(page.getByText('A priori rankings', { exact: true })).toBeVisible()
 
   // Switch to MaxEnt — a priori section should disappear
   await page.getByRole('radio', { name: 'Online MaxEnt (weights)' }).click()
-  await expect.element(page.getByText('A priori rankings')).not.toBeInTheDocument()
+  await expect.element(page.getByText('A priori rankings', { exact: true })).not.toBeInTheDocument()
 })
 
 test('GLA: load a priori file and run', { timeout: 30000 }, async () => {
@@ -230,6 +230,9 @@ test('GLA: load a priori file and run', { timeout: 30000 }, async () => {
   await loadExample()
 
   await page.getByText('Stochastic OT', { exact: true }).click()
+
+  // Enable a priori rankings checkbox
+  await page.getByRole('checkbox', { name: 'Use a priori rankings' }).click()
 
   // Upload a minimal a priori file (*NoOns >> *Coda from TinyIllustrativeFile)
   // Full 4-constraint table: *NoOns, *Coda, Max, Dep

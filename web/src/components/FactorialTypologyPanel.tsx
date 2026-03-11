@@ -74,6 +74,7 @@ function FactorialTypologyPanel({
   const download = useDownload()
   const { includeFullListing, includeFtsum, includeCompactSum } = params
   const [aprioriText, setAprioriText] = useState('')
+  const [showApriori, setShowApriori] = useState(false)
 
   function handleRun() {
     setIsLoading(true)
@@ -257,13 +258,26 @@ function FactorialTypologyPanel({
 
       <div className="nhg-options">
         <div className="nhg-options-label">A priori rankings</div>
-        <TextFileEditor
-          value={aprioriText}
-          onChange={setAprioriText}
-          hint="Optional. Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
-          placeholder="Load from file or paste content here…"
-          testId="ft-apriori-file-input"
-        />
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={showApriori}
+            onChange={(e) => {
+              setShowApriori(e.target.checked)
+              if (!e.target.checked) setAprioriText('')
+            }}
+          />
+          Use a priori rankings
+        </label>
+        {showApriori && (
+          <TextFileEditor
+            value={aprioriText}
+            onChange={setAprioriText}
+            hint="Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
+            placeholder="Load from file or paste content here…"
+            testId="ft-apriori-file-input"
+          />
+        )}
       </div>
 
       <div className="action-bar">
