@@ -23,12 +23,10 @@ Always use `make` targets rather than invoking `cargo`, `npm`, or other tools di
 | Command | Purpose |
 |---------|---------|
 | `make build` | Compile Rust to WASM |
-| `make test` | Run Rust tests (quiet) |
-| `make test-verbose` | Run Rust tests with full output |
+| `make test` | Run Rust tests (quiet by default) |
 | `make lint` | Clippy lint (warnings = errors) |
 | `make check` | Rust type-check only |
-| `make web-test` | Run web tests (quiet, no console noise) |
-| `make web-test-verbose` | Run web tests with WASM console output |
+| `make web-test` | Run web tests (quiet by default) |
 | `make web-check` | TypeScript type-check |
 | `make web-lint` | ESLint the web frontend |
 | `make web-fmt` | Format web code (Prettier) |
@@ -36,3 +34,12 @@ Always use `make` targets rather than invoking `cargo`, `npm`, or other tools di
 | `make serve` | Start Vite dev server |
 | `make dev` | Build WASM + start dev server |
 | `make conformance-test` | Run conformance tests vs VB6 golden files |
+
+Flags can be passed as `VAR=1`:
+
+| Flag | Applies to | Effect |
+|------|-----------|--------|
+| `VERBOSE` | `test`, `web-test` | Show full output |
+| `FIX` | `lint`, `web-lint` | Auto-fix issues |
+| `UPDATE` | `web-test` | Update inline snapshots |
+| `CHECK` | `web-fmt` | Check only, no writes |
