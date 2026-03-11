@@ -1,16 +1,17 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
-import type { Tableau } from '../../pkg/ot_soft.js'
+import type { GlaResult, Tableau } from '../../pkg/ot_soft.js'
 import {
   format_gla_multiple_runs_output,
   format_gla_output,
   gla_hasse_dot,
   gla_pairwise_probabilities,
   GlaOptions,
-  run_gla,
+  GlaRunner,
 } from '../../pkg/ot_soft.js'
 import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
+import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type GlaDefaults, glaDefaults } from '../wasmDefaults.ts'
@@ -71,9 +72,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     multipleRunsCount,
   } = params
 
-  const [result, setResult] = useState<GlaState | null>(null)
   const [scheduleError, setScheduleError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMultiple, setIsLoadingMultiple] = useState(false)
   const download = useDownload()
 
@@ -102,80 +101,104 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     return opts
   }
 
-  function handleRun() {
-    setIsLoading(true)
+  const createRunner = useCallback(() => {
     setScheduleError(null)
-    setTimeout(() => {
-      try {
-        const opts = buildOpts()
-        const r = run_gla(tableauText, opts)
+    return new GlaRunner(tableauText, buildOpts())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    tableauText,
+    maxentMode,
+    cycles,
+    initialPlasticity,
+    finalPlasticity,
+    testTrials,
+    negativeWeightsOk,
+    gaussianPrior,
+    sigma,
+    magriUpdateRule,
+    exactProportions,
+    aprioriText,
+    aprioriGap,
+    generateHistory,
+    generateFullHistory,
+    generateCandidateProbHistory,
+    useCustomSchedule,
+    customSchedule,
+  ])
 
-        const constraintCount = tableau.constraint_count()
-        const formCount = tableau.form_count()
+  const extractResult = useCallback(
+    (runner: GlaRunner): GlaState => {
+      const r: GlaResult = runner.take_result()
 
-        const values = Array.from({ length: constraintCount }, (_, i) => {
-          const c = tableau.get_constraint(i)!
-          return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i) }
-        })
+      const constraintCount = tableau.constraint_count()
+      const formCount = tableau.form_count()
 
-        const forms = Array.from({ length: formCount }, (_, formIdx) => {
-          const form = tableau.get_form(formIdx)!
-          const totalFreq = Array.from(
-            { length: form.candidate_count() },
-            (_, ci) => form.get_candidate(ci)!.frequency,
-          ).reduce((a, b) => a + b, 0)
+      const values = Array.from({ length: constraintCount }, (_, i) => {
+        const c = tableau.get_constraint(i)!
+        return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i) }
+      })
 
-          const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
-            const cand = form.get_candidate(candIdx)!
-            return {
-              form: cand.form,
-              obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
-              genPct: r.get_test_prob(formIdx, candIdx) * 100,
-            }
-          })
+      const forms = Array.from({ length: formCount }, (_, formIdx) => {
+        const form = tableau.get_form(formIdx)!
+        const totalFreq = Array.from(
+          { length: form.candidate_count() },
+          (_, ci) => form.get_candidate(ci)!.frequency,
+        ).reduce((a, b) => a + b, 0)
 
-          return { input: form.input, candidates }
-        })
-
-        let hasseDot: string | undefined
-        let pairwiseTable: string | undefined
-        if (!maxentMode) {
-          const rankingValues = new Float64Array(values.map((v) => v.value))
-          try {
-            hasseDot = gla_hasse_dot(tableauText, rankingValues)
-          } catch (e) {
-            console.warn('GLA Hasse diagram generation failed:', e)
+        const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
+          const cand = form.get_candidate(candIdx)!
+          return {
+            form: cand.form,
+            obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
+            genPct: r.get_test_prob(formIdx, candIdx) * 100,
           }
-          try {
-            pairwiseTable = gla_pairwise_probabilities(tableauText, rankingValues)
-          } catch (e) {
-            console.warn('GLA pairwise probabilities generation failed:', e)
-          }
-        }
-
-        setResult({
-          values,
-          forms,
-          logLikelihood: r.log_likelihood(),
-          maxentMode: r.is_maxent_mode(),
-          hasseDot,
-          pairwiseTable,
-          history: r.history() ?? undefined,
-          fullHistory: r.full_history() ?? undefined,
-          candidateProbHistory: r.candidate_prob_history() ?? undefined,
         })
-      } catch (err) {
-        console.error('GLA error:', err)
-        const msg = String(err)
-        if (msg.toLowerCase().includes('learning schedule')) {
-          setScheduleError(msg)
+
+        return { input: form.input, candidates }
+      })
+
+      let hasseDot: string | undefined
+      let pairwiseTable: string | undefined
+      if (!maxentMode) {
+        const rankingValues = new Float64Array(values.map((v) => v.value))
+        try {
+          hasseDot = gla_hasse_dot(tableauText, rankingValues)
+        } catch (e) {
+          console.warn('GLA Hasse diagram generation failed:', e)
         }
-        setResult({ error: msg })
-      } finally {
-        setIsLoading(false)
+        try {
+          pairwiseTable = gla_pairwise_probabilities(tableauText, rankingValues)
+        } catch (e) {
+          console.warn('GLA pairwise probabilities generation failed:', e)
+        }
       }
-    }, 0)
-  }
+
+      const extracted: GlaResultState = {
+        values,
+        forms,
+        logLikelihood: r.log_likelihood(),
+        maxentMode: r.is_maxent_mode(),
+        hasseDot,
+        pairwiseTable,
+        history: r.history() ?? undefined,
+        fullHistory: r.full_history() ?? undefined,
+        candidateProbHistory: r.candidate_prob_history() ?? undefined,
+      }
+      r.free()
+      return extracted
+    },
+    [tableau, tableauText, maxentMode],
+  )
+
+  const { state: runnerState, run: handleRun } = useChunkedRunner(createRunner, extractResult)
+
+  const result: GlaState | null =
+    runnerState.status === 'done'
+      ? runnerState.result
+      : runnerState.status === 'error'
+        ? { error: runnerState.error }
+        : null
+  const isLoading = runnerState.status === 'running'
 
   function handleDownload() {
     try {
@@ -624,6 +647,17 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         </button>
       </div>
 
+      {runnerState.status === 'running' && runnerState.total > 0 && (
+        <div className="progress-bar-container">
+          <div
+            className="progress-bar-fill"
+            style={{ width: `${(runnerState.completed / runnerState.total) * 100}%` }}
+          />
+          <span className="progress-bar-label">
+            {Math.round((runnerState.completed / runnerState.total) * 100)}%
+          </span>
+        </div>
+      )}
       {result?.error && <div className="rcd-status failure">Error running GLA: {result.error}</div>}
       {successResult && (
         <div className="maxent-results">

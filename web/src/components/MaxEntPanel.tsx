@@ -40,7 +40,10 @@ type MaxEntState = MaxEntResultState | MaxEntErrorState
 type MaxEntParams = MaxEntDefaults
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
-  const [params, setParams] = useLocalStorage<MaxEntParams>('otsoft:params:maxent', maxentDefaults())
+  const [params, setParams] = useLocalStorage<MaxEntParams>(
+    'otsoft:params:maxent',
+    maxentDefaults(),
+  )
   const {
     iterations,
     weightMin,

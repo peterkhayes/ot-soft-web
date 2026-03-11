@@ -1089,6 +1089,539 @@ impl Tableau {
     }
 }
 
+// ─── Chunked Runner ────────────────────────────────────────────────────────────
+//
+// Stateful GLA runner for chunked execution. Holds all algorithm state between
+// `run_chunk` calls so the JS main thread can yield for UI updates.
+
+/// Trait documenting the chunked runner contract.
+/// Not exported via wasm_bindgen, but mirrored by a TypeScript interface.
+/// Implemented by each algorithm's runner struct for consistency.
+#[allow(dead_code)]
+trait ChunkedRunner {
+    /// Advance up to `max_work` units of work. Returns true when done.
+    fn run_chunk(&mut self, max_work: usize) -> bool;
+    /// Progress as [completed, total].
+    fn progress(&self) -> [f64; 2];
+}
+
+/// Execution phase of the GLA runner.
+enum GlaPhase {
+    /// Learning phase: processing training trials.
+    Learning,
+    /// Testing phase: evaluating grammar with test trials (StochasticOT only).
+    Testing,
+    /// All computation complete.
+    Done,
+}
+
+/// Chunked GLA runner for interactive progress reporting.
+///
+/// Holds all algorithm state so learning can be split across multiple
+/// `run_chunk` calls, yielding control to the browser between chunks.
+#[wasm_bindgen]
+pub struct GlaRunner {
+    // ── Immutable config ────────────────────────────────────────────────────
+    tableau: Tableau,
+    schedule: LearningSchedule,
+    apriori: Vec<Vec<bool>>,
+    maxent_mode: bool,
+    test_trials: usize,
+    negative_weights_ok: bool,
+    gaussian_prior: bool,
+    sigma: f64,
+    magri_update_rule: bool,
+    exact_proportions: bool,
+    apriori_gap: f64,
+    is_faith: Vec<bool>,
+    total_learning_trials: usize,
+
+    // ── Mutable algorithm state ─────────────────────────────────────────────
+    ranking_values: Vec<f64>,
+    training_pool: Vec<(usize, usize)>,
+    pool_cursor: usize,
+    rng: Rng,
+    phase: GlaPhase,
+    /// Current position: (stage_index, trial_within_stage)
+    current_stage: usize,
+    current_trial_in_stage: usize,
+    trials_completed: usize,
+    trial_number: usize,
+    learning_start: chrono::DateTime<chrono::Utc>,
+
+    // ── History buffers ─────────────────────────────────────────────────────
+    history_buf: Option<String>,
+    full_history_buf: Option<String>,
+    cand_prob_history_buf: Option<String>,
+
+    // ── Testing state (StochasticOT) ────────────────────────────────────────
+    test_counts: Vec<Vec<usize>>,
+    test_trials_completed: usize,
+    test_noise_mark: f64,
+    test_noise_faith: f64,
+
+    // ── Final result (populated during Done phase) ──────────────────────────
+    result: Option<GlaResult>,
+}
+
+#[wasm_bindgen]
+impl GlaRunner {
+    #[wasm_bindgen(constructor)]
+    pub fn new(text: &str, opts: &crate::GlaOptions) -> Result<GlaRunner, String> {
+        let tableau = Tableau::parse(text)?;
+        let schedule = crate::build_gla_schedule(opts)?;
+        let apriori = crate::parse_gla_apriori(&tableau, opts)?;
+
+        let maxent_mode = opts.maxent_mode;
+        let nc = tableau.constraints.len();
+        let is_faith: Vec<bool> = tableau.constraints.iter().map(|c| c.is_faithfulness()).collect();
+
+        // Build training pool
+        let mut training_pool: Vec<(usize, usize)> = Vec::new();
+        for (fi, form) in tableau.forms.iter().enumerate() {
+            for (ci, cand) in form.candidates.iter().enumerate() {
+                for _ in 0..cand.frequency {
+                    training_pool.push((fi, ci));
+                }
+            }
+        }
+        let pool_size = training_pool.len();
+
+        // Round schedule for exact proportions
+        let schedule = if opts.exact_proportions && pool_size > 0 {
+            let mut s = schedule;
+            s.round_stages_to_multiple(pool_size);
+            s
+        } else {
+            schedule
+        };
+
+        let total_learning_trials = schedule.total_cycles();
+
+        // Initialize ranking values
+        let initial_value = if maxent_mode { 0.0 } else { 100.0 };
+        let mut ranking_values = vec![initial_value; nc];
+
+        // Apply initial a priori enforcement
+        if !apriori.is_empty() && !maxent_mode {
+            adjust_apriori_up(&mut ranking_values, &apriori, opts.apriori_gap);
+            adjust_apriori_down(&mut ranking_values, &apriori, opts.apriori_gap);
+        }
+
+        // History buffers
+        let history_buf = if opts.generate_history {
+            let mut header = String::from("Trial");
+            for c in &tableau.constraints {
+                header.push('\t');
+                header.push_str(&c.abbrev());
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
+        let full_history_buf = if opts.generate_full_history {
+            use std::fmt::Write;
+            let mut header = String::from("Trial #\tInput\tGenerated\tHeard");
+            for c in &tableau.constraints {
+                write!(header, "\t{}", c.abbrev()).unwrap();
+            }
+            header.push('\n');
+            header.push_str("(Initial)\t\t\t");
+            for _ in 0..nc {
+                write!(header, "\t{initial_value:.4}").unwrap();
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
+        let cand_prob_history_buf = if maxent_mode && opts.generate_candidate_prob_history {
+            use std::fmt::Write;
+            let mut header = String::from("Trial #");
+            for form in &tableau.forms {
+                for cand in &form.candidates {
+                    write!(header, "\t/{}/ -> {}", form.input, cand.form).unwrap();
+                }
+            }
+            header.push('\n');
+            let zero_weights = vec![0.0; nc];
+            let initial_preds = maxent_predictions(&tableau, &zero_weights);
+            header.push_str("(initial)");
+            for form_preds in &initial_preds {
+                for &p in form_preds {
+                    write!(header, "\t{}", p).unwrap();
+                }
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
+        Ok(GlaRunner {
+            schedule,
+            apriori,
+            maxent_mode,
+            test_trials: if maxent_mode { 0 } else { opts.test_trials },
+            negative_weights_ok: opts.negative_weights_ok,
+            gaussian_prior: opts.gaussian_prior,
+            sigma: opts.sigma,
+            magri_update_rule: opts.magri_update_rule,
+            exact_proportions: opts.exact_proportions,
+            apriori_gap: opts.apriori_gap,
+            is_faith,
+            total_learning_trials,
+            ranking_values,
+            pool_cursor: pool_size, // triggers shuffle on first use
+            rng: Rng::new(GaussianMode::Standard),
+            phase: GlaPhase::Learning,
+            current_stage: 0,
+            current_trial_in_stage: 0,
+            trials_completed: 0,
+            trial_number: 0,
+            learning_start: chrono::Utc::now(),
+            history_buf,
+            full_history_buf,
+            cand_prob_history_buf,
+            test_counts: tableau.forms.iter().map(|f| vec![0usize; f.candidates.len()]).collect(),
+            test_trials_completed: 0,
+            test_noise_mark: 2.0,
+            test_noise_faith: 2.0,
+            training_pool,
+            tableau,
+            result: None,
+        })
+    }
+
+    /// Advance up to `max_trials` trials. Returns true when all computation
+    /// (learning + testing) is complete.
+    pub fn run_chunk(&mut self, max_trials: usize) -> bool {
+        match self.phase {
+            GlaPhase::Learning => self.run_learning_chunk(max_trials),
+            GlaPhase::Testing => self.run_testing_chunk(max_trials),
+            GlaPhase::Done => true,
+        }
+    }
+
+    /// Progress as [completed, total]. During learning, counts learning trials.
+    /// During testing, adds test trials to the learning total.
+    pub fn progress(&self) -> Vec<f64> {
+        let total = (self.total_learning_trials + self.test_trials) as f64;
+        let completed = match self.phase {
+            GlaPhase::Learning => self.trials_completed as f64,
+            GlaPhase::Testing => {
+                (self.total_learning_trials + self.test_trials_completed) as f64
+            }
+            GlaPhase::Done => total,
+        };
+        vec![completed, total]
+    }
+
+    /// Extract the final GlaResult. Only valid after `run_chunk` returns true.
+    /// Panics if called before completion.
+    pub fn take_result(&mut self) -> GlaResult {
+        self.result.take().expect("GlaRunner: take_result called before completion")
+    }
+}
+
+impl GlaRunner {
+    fn run_learning_chunk(&mut self, max_trials: usize) -> bool {
+        let pool_size = self.training_pool.len();
+        if pool_size == 0 {
+            self.finish_learning();
+            return self.maybe_start_testing();
+        }
+
+        let nc = self.ranking_values.len();
+        let mut work_done = 0;
+
+        while work_done < max_trials {
+            // Check if current stage is exhausted
+            if self.current_stage >= self.schedule.stages.len() {
+                self.finish_learning();
+                return self.maybe_start_testing();
+            }
+
+            let stage = &self.schedule.stages[self.current_stage];
+            if self.current_trial_in_stage >= stage.trials {
+                crate::ot_log!("GLA stage {}/{} complete (plast_mark={:.4}, plast_faith={:.4})",
+                    self.current_stage + 1, self.schedule.stages.len(),
+                    stage.plast_mark, stage.plast_faith);
+                self.current_stage += 1;
+                self.current_trial_in_stage = 0;
+                continue;
+            }
+
+            // ── Single trial ────────────────────────────────────────────────
+            self.trial_number += 1;
+            self.current_trial_in_stage += 1;
+            self.trials_completed += 1;
+            work_done += 1;
+
+            // Select observed exemplar
+            let (sel_form, sel_cand) = if self.exact_proportions {
+                if self.pool_cursor >= pool_size {
+                    for i in (1..pool_size).rev() {
+                        let j = (self.rng.uniform() * (i + 1) as f64) as usize;
+                        self.training_pool.swap(i, j);
+                    }
+                    self.pool_cursor = 0;
+                }
+                let pair = self.training_pool[self.pool_cursor];
+                self.pool_cursor += 1;
+                pair
+            } else {
+                let r = self.rng.uniform();
+                let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
+                self.training_pool[idx]
+            };
+
+            // Generate a form
+            let generated = if self.maxent_mode {
+                maxent_sample(
+                    &self.tableau.forms[sel_form].candidates,
+                    &self.ranking_values,
+                    &mut self.rng,
+                )
+            } else {
+                ot_evaluate(
+                    &self.tableau.forms[sel_form].candidates,
+                    &self.ranking_values,
+                    &self.is_faith,
+                    stage.noise_mark,
+                    stage.noise_faith,
+                    &mut self.rng,
+                )
+            };
+
+            // Update weights on mismatch
+            if generated != sel_cand {
+                let gen_cand = &self.tableau.forms[sel_form].candidates[generated];
+                let obs_cand = &self.tableau.forms[sel_form].candidates[sel_cand];
+
+                if self.maxent_mode {
+                    let sigma_sq = self.sigma * self.sigma;
+                    for (c, rv) in self.ranking_values.iter_mut().enumerate() {
+                        let plast = if self.is_faith[c] { stage.plast_faith } else { stage.plast_mark };
+                        let gen_v = gen_cand.violations[c] as f64;
+                        let obs_v = obs_cand.violations[c] as f64;
+                        let likelihood_change = plast * (gen_v - obs_v);
+                        let prior_change = if self.gaussian_prior {
+                            plast * *rv / sigma_sq / 2.0
+                        } else {
+                            0.0
+                        };
+                        *rv -= likelihood_change + prior_change;
+                        if !self.negative_weights_ok && *rv < 0.0 {
+                            *rv = 0.0;
+                        }
+                    }
+                } else {
+                    let promo_scale = if self.magri_update_rule {
+                        magri_promotion_amount(gen_cand, obs_cand, nc)
+                    } else {
+                        1.0
+                    };
+                    for (c, rv) in self.ranking_values.iter_mut().enumerate() {
+                        let plast = if self.is_faith[c] { stage.plast_faith } else { stage.plast_mark };
+                        let gen_v = gen_cand.violations[c];
+                        let obs_v = obs_cand.violations[c];
+                        if gen_v > obs_v {
+                            *rv += plast * promo_scale;
+                        } else if gen_v < obs_v {
+                            *rv -= plast;
+                        }
+                    }
+                }
+
+                // Record history
+                if let Some(ref mut buf) = self.history_buf {
+                    use std::fmt::Write;
+                    write!(buf, "{}", self.trial_number).unwrap();
+                    for rv in self.ranking_values.iter() {
+                        write!(buf, "\t{rv:.4}").unwrap();
+                    }
+                    buf.push('\n');
+                }
+
+                // Record full history
+                if let Some(ref mut buf) = self.full_history_buf {
+                    use std::fmt::Write;
+                    if !self.maxent_mode {
+                        let gen_cand = &self.tableau.forms[sel_form].candidates[generated];
+                        let obs_cand = &self.tableau.forms[sel_form].candidates[sel_cand];
+                        for c in 0..nc {
+                            let gen_v = gen_cand.violations[c];
+                            let obs_v = obs_cand.violations[c];
+                            let plast = if self.is_faith[c] { stage.plast_faith } else { stage.plast_mark };
+                            if gen_v > obs_v {
+                                write!(buf, "\t{plast}\t{:.4}", self.ranking_values[c]).unwrap();
+                            } else if gen_v < obs_v {
+                                write!(buf, "\t-{plast}\t{:.4}", self.ranking_values[c]).unwrap();
+                            } else {
+                                buf.push_str("\t\t");
+                            }
+                        }
+                    }
+                    write!(buf, "{}\t{}\t{}\t{}",
+                        self.trial_number,
+                        self.tableau.forms[sel_form].input,
+                        self.tableau.forms[sel_form].candidates[generated].form,
+                        self.tableau.forms[sel_form].candidates[sel_cand].form,
+                    ).unwrap();
+                    for rv in self.ranking_values.iter() {
+                        write!(buf, "\t{rv:.4}").unwrap();
+                    }
+                    buf.push('\n');
+                }
+            }
+
+            // Candidate probability history (every trial, not just mismatches)
+            if let Some(ref mut buf) = self.cand_prob_history_buf {
+                use std::fmt::Write;
+                let preds = maxent_predictions(&self.tableau, &self.ranking_values);
+                write!(buf, "{}", self.trial_number).unwrap();
+                for form_preds in &preds {
+                    for &p in form_preds {
+                        write!(buf, "\t{}", p).unwrap();
+                    }
+                }
+                buf.push('\n');
+            }
+        }
+
+        false // not done yet
+    }
+
+    fn finish_learning(&mut self) {
+        // Store noise values from last stage for testing
+        if let Some(last) = self.schedule.stages.last() {
+            self.test_noise_mark = last.noise_mark;
+            self.test_noise_faith = last.noise_faith;
+        }
+    }
+
+    fn maybe_start_testing(&mut self) -> bool {
+        if self.maxent_mode || self.test_trials == 0 {
+            // MaxEnt: exact predictions, no stochastic testing needed
+            self.finalize();
+            true
+        } else {
+            self.phase = GlaPhase::Testing;
+            false
+        }
+    }
+
+    fn run_testing_chunk(&mut self, max_trials: usize) -> bool {
+        let mut work_done = 0;
+        while work_done < max_trials && self.test_trials_completed < self.test_trials {
+            for (fi, form) in self.tableau.forms.iter().enumerate() {
+                let winner = ot_evaluate(
+                    &form.candidates,
+                    &self.ranking_values,
+                    &self.is_faith,
+                    self.test_noise_mark,
+                    self.test_noise_faith,
+                    &mut self.rng,
+                );
+                self.test_counts[fi][winner] += 1;
+            }
+            self.test_trials_completed += 1;
+            work_done += 1;
+        }
+
+        if self.test_trials_completed >= self.test_trials {
+            self.finalize();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn finalize(&mut self) {
+        let learning_time_secs = {
+            let elapsed = chrono::Utc::now() - self.learning_start;
+            elapsed.num_milliseconds() as f64 / 1000.0
+        };
+
+        // Compute test probabilities
+        let test_probs = if self.maxent_mode {
+            maxent_predictions(&self.tableau, &self.ranking_values)
+        } else {
+            self.test_counts.iter().map(|form_counts| {
+                let total: usize = form_counts.iter().sum();
+                if total == 0 {
+                    vec![0.0; form_counts.len()]
+                } else {
+                    form_counts.iter().map(|&c| c as f64 / total as f64).collect()
+                }
+            }).collect()
+        };
+
+        // Error term
+        let mut error_term = 0.0f64;
+        let mut total_rivals: usize = 0;
+        for (fi, form) in self.tableau.forms.iter().enumerate() {
+            let total_freq: f64 = form.candidates.iter().map(|c| c.frequency as f64).sum();
+            total_rivals += form.candidates.len();
+            for (ci, cand) in form.candidates.iter().enumerate() {
+                let obs_prop = if total_freq > 0.0 { cand.frequency as f64 / total_freq } else { 0.0 };
+                let gen_prop = test_probs[fi][ci];
+                error_term += (obs_prop - gen_prop).powi(2);
+            }
+        }
+
+        // Log likelihood
+        let mut log_likelihood = 0.0f64;
+        for (fi, form) in self.tableau.forms.iter().enumerate() {
+            for (ci, cand) in form.candidates.iter().enumerate() {
+                if cand.frequency > 0 {
+                    let pred = test_probs[fi][ci];
+                    if pred > 0.0 {
+                        log_likelihood += cand.frequency as f64 * pred.ln();
+                    }
+                }
+            }
+        }
+
+        self.phase = GlaPhase::Done;
+        self.result = Some(GlaResult {
+            ranking_values: self.ranking_values.clone(),
+            test_probs,
+            log_likelihood,
+            maxent_mode: self.maxent_mode,
+            schedule_description: self.schedule.format_description(),
+            test_trials: self.test_trials,
+            gaussian_prior: self.gaussian_prior,
+            sigma: self.sigma,
+            magri_update_rule: self.magri_update_rule,
+            negative_weights_ok: self.negative_weights_ok,
+            error_term,
+            total_rivals,
+            learning_time_secs,
+            apriori: self.apriori.clone(),
+            apriori_gap: self.apriori_gap,
+            history: self.history_buf.take(),
+            full_history: self.full_history_buf.take(),
+            candidate_prob_history: self.cand_prob_history_buf.take(),
+        });
+    }
+}
+
+impl ChunkedRunner for GlaRunner {
+    fn run_chunk(&mut self, max_work: usize) -> bool {
+        GlaRunner::run_chunk(self, max_work)
+    }
+
+    fn progress(&self) -> [f64; 2] {
+        let p = GlaRunner::progress(self);
+        [p[0], p[1]]
+    }
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1610,5 +2143,48 @@ mod tests {
             rv0 - rv1 >= gap - 0.001,
             "initial a priori gap not satisfied: rv[0]={rv0:.3}, rv[1]={rv1:.3}, required gap={gap}"
         );
+    }
+
+    #[test]
+    fn test_gla_runner_completes() {
+        let text = load_tiny();
+        let opts = crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        };
+        let mut runner = super::GlaRunner::new(&text, &opts).unwrap();
+
+        // Run in small chunks until done
+        let mut iterations = 0;
+        while !runner.run_chunk(100) {
+            iterations += 1;
+            let p = runner.progress();
+            assert!(p[0] <= p[1], "completed should not exceed total");
+            assert!(iterations < 10_000, "should complete in bounded iterations");
+        }
+        assert!(iterations > 0, "should take multiple chunks");
+
+        let result = runner.take_result();
+        let nc = Tableau::parse(&text).unwrap().constraint_count();
+        for c in 0..nc {
+            assert!(result.get_ranking_value(c).is_finite());
+        }
+        assert!(result.log_likelihood().is_finite());
+    }
+
+    #[test]
+    fn test_gla_runner_maxent_completes() {
+        let text = load_tiny();
+        let opts = crate::GlaOptions {
+            maxent_mode: true, cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001,
+            test_trials: 0, ..Default::default()
+        };
+        let mut runner = super::GlaRunner::new(&text, &opts).unwrap();
+
+        while !runner.run_chunk(100) {}
+
+        let result = runner.take_result();
+        assert!(result.log_likelihood().is_finite());
+        assert!(result.is_maxent_mode());
     }
 }

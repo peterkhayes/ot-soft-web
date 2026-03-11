@@ -9,13 +9,7 @@
  * (i.e. inside component bodies that render after WASM loads).
  */
 
-import {
-  FredOptions,
-  FtOptions,
-  GlaOptions,
-  MaxEntOptions,
-  NhgOptions,
-} from '../pkg/ot_soft.js'
+import { FredOptions, FtOptions, GlaOptions, MaxEntOptions, NhgOptions } from '../pkg/ot_soft.js'
 import { DEFAULT_SCHEDULE_TEMPLATE } from './constants.ts'
 
 // ─── MaxEnt ──────────────────────────────────────────────────────────────────

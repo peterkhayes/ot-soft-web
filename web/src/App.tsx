@@ -17,6 +17,8 @@ import TableauPanel from './components/TableauPanel.tsx'
 const NOT_IMPLEMENTED: Record<string, string> = {}
 
 const COLLAPSED_MAX_HEIGHT = 900
+const COLLAPSED_MAX_HEIGHT_MOBILE = 1350
+const MOBILE_BREAKPOINT = 768
 
 function ExpandableSection({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false)
@@ -27,7 +29,9 @@ function ExpandableSection({ children }: { children: React.ReactNode }) {
     const el = bodyRef.current
     if (!el) return
     const ro = new ResizeObserver(() => {
-      setOverflows(el.scrollHeight > COLLAPSED_MAX_HEIGHT + 100)
+      const maxHeight =
+        window.innerWidth <= MOBILE_BREAKPOINT ? COLLAPSED_MAX_HEIGHT_MOBILE : COLLAPSED_MAX_HEIGHT
+      setOverflows(el.scrollHeight > maxHeight + 100)
     })
     ro.observe(el)
     return () => ro.disconnect()

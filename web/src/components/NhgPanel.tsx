@@ -20,7 +20,13 @@ interface NhgResultState {
   forms: {
     input: string
     totalFreq: number
-    candidates: { form: string; frequency: number; obsPct: number; genCount: number; genPct: number }[]
+    candidates: {
+      form: string
+      frequency: number
+      obsPct: number
+      genCount: number
+      genPct: number
+    }[]
   }[]
   logLikelihood: number
   zeroPredictionWarning: boolean

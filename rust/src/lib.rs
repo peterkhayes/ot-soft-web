@@ -641,7 +641,7 @@ pub fn format_gla_multiple_runs_output(
     Ok(tableau.format_collate_runs_output(run_count as usize, &sched, &apriori, opts))
 }
 
-fn parse_gla_apriori(tableau: &Tableau, opts: &GlaOptions) -> Result<Vec<Vec<bool>>, String> {
+pub(crate) fn parse_gla_apriori(tableau: &Tableau, opts: &GlaOptions) -> Result<Vec<Vec<bool>>, String> {
     let text = opts.apriori_text();
     if text.trim().is_empty() {
         return Ok(vec![]);
@@ -650,7 +650,7 @@ fn parse_gla_apriori(tableau: &Tableau, opts: &GlaOptions) -> Result<Vec<Vec<boo
     apriori::parse_apriori(&text, &abbrevs)
 }
 
-fn build_gla_schedule(opts: &GlaOptions) -> Result<schedule::LearningSchedule, String> {
+pub(crate) fn build_gla_schedule(opts: &GlaOptions) -> Result<schedule::LearningSchedule, String> {
     if opts.learning_schedule.trim().is_empty() {
         Ok(schedule::LearningSchedule::default_4stage(
             opts.cycles, opts.initial_plasticity, opts.final_plasticity,
