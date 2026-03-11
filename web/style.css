@@ -1370,9 +1370,7 @@ button:disabled {
 
 @media (max-width: 768px) {
     .panel-header {
-        flex-direction: column;
         gap: var(--space-xs);
-        align-items: flex-start;
     }
 
     .action-bar {

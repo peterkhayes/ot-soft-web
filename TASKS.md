@@ -8,7 +8,13 @@
 - [Diagnostics if ranking fails](tasks/diagnostics-ranking-fails.md)
 - [HTML shading customization](tasks/html-shading-options.md)
 - [GLA "Active Constraints" section](tasks/gla-active-constraints.md)
-- [GLA panel layout polish](tasks/gla-panel-layout.md)
+- [GLA: desktop controls layout](tasks/gla-desktop-controls-layout.md)
+- [GLA: multiple runs count should be text input](tasks/gla-multiple-runs-input.md)
+- [GLA: multiple runs progress indicator](tasks/gla-multiple-runs-progress.md)
+- [Pairwise Ranking Probabilities as HTML table](tasks/pairwise-table-native.md)
+- [Mobile: section numbers positioning](tasks/mobile-section-numbers.md)
+- [Options button layout consistency](tasks/options-button-layout.md)
+- [Reduce test output verbosity](tasks/test-output-verbosity.md)
 
 ## Features
 
