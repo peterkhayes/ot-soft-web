@@ -66,8 +66,14 @@ def _dismiss_msgboxes(app) -> list[str]:
 class MsgBoxDismisser:
     """Background thread that auto-dismisses known VB6 message boxes."""
 
-    def __init__(self, app):
-        self._app = app
+    def __init__(self, get_app):
+        """
+        Args:
+            get_app: Callable returning the current pywinauto Application.
+                     Called on every poll so that a fresh app reference is
+                     used after OTSoft is relaunched between test cases.
+        """
+        self._get_app = get_app
         self._stop = threading.Event()
         self._thread = None
         self._dismissed = []
@@ -91,7 +97,7 @@ class MsgBoxDismisser:
 
     def _run(self):
         while not self._stop.is_set():
-            self._dismissed.extend(_dismiss_msgboxes(self._app))
+            self._dismissed.extend(_dismiss_msgboxes(self._get_app()))
             self._stop.wait(0.3)
 
 
@@ -159,7 +165,7 @@ class OTSoftDriver:
     def start_msgbox_dismisser(self):
         """Start background thread to auto-dismiss MsgBox dialogs."""
         if self._msgbox_dismisser is None:
-            self._msgbox_dismisser = MsgBoxDismisser(self.app)
+            self._msgbox_dismisser = MsgBoxDismisser(lambda: self.app)
         self._msgbox_dismisser.start()
 
     def stop_msgbox_dismisser(self):
