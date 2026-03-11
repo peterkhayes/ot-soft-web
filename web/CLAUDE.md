@@ -18,6 +18,7 @@ web/
 │   │   ├── downloadContext.ts     # Injectable text download (DownloadProvider, useDownload)
 │   │   └── blobDownloadContext.ts # Injectable blob download (BlobDownloadProvider, useBlobDownload)
 │   ├── hooks/
+│   │   ├── useChunkedRunner.ts  # Chunked WASM computation with progress + completion sound
 │   │   └── useLocalStorage.ts   # Persistent settings state
 │   └── components/
 │       ├── FrameworkPanel.tsx   # Framework selector (Classical/MaxEnt/SOT/NHG)

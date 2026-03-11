@@ -1,5 +1,29 @@
 import { useCallback, useReducer, useRef } from 'react'
 
+const COMPLETION_SOUND_THRESHOLD_MS = 3_000
+
+/** Play a short two-tone chime via the Web Audio API. */
+function playCompletionSound(): void {
+  try {
+    const ctx = new AudioContext()
+    const notes = [660, 880] // E5 → A5 ascending
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.2)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(ctx.currentTime + i * 0.15)
+      osc.stop(ctx.currentTime + i * 0.15 + 0.2)
+    })
+  } catch {
+    // AudioContext may not be available in all environments
+  }
+}
+
 /** Mirrors the Rust ChunkedRunner trait. */
 export interface ChunkedRunner {
   run_chunk(max_work: number): boolean
@@ -72,6 +96,7 @@ export function useChunkedRunner<R extends ChunkedRunner, T>(
     }
     runnerRef.current = runner
     dispatch({ type: 'start' })
+    const startTime = performance.now()
     let lastProgressTime = 0
 
     function step() {
@@ -89,6 +114,9 @@ export function useChunkedRunner<R extends ChunkedRunner, T>(
           const result = extractResult(runner)
           runner.free()
           runnerRef.current = null
+          if (performance.now() - startTime > COMPLETION_SOUND_THRESHOLD_MS) {
+            playCompletionSound()
+          }
           dispatch({ type: 'done', result })
         }
       } catch (e) {
