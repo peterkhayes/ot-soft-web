@@ -29,9 +29,16 @@ APRIORI_MENU_PATH = (
 )
 
 
+_DISMISS_BUTTON_TITLES = {"ok", "end", "abort", "close", "yes"}
+
+
 def _dismiss_msgboxes(app) -> list[str]:
     """
     Find and dismiss any visible MsgBox dialogs belonging to the app.
+
+    Matches dismiss buttons case-insensitively ("OK", "Ok", "End", etc.)
+    and handles VB6 runtime-error dialogs ("End" button) in addition to
+    ordinary MsgBox ("OK") dialogs.
 
     Returns a list of dismissed message strings (title + body text).
     """
@@ -41,21 +48,27 @@ def _dismiss_msgboxes(app) -> list[str]:
             try:
                 if not win.is_visible():
                     continue
-                ok_btn = win.child_window(title="OK", class_name="Button")
-                if ok_btn.exists(timeout=0):
-                    title = win.window_text()
-                    # Collect body text from child Static controls
-                    body_parts = [
-                        t.strip()
-                        for t in win.texts()
-                        if t.strip() and t.strip() != title and t.strip() != "OK"
-                    ]
-                    body = " ".join(body_parts) if body_parts else "(no body text)"
-                    message = f"{title}: {body}"
-                    logger.warning("MsgBox dismissed — %s", message)
-                    dismissed.append(message)
-                    ok_btn.click()
-                    time.sleep(0.3)
+                # Find the first button whose title matches a dismiss action.
+                dismiss_btn = None
+                for btn in win.children(class_name="Button"):
+                    if btn.window_text().strip().lower() in _DISMISS_BUTTON_TITLES:
+                        dismiss_btn = btn
+                        break
+                if dismiss_btn is None:
+                    continue
+                title = win.window_text()
+                btn_label = dismiss_btn.window_text().strip()
+                body_parts = [
+                    t.strip()
+                    for t in win.texts()
+                    if t.strip() and t.strip() != title and t.strip() != btn_label
+                ]
+                body = " ".join(body_parts) if body_parts else "(no body text)"
+                message = f"{title}: {body}"
+                logger.warning("MsgBox dismissed — %s", message)
+                dismissed.append(message)
+                dismiss_btn.click()
+                time.sleep(0.3)
             except Exception:
                 pass
     except Exception:
@@ -309,6 +322,8 @@ class OTSoftDriver:
     def enable_apriori_rankings(self):
         """Enable the a priori rankings menu toggle (file must already be in place)."""
         self._set_menu_checked(True, *APRIORI_MENU_PATH)
+        # VB6 may show an error dialog asynchronously; give it a moment to appear.
+        time.sleep(0.5)
         _dismiss_msgboxes(self.app)
 
     def disable_apriori_rankings(self):
@@ -362,12 +377,25 @@ class OTSoftDriver:
         Run batch MaxEnt: select MaxEnt framework, click Rank to open GLA form,
         navigate to batch MaxEnt, configure parameters, and run.
         """
+        # If a previous MaxEnt run left a GLA or MaxEnt window open, close it
+        # before proceeding so we start from the main window.
+        for title_re in (r".*[Mm]aximum [Ee]ntropy.*", r".*Gradual Learning Algorithm.*"):
+            try:
+                stale = self.app.window(title_re=title_re)
+                if stale.exists(timeout=0):
+                    stale.close()
+                    time.sleep(0.5)
+            except Exception:
+                pass
+
         self.select_maximum_entropy()
         time.sleep(0.5)
 
-        # Click Rank to open GLA form
+        # When MaxEnt framework is selected, the Rank button caption changes to
+        # "Compute weights for <file>" — it no longer contains "Rank".
+        # Clicking it opens the GLA form with MaxEnt pre-selected.
         rank_btn = self.main_win.child_window(
-            class_name="ThunderRT6CommandButton", title_re=".*Rank.*"
+            class_name="ThunderRT6CommandButton", title_re=".*Compute weights.*"
         )
         rank_btn.click()
         time.sleep(1)
