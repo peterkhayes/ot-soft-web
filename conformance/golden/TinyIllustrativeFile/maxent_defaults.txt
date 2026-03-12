@@ -1,0 +1,75 @@
+Result of Applying Maximum Entropy to TinyIllustrativeFile.txt
+
+
+OTSoft 2.7, release date 2/1/2026
+
+3-11-2026, 7:46 p.m.
+
+
+For more detailed examination of results, please use a spreadsheet program to open the file 
+TabbedOutput.txt, located in the folder FilesForTinyIllustrativeFile.
+
+
+1. Constraints and weights
+
+
+   0.000	*No Onset
+   0.000	*Coda
+   0.000	Max(t)
+   0.000	Dep(?)
+
+
+2. Inputs, candidates, input frequencies, input proportions, predicted probabilities
+
+Inputs  Candidates  Input frequencies  Input proportions  Predicted probabilities
+a                           0                  0.000               0.000         
+            ?a              1                  1.000               0.500         
+            a               0                  0.000               0.500         
+
+
+Inputs  Candidates  Input frequencies  Input proportions  Predicted probabilities
+tat                         0                  0.000               0.000         
+            ta              1                  1.000               0.500         
+           tat              0                  0.000               0.500         
+
+
+Inputs  Candidates  Input frequencies  Input proportions  Predicted probabilities
+at                          0                  0.000               0.000         
+            ?a              1                  1.000               0.250         
+           ?at              0                  0.000               0.250         
+            a               0                  0.000               0.250         
+            at              0                  0.000               0.250         
+
+
+Probability of data = -2.772589
+
+
+3. Weights Found
+
+0.000     0.000   *No Onset
+0.000     0.000   *Coda
+0.000     0.000   Max(t)
+0.000     0.000   Dep(?)
+
+4. Tableaux
+
+Input  Candidate  Harmony  exp(-H)  Predicted  Observed  *NoOns  *Coda   Max    Dep 
+                                                         0.000   0.000  0.000  0.000
+          ?a       0.000    1.000     0.500     1.000                            *  
+           a       0.000    1.000     0.500     0.000      *                        
+
+Input  Candidate  Harmony  exp(-H)  Predicted  Observed  *NoOns  *Coda   Max    Dep 
+                                                         0.000   0.000  0.000  0.000
+          ta       0.000    1.000     0.500     1.000                     *         
+          tat      0.000    1.000     0.500     0.000              *                
+
+Input  Candidate  Harmony  exp(-H)  Predicted  Observed  *NoOns  *Coda   Max    Dep 
+                                                         0.000   0.000  0.000  0.000
+          ?a       0.000    1.000     0.250     1.000                     *      *  
+          ?at      0.000    1.000     0.250     0.000              *             *  
+           a       0.000    1.000     0.250     0.000      *              *         
+          at       0.000    1.000     0.250     0.000      *       *                
+
+Learning time:  0.006 minutes
+
+

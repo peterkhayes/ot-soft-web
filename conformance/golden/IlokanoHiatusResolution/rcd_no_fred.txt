@@ -1,0 +1,82 @@
+Results of Applying Recursive Constraint Demotion to IlokanoHiatusResolution.txt
+
+
+3-11-2026, 3:54 p.m.
+
+OTSoft 2.7, release date 2/1/2026
+
+
+1. Result
+
+A ranking was found that generates the correct outputs.
+
+   Stratum #1
+      Dep(h)                                    Dep(h)
+      Dep(+cons)                                Dep(+cons)
+      Max                                       Max
+      Max-stem                                  Max-stem
+      *VV                                       *VV
+      Ident(low)                                Id(lo)
+      *Nonhigh glide                            *Nonhigh glide
+   Stratum #2
+      Dep                                       Dep
+   Stratum #3
+      Ident(syllabic)                           Id(syl)
+      Ident(high)                               Id(hi)
+
+2. Tableaux
+
+
+/babawi-en/: 
+      Dep(h)¦Dep(+cons)¦Max¦Max-stem¦*VV¦Id(lo)¦*Nonhigh glide|Dep|Id(syl)¦Id(hi)
+>je         ¦          ¦   ¦        ¦   ¦      ¦              |   |  1    ¦      
+ i.?e       ¦          ¦   ¦        ¦   ¦      ¦              |1! |       ¦      
+ i.e        ¦          ¦   ¦        ¦1! ¦      ¦              |   |       ¦      
+ i          ¦          ¦1! ¦        ¦   ¦      ¦              |   |       ¦      
+ e          ¦          ¦1! ¦   1    ¦   ¦      ¦              |   |       ¦      
+ i.te       ¦    1!    ¦   ¦        ¦   ¦      ¦              |1  |       ¦      
+ i.he   1!  ¦          ¦   ¦        ¦   ¦      ¦              |1  |       ¦      
+
+
+/masahe-an/: 
+      Dep(h)¦Dep(+cons)¦Max¦Max-stem¦*VV¦Id(lo)¦*Nonhigh glide|Dep|Id(syl)¦Id(hi)
+>ja         ¦          ¦   ¦        ¦   ¦      ¦              |   |  1    ¦  1   
+ e.?a       ¦          ¦   ¦        ¦   ¦      ¦              |1! |       ¦      
+ Ea         ¦          ¦   ¦        ¦   ¦      ¦      1!      |   |  1    ¦      
+ e.a        ¦          ¦   ¦        ¦1! ¦      ¦              |   |       ¦      
+ e          ¦          ¦1! ¦        ¦   ¦      ¦              |   |       ¦      
+ a          ¦          ¦1! ¦   1    ¦   ¦      ¦              |   |       ¦      
+ e.ta       ¦    1!    ¦   ¦        ¦   ¦      ¦              |1  |       ¦      
+ e.ha   1!  ¦          ¦   ¦        ¦   ¦      ¦              |1  |       ¦      
+
+
+/basa-en/: 
+      Dep(h)¦Dep(+cons)¦Max¦Max-stem¦*VV¦Id(lo)¦*Nonhigh glide|Dep|Id(syl)¦Id(hi)
+>a.?e       ¦          ¦   ¦        ¦   ¦      ¦              |1  |       ¦      
+ Ae         ¦          ¦   ¦        ¦   ¦      ¦      1!      |   |  1    ¦      
+ wa         ¦          ¦   ¦        ¦   ¦  1!  ¦              |   |  1    ¦  1   
+ a.e        ¦          ¦   ¦        ¦1! ¦      ¦              |   |       ¦      
+ a          ¦          ¦1! ¦        ¦   ¦      ¦              |   |       ¦      
+ e          ¦          ¦1! ¦   1    ¦   ¦      ¦              |   |       ¦      
+ ate        ¦    1!    ¦   ¦        ¦   ¦      ¦              |1  |       ¦      
+ ahe    1!  ¦          ¦   ¦        ¦   ¦      ¦              |1  |       ¦      
+
+
+3. Status of Proposed Constraints:  Necessary or Unnecessary
+
+   Dep             Necessary
+   Dep(h)          Necessary
+   Dep(+cons)      Necessary
+   Max             Necessary
+   *VV             Necessary
+   Id(lo)          Necessary
+   *Nonhigh glide  Necessary
+   Id(syl)         Not necessary (but included to show Faithfulness violations
+                      of a winning candidate)
+   Id(hi)          Not necessary (but included to show Faithfulness violations
+                      of a winning candidate)
+   Max-stem        Not necessary
+
+A check has determined that the grammar will still work even if the 
+constraints marked above as unnecessary are removed en masse.
+

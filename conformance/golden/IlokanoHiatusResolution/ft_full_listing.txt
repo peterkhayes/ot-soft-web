@@ -1,0 +1,446 @@
+Results of Factorial Typology Search
+
+3-11-2026, 3:55 p.m.
+
+OTSoft version 2.7, release date 2/1/2026
+
+Source file:  IlokanoHiatusResolution.txt
+
+
+1. Constraints
+
+     Full Name        Abbr.         
+1.   Dep              Dep           
+2.   Dep(h)           Dep(h)        
+3.   Dep(+cons)       Dep(+cons)    
+4.   Max              Max           
+5.   Max-stem         Max-stem      
+6.   *VV              *VV           
+7.   Ident(syllabic)  Id(syl)       
+8.   Ident(high)      Id(hi)        
+9.   Ident(low)       Id(lo)        
+10.  *Nonhigh glide   *Nonhigh glide
+
+All rankings were considered.
+
+
+Summary results appear at end of file.  
+Immediately below are reports on individual patterns generated.
+
+
+
+2. Summary Information
+
+With 10 constraints, the number of logically possible grammars is 3628800.
+
+There were 12 different output patterns.
+
+Forms marked as winners in the input file are marked with >.
+
+               Output #1   Output #2   Output #3   Output #4
+/babawi-en/   >i.e         je          je          je 
+/masahe-an/   >e.a        >e.a         Ea          ja 
+/basa-en/     >a.e        >a.e         Ae         >a.e 
+
+               Output #5   Output #6   Output #7   Output #8
+/babawi-en/    je          je          je          je 
+/masahe-an/    ja          ja          ja          ja 
+/basa-en/      Ae          wa          a.?e        a 
+
+               Output #9   Output #10   Output #11   Output #12
+/babawi-en/    je          je           i.?e         i 
+/masahe-an/    e.?a        e            e.?a         e 
+/basa-en/      a.?e        a            a.?e         a 
+
+
+3. List of Winners
+
+The following specifies for each candidate whether there is at least one ranking that derives it:
+
+/babawi-en/:  
+   [i.e]:          yes
+   [je]:           yes
+   [i.?e]:         yes
+   [i]:            yes
+   [i.te]:         no
+   [i.he]:         no
+   [e]:            no
+/masahe-an/:  
+   [e.a]:          yes
+   [Ea]:           yes
+   [ja]:           yes
+   [e.?a]:         yes
+   [e]:            yes
+   [e.ta]:         no
+   [e.ha]:         no
+   [a]:            no
+/basa-en/:  
+   [a.e]:          yes
+   [Ae]:           yes
+   [wa]:           yes
+   [a.?e]:         yes
+   [a]:            yes
+   [ate]:          no
+   [ahe]:          no
+   [e]:            no
+
+4. T-orders
+
+The t-order is the set of implications in a factorical typology.
+
+If this input  has this output  then this input  has this output
+/babawi-en/    [i.e]            /masahe-an/      [e.a]          
+/babawi-en/    [i.e]            /basa-en/        [a.e]          
+/babawi-en/    [i.?e]           /masahe-an/      [e.?a]         
+/babawi-en/    [i.?e]           /basa-en/        [a.?e]         
+/babawi-en/    [i]              /masahe-an/      [e]            
+/babawi-en/    [i]              /basa-en/        [a]            
+/masahe-an/    [e.a]            /basa-en/        [a.e]          
+/masahe-an/    [Ea]             /babawi-en/      [je]           
+/masahe-an/    [Ea]             /basa-en/        [Ae]           
+/masahe-an/    [ja]             /babawi-en/      [je]           
+/masahe-an/    [e.?a]           /basa-en/        [a.?e]         
+/masahe-an/    [e]              /basa-en/        [a]            
+/basa-en/      [Ae]             /babawi-en/      [je]           
+/basa-en/      [wa]             /babawi-en/      [je]           
+/basa-en/      [wa]             /masahe-an/      [ja]           
+
+Nothing is implicated by these input-output pairs:
+
+Input      Candidate
+babawi-en  je       
+babawi-en  i.te     
+babawi-en  i.he     
+babawi-en  e        
+masahe-an  e.ta     
+masahe-an  e.ha     
+masahe-an  a        
+basa-en    a.e      
+basa-en    a.?e     
+basa-en    a        
+basa-en    ate      
+basa-en    ahe      
+basa-en    e        
+
+For a tabbed listing of the t-order found here, see the file 
+C:\Users\My Lenovo\ot-soft-web\examples\FilesForIlokanoHiatusResolution\IlokanoHiatusResolution.
+
+
+5. Complete Listing of Output Patterns
+
+OUTPUT SET #1:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >i.e 
+   /masahe-an/   -->  >e.a 
+   /basa-en/     -->  >a.e 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      Ident(syllabic)                     [= Id(syl)]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      *VV                                 [= *VV]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #2:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >e.a 
+   /basa-en/     -->  >a.e 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      *VV                                 [= *VV]
+   Stratum #3
+      Ident(syllabic)                     [= Id(syl)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #3:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >Ea 
+   /basa-en/     -->  >Ae 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+   Stratum #2
+      Ident(syllabic)                     [= Id(syl)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #4:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >ja 
+   /basa-en/     -->  >a.e 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      *VV                                 [= *VV]
+   Stratum #3
+      Ident(syllabic)                     [= Id(syl)]
+      Ident(high)                         [= Id(hi)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #5:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >ja 
+   /basa-en/     -->  >Ae 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(low)                          [= Id(lo)]
+   Stratum #2
+      Ident(syllabic)                     [= Id(syl)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #3
+      Ident(high)                         [= Id(hi)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #6:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >ja 
+   /basa-en/     -->  >wa 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      Ident(syllabic)                     [= Id(syl)]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #7:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >ja 
+   /basa-en/     -->  >a.?e 
+
+Grammar:
+
+   Stratum #1
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      Dep                                 [= Dep]
+   Stratum #3
+      Ident(syllabic)                     [= Id(syl)]
+      Ident(high)                         [= Id(hi)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #8:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >ja 
+   /basa-en/     -->  >a 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      Max                                 [= Max]
+   Stratum #3
+      Ident(syllabic)                     [= Id(syl)]
+      Ident(high)                         [= Id(hi)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #9:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >e.?a 
+   /basa-en/     -->  >a.?e 
+
+Grammar:
+
+   Stratum #1
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      Dep                                 [= Dep]
+   Stratum #3
+      Ident(syllabic)                     [= Id(syl)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #10:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >je 
+   /masahe-an/   -->  >e 
+   /basa-en/     -->  >a 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      Max                                 [= Max]
+   Stratum #3
+      Ident(syllabic)                     [= Id(syl)]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #11:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >i.?e 
+   /masahe-an/   -->  >e.?a 
+   /basa-en/     -->  >a.?e 
+
+Grammar:
+
+   Stratum #1
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max                                 [= Max]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(syllabic)                     [= Id(syl)]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      Dep                                 [= Dep]
+
+
+------------------------------------------------------------------------------
+OUTPUT SET #12:
+
+These are the winning outputs.  
+> specifies outputs marked as winning candidates in the input file.
+
+   /babawi-en/   -->  >i 
+   /masahe-an/   -->  >e 
+   /basa-en/     -->  >a 
+
+Grammar:
+
+   Stratum #1
+      Dep                                 [= Dep]
+      Dep(h)                              [= Dep(h)]
+      Dep(+cons)                          [= Dep(+cons)]
+      Max-stem                            [= Max-stem]
+      *VV                                 [= *VV]
+      Ident(syllabic)                     [= Id(syl)]
+      Ident(high)                         [= Id(hi)]
+      Ident(low)                          [= Id(lo)]
+      *Nonhigh glide                      [= *Nonhigh glide]
+   Stratum #2
+      Max                                 [= Max]
