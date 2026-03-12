@@ -408,20 +408,13 @@ class OTSoftDriver:
         rank_btn = self.main_win.child_window(
             class_name="ThunderRT6CommandButton", title_re=r"(?i).*(rank|compute weights).*"
         )
-        logger.info("Clicking Rank/Compute-weights button: %r", rank_btn.window_text())
+        logger.info("Clicking Rank button: %r", rank_btn.window_text())
         rank_btn.click()
         time.sleep(2)
 
-        # Log all visible app windows to help diagnose what opens.
-        try:
-            for w in self.app.windows():
-                if w.is_visible():
-                    logger.info("  Visible window: %r", w.window_text())
-        except Exception:
-            pass
-
-        # Find the GLA form — allow generous time for it to initialise.
-        gla_win = self.app.window(title_re=".*Gradual Learning Algorithm.*")
+        # Find the GLA form. In OTSoft 2.7 the title is
+        # "OTSoft 2.7 - GLA-MaxEnt - <file>" (not "Gradual Learning Algorithm").
+        gla_win = self.app.window(title_re=".*GLA.*")
         gla_win.wait("ready", timeout=30)
 
         # Configure Gaussian prior BEFORE opening batch MaxEnt
