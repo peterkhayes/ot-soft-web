@@ -436,7 +436,15 @@ class OTSoftDriver:
 
         # Navigate: MaxEnt menu → "Run the batch version of MaxEnt"
         gla_win.menu_select("&MaxEnt->Run the batch version of MaxEnt")
-        time.sleep(1)
+        time.sleep(2)
+
+        # Log all visible windows to identify the batch MaxEnt window title.
+        try:
+            for w in self.app.windows():
+                if w.is_visible():
+                    logger.info("  Post-GLA-menu visible window: %r", w.window_text())
+        except Exception:
+            pass
 
         # Find the MyMaxEnt form
         maxent_win = self.app.window(title_re=".*[Mm]aximum [Ee]ntropy.*")
