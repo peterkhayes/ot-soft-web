@@ -216,6 +216,16 @@ class OTSoftDriver:
             except Exception:
                 pass
 
+        # Kill the old process unconditionally to avoid leaving a stale OTSoft
+        # running alongside the new one (e.g. if a modal GLA window blocked
+        # the main-window close above).
+        if self.app:
+            try:
+                self.app.kill()
+                time.sleep(0.3)
+            except Exception:
+                pass
+
         self._start_app(f'"{self.otsoft_path}" "{abs_path}"')
 
         # Dismiss any startup MsgBoxes
@@ -389,7 +399,9 @@ class OTSoftDriver:
                 pass
 
         self.select_maximum_entropy()
-        time.sleep(0.5)
+        # Give VB6 time to process the radio-button click and update the
+        # Rank button caption to "Compute weights for <file>".
+        time.sleep(1.5)
 
         # When MaxEnt framework is selected, the Rank button caption changes to
         # "Compute weights for <file>" — it no longer contains "Rank".
@@ -398,11 +410,11 @@ class OTSoftDriver:
             class_name="ThunderRT6CommandButton", title_re=".*Compute weights.*"
         )
         rank_btn.click()
-        time.sleep(1)
+        time.sleep(2)
 
-        # Find the GLA form
+        # Find the GLA form — allow generous time for it to initialise.
         gla_win = self.app.window(title_re=".*Gradual Learning Algorithm.*")
-        gla_win.wait("ready", timeout=10)
+        gla_win.wait("ready", timeout=30)
 
         # Configure Gaussian prior BEFORE opening batch MaxEnt
         use_prior = params.get("use_prior", False)
@@ -427,7 +439,7 @@ class OTSoftDriver:
 
         # Find the MyMaxEnt form
         maxent_win = self.app.window(title_re=".*[Mm]aximum [Ee]ntropy.*")
-        maxent_win.wait("ready", timeout=10)
+        maxent_win.wait("ready", timeout=30)
 
         # Set parameters
         iterations = params.get("iterations", 5)
