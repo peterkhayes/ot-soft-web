@@ -436,7 +436,7 @@ impl Tableau {
                 crate::ot_log!("BCD SUCCEEDED with {} strata", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, true);
                 result.set_tie_warning(upper_tie_flag || tie_flag);
-                result.compute_extra_analyses(self, &[]);
+                result.compute_extra_analyses(self, &[], true);
                 return result;
             }
 

@@ -329,7 +329,7 @@ impl Tableau {
                 // Case III: success
                 crate::ot_log!("LFCD SUCCEEDED with {} strata", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, true);
-                result.compute_extra_analyses(self, apriori);
+                result.compute_extra_analyses(self, apriori, false); // LFCD: VB6 does not feed apriori into FRed
                 return result;
             } else if !some_are_non_demotable {
                 // Case II: failure — assign remaining to current stratum for diagnostics

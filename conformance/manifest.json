@@ -107,7 +107,6 @@
     {
       "id": "TinyIllustrativeFile_lfcd_apriori",
       "description": "LFCD with a priori rankings (*NoOns >> Max)",
-      "skip": "Section ordering mismatch: Rust outputs 'A Priori Rankings' before 'Tableaux'; VB6 orders them differently. See tasks/conformance-lfcd-apriori-sections.md",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": "examples/TinyIllustrativeFile_apriori.txt",
       "algorithm": "lfcd",

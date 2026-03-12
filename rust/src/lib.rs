@@ -357,7 +357,7 @@ pub fn format_rcd_output(
         tableau.run_rcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
-    Ok(result.format_output_with_options(&tableau, filename, "Recursive Constraint Demotion", &apriori))
+    Ok(result.format_output_with_options(&tableau, filename, "Recursive Constraint Demotion", &apriori, true))
 }
 
 /// Run FRed (Fusional Reduction Algorithm) on a tableau.
@@ -567,6 +567,7 @@ pub fn format_lfcd_output(
         filename,
         "Low Faithfulness Constraint Demotion",
         &apriori,
+        false, // LFCD omits the A Priori Rankings section (VB6 behaviour)
     ))
 }
 

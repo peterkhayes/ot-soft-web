@@ -188,9 +188,18 @@ impl RCDResult {
     }
 
     /// Compute additional analyses (necessity, FRed ranking arguments, mini-tableaux)
-    pub(crate) fn compute_extra_analyses(&mut self, tableau: &Tableau, apriori: &[Vec<bool>]) {
+    /// Compute constraint necessity, FRed, and mini-tableaux.
+    ///
+    /// `include_apriori_in_fred`: whether to feed apriori ERCs into FRed.
+    /// RCD passes `true` (VB6 includes them); LFCD passes `false` (VB6 does not).
+    pub(crate) fn compute_extra_analyses(
+        &mut self,
+        tableau: &Tableau,
+        apriori: &[Vec<bool>],
+        include_apriori_in_fred: bool,
+    ) {
         self.constraint_necessity = tableau.compute_constraint_necessity(self, apriori);
-        self.fred_result = Some(if apriori.is_empty() {
+        self.fred_result = Some(if apriori.is_empty() || !include_apriori_in_fred {
             tableau.run_fred(false)
         } else {
             tableau.run_fred_with_apriori(false, apriori)
@@ -212,7 +221,7 @@ impl RCDResult {
     pub(crate) fn apply_fred_options(
         &mut self,
         tableau: &Tableau,
-        apriori: &[Vec<bool>],
+        _apriori: &[Vec<bool>],
         include_fred: bool,
         use_mib: bool,
         verbose: bool,
@@ -227,13 +236,7 @@ impl RCDResult {
         // Re-run FRed if options differ from the default (SB, no verbose).
         // Default was computed in compute_extra_analyses as run_fred(false).
         if use_mib || verbose {
-            self.fred_result = Some(
-                if apriori.is_empty() {
-                    tableau.run_fred_verbose(use_mib, verbose)
-                } else {
-                    tableau.run_fred_with_apriori_verbose(use_mib, apriori, verbose)
-                }
-            );
+            self.fred_result = Some(tableau.run_fred_verbose(use_mib, verbose));
         }
 
         if !include_mini_tableaux {
@@ -300,21 +303,26 @@ impl RCDResult {
 
     /// Generate formatted text output for the RCD analysis
     pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
-        self.format_output_with_options(tableau, filename, "Recursive Constraint Demotion", &[])
+        self.format_output_with_options(tableau, filename, "Recursive Constraint Demotion", &[], true)
     }
 
-    /// Generate formatted text output with a configurable algorithm name and a priori table
+    /// Generate formatted text output with a configurable algorithm name and a priori table.
+    /// Does not include the A Priori Rankings section (used by BCD, which takes no a priori input).
     pub(crate) fn format_output_with_algorithm(&self, tableau: &Tableau, filename: &str, algorithm_name: &str) -> String {
-        self.format_output_with_options(tableau, filename, algorithm_name, &[])
+        self.format_output_with_options(tableau, filename, algorithm_name, &[], false)
     }
 
-    /// Generate formatted text output with full options
+    /// Generate formatted text output with full options.
+    ///
+    /// `show_apriori_section`: whether to include the "A Priori Rankings" section.
+    /// RCD includes it; LFCD does not (VB6 behaviour).
     pub(crate) fn format_output_with_options(
         &self,
         tableau: &Tableau,
         filename: &str,
         algorithm_name: &str,
         apriori: &[Vec<bool>],
+        show_apriori_section: bool,
     ) -> String {
         let mut output = String::new();
 
@@ -364,8 +372,8 @@ impl RCDResult {
         }
         output.push('\n');
 
-        // Section: A Priori Rankings (only when a priori data is present)
-        if !apriori.is_empty() {
+        // Section: A Priori Rankings (only for algorithms that show it, e.g. RCD but not LFCD)
+        if show_apriori_section && !apriori.is_empty() {
             section += 1;
             output.push_str(&format!("{}. A Priori Rankings\n\n", section));
             output.push_str("In the following table, \"yes\" means that the constraint of the indicated row \n");
@@ -1378,7 +1386,7 @@ impl Tableau {
 
                 // Compute additional analyses only if requested
                 if compute_extra_analyses {
-                    result.compute_extra_analyses(self, apriori);
+                    result.compute_extra_analyses(self, apriori, true);
                 }
 
                 return result;
@@ -1448,7 +1456,7 @@ impl Tableau {
 
                 // Compute additional analyses only if requested
                 if compute_extra_analyses {
-                    result.compute_extra_analyses(self, apriori);
+                    result.compute_extra_analyses(self, apriori, true);
                 }
 
                 return result;
