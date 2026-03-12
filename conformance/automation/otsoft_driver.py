@@ -399,18 +399,26 @@ class OTSoftDriver:
                 pass
 
         self.select_maximum_entropy()
-        # Give VB6 time to process the radio-button click and update the
-        # Rank button caption to "Compute weights for <file>".
-        time.sleep(1.5)
+        time.sleep(0.5)
 
-        # When MaxEnt framework is selected, the Rank button caption changes to
-        # "Compute weights for <file>" — it no longer contains "Rank".
-        # Clicking it opens the GLA form with MaxEnt pre-selected.
+        # Clicking the Rank button with MaxEnt selected opens the GLA form.
+        # VB6's optMaximumEntropy_Click event may not fire via pywinauto, so the
+        # button caption may still say "Rank <file>" rather than "Compute weights
+        # for <file>" — match both possibilities.
         rank_btn = self.main_win.child_window(
-            class_name="ThunderRT6CommandButton", title_re=".*Compute weights.*"
+            class_name="ThunderRT6CommandButton", title_re=r"(?i).*(rank|compute weights).*"
         )
+        logger.info("Clicking Rank/Compute-weights button: %r", rank_btn.window_text())
         rank_btn.click()
         time.sleep(2)
+
+        # Log all visible app windows to help diagnose what opens.
+        try:
+            for w in self.app.windows():
+                if w.is_visible():
+                    logger.info("  Visible window: %r", w.window_text())
+        except Exception:
+            pass
 
         # Find the GLA form — allow generous time for it to initialise.
         gla_win = self.app.window(title_re=".*Gradual Learning Algorithm.*")
