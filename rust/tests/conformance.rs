@@ -81,7 +81,8 @@ fn normalize(text: &str) -> String {
     let text = date_re.replace_all(&text, "<DATE>");
 
     // Strip OTSoft version lines like "OTSoft 2.7, release date 2/1/2026"
-    let version_re = Regex::new(r"(?m)^OTSoft\s+\d+\.\d+.*$").unwrap();
+    // or "OTSoft version 2.7, release date 2/1/2026" (FT output uses "version" prefix).
+    let version_re = Regex::new(r"(?m)^OTSoft\s+(?:version\s+)?\d+\.\d+.*$").unwrap();
     let text = version_re.replace_all(&text, "<VERSION>");
 
     // Normalize the broken-bar separator: VB6 uses ¦ (U+00A6) or its
@@ -118,6 +119,11 @@ fn normalize(text: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n");
+
+    // Strip VB6-only "For a tabbed listing of the t-order found here, see the file"
+    // lines (plus the file-path line that follows). Rust does not emit these.
+    let tabbed_re = Regex::new(r"(?m)^For a tabbed listing[^\n]*\n[^\n]*\n").unwrap();
+    let text = tabbed_re.replace_all(&text, "");
 
     // Collapse runs of 3+ blank lines into exactly 2 blank lines.
     // VB6 and Rust may differ in spacing between sections.

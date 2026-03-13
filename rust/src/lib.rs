@@ -705,9 +705,12 @@ pub fn format_factorial_typology_output(
         apriori::parse_apriori(apriori_text, &abbrevs)?
     };
     let result = tableau.run_factorial_typology(&apriori);
-    let mut out = result.format_output(&tableau, filename);
+    let mut out = result.format_output(&tableau, filename, &apriori, opts.include_full_listing);
     if opts.include_full_listing {
-        out.push_str(&result.format_full_listing(&tableau, &apriori));
+        // Section number for "Complete Listing": after Constraints(1), optional A Priori(2),
+        // Summary Info, List of Winners, T-orders — add 1 if apriori present.
+        let full_listing_section = if apriori.is_empty() { 5 } else { 6 };
+        out.push_str(&result.format_full_listing(&tableau, &apriori, full_listing_section));
     }
     Ok(out)
 }

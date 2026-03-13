@@ -27,6 +27,5 @@
 - [Edge case test examples](tasks/edge-case-examples.md)
 - [GLA/Stochastic OT conformance cases](tasks/gla-conformance.md)
 - [Conformance: HTML table extraction for VB6 golden files](tasks/conformance-html-table-extraction.md)
-- [Conformance: Factorial Typology output header mismatch](tasks/conformance-ft-title.md)
 - [Conformance: MaxEnt output structural differences](tasks/conformance-maxent-output.md)
 - [Conformance: Ilokano constraint ordering within strata](tasks/conformance-ilokano-constraint-order.md)

@@ -406,17 +406,31 @@ impl Tableau {
 
 impl FactorialTypologyResult {
     /// Generate formatted text output for factorial typology results.
-    pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
+    ///
+    /// Matches VB6 FactorialTypology.bas output format exactly.
+    ///
+    /// `apriori` is the parsed a priori rankings table (empty slice = none).
+    /// `include_full_listing` controls the "Summary results appear at end of file" note
+    /// and should match whether `format_full_listing` will be appended.
+    pub fn format_output(
+        &self,
+        tableau: &Tableau,
+        filename: &str,
+        apriori: &[Vec<bool>],
+        include_full_listing: bool,
+    ) -> String {
         let mut out = String::new();
         let nf = tableau.forms.len();
         let nc = tableau.constraints.len();
         let np = self.patterns.len();
+        let has_apriori = !apriori.is_empty();
+
+        // Section counter (incremented before each PrintLevel1Header call)
+        let mut section = 0usize;
 
         // ── Header ────────────────────────────────────────────────────────────
-        out.push_str(&format!(
-            "Results of Factorial Typology Search for {}\n\n\n",
-            filename
-        ));
+        // VB6: PrintTopLevelHeader (no filename), then PrintPara for date/version/source
+        out.push_str("Results of Factorial Typology Search\n\n");
 
         let now = chrono::Local::now();
         out.push_str(&format!(
@@ -425,23 +439,106 @@ impl FactorialTypologyResult {
                 .to_string()
                 .to_lowercase()
         ));
-        out.push_str("OTSoft 2.7, release date 2/1/2026\n");
+        out.push_str("OTSoft 2.7, release date 2/1/2026\n\n");
         out.push_str(&format!("Source file:  {}\n\n\n", filename));
 
-        // Constraint list
-        out.push_str("Constraints\n\n");
+        // ── 1. Constraints ────────────────────────────────────────────────────
+        // VB6: PrintLevel1Header("Constraints") then s.PrintTable with 3-col table
+        section += 1;
+        out.push_str(&format!("\n{}. Constraints\n\n", section));
+
+        // VB6 table col widths: max(header, data) per column.
+        // Col 1: number labels ("N."), col 2: full names, col 3: abbreviations.
+        let num_digits = nc.to_string().len();
+        let col1_w = num_digits + 1; // e.g. "1." = 2, "10." = 3
+        let max_full_name = tableau
+            .constraints
+            .iter()
+            .map(|c| c.full_name().len())
+            .max()
+            .unwrap_or(0)
+            .max("Full Name".len());
+        let max_abbrev = tableau
+            .constraints
+            .iter()
+            .map(|c| c.abbrev().len())
+            .max()
+            .unwrap_or(0)
+            .max("Abbr.".len());
+
+        // Header row: empty col1, then "Full Name" and "Abbr." headers
+        out.push_str(&format!(
+            "{:<cw$}  {:<fw$}  {:<aw$}\n",
+            "",
+            "Full Name",
+            "Abbr.",
+            cw = col1_w,
+            fw = max_full_name,
+            aw = max_abbrev,
+        ));
+        // Data rows
         for (c_idx, constraint) in tableau.constraints.iter().enumerate() {
+            let label = format!("{}.", c_idx + 1);
             out.push_str(&format!(
-                "   {}. {:<42}{}\n",
-                c_idx + 1,
+                "{:<cw$}  {:<fw$}  {:<aw$}\n",
+                label,
                 constraint.full_name(),
-                constraint.abbrev()
+                constraint.abbrev(),
+                cw = col1_w,
+                fw = max_full_name,
+                aw = max_abbrev,
             ));
         }
-        out.push_str("\n\n");
+        // s.PrintTable adds 1 trailing blank line
+        out.push('\n');
 
-        // ── Summary Information ───────────────────────────────────────────────
-        out.push_str("Summary Information\n\n");
+        // ── Post-constraints: a priori section or "All rankings were considered." ──
+        if has_apriori {
+            // VB6: Form1.PrintOutTheAprioriRankings — uses PrintLevel1Header then table
+            section += 1;
+            out.push_str(&format!("\n{}. A Priori Rankings\n\n", section));
+            out.push_str(
+                "In the following table, \"yes\" means that the constraint of the indicated row \n\
+                 was marked a priori to dominate the constraint in the given column.\n\n",
+            );
+
+            // Build the apriori table. Due to a VB6 bug, all data cells are always blank.
+            // Col 1: row labels (abbrevs), col 2..N: column headers (abbrevs), cells = "".
+            let abbrevs: Vec<String> =
+                tableau.constraints.iter().map(|c| c.abbrev()).collect();
+            // Col widths: col1 = max abbrev length; each data col = that col's abbrev length.
+            let col1_abbrev_w = abbrevs.iter().map(|a| a.len()).max().unwrap_or(0);
+            // Header row
+            out.push_str(&format!("{:<w$}", "", w = col1_abbrev_w));
+            for abbrev in &abbrevs {
+                out.push_str(&format!("  {:<w$}", abbrev, w = abbrev.len()));
+            }
+            out.push('\n');
+            // Data rows (all blank — VB6 bug)
+            for row_abbrev in &abbrevs {
+                out.push_str(&format!("{:<w$}", row_abbrev, w = col1_abbrev_w));
+                for abbrev in &abbrevs {
+                    out.push_str(&format!("  {:<w$}", "", w = abbrev.len()));
+                }
+                out.push('\n');
+            }
+            out.push_str("\n\n\n");
+        } else {
+            // VB6: PrintPara("All rankings were considered.") then Print #mTmpFile,
+            out.push_str("All rankings were considered.\n");
+        }
+
+        // VB6: if full listing, print "Summary results appear at end of file." note
+        if include_full_listing {
+            out.push_str(
+                "\n\nSummary results appear at end of file.  \n\
+                 Immediately below are reports on individual patterns generated.\n",
+            );
+        }
+
+        // ── N. Summary Information ────────────────────────────────────────────
+        section += 1;
+        out.push_str(&format!("\n\n\n{}. Summary Information\n\n", section));
 
         let max_grammars = factorial(nc);
         match max_grammars {
@@ -455,7 +552,7 @@ impl FactorialTypologyResult {
             )),
         }
 
-        out.push_str(&format!("There were {} different output patterns.\n\n", np));
+        out.push_str(&format!("\nThere were {} different output patterns.\n", np));
 
         if np == 0 {
             out.push_str("No derivable output patterns were found.\n");
@@ -463,16 +560,16 @@ impl FactorialTypologyResult {
         }
 
         // Pattern table — 4 patterns per block
-        out.push_str("Forms marked as winners in the input file are marked with >.\n\n");
+        out.push_str("\nForms marked as winners in the input file are marked with >.\n\n");
 
-        // Find max input width for column alignment
+        // First col width: "/" + max_input + "/" padded to max_input + 3
         let max_input_width = tableau
             .forms
             .iter()
             .map(|f| f.input.len())
             .max()
             .unwrap_or(0);
-        let first_col_width = max_input_width + 4; // "/ " + input + " /" + padding
+        let first_col_width = max_input_width + 4;
 
         let block_size = 4;
         let mut block_start = 0;
@@ -480,15 +577,13 @@ impl FactorialTypologyResult {
             let block_end = (block_start + block_size).min(np);
             let block = &self.patterns[block_start..block_end];
 
-            // Calculate per-column widths
+            // Per-column widths: max(header len, max candidate name) + 2
             let col_widths: Vec<usize> = block
                 .iter()
                 .enumerate()
                 .map(|(bi, _)| {
-                    // "Output #N" header
                     let header_len = format!("Output #{}", block_start + bi + 1).len();
-                    // Max candidate name in this column
-                    let max_cand: usize = block[bi]
+                    let max_cand = block[bi]
                         .iter()
                         .enumerate()
                         .map(|(fi, &ci)| tableau.forms[fi].candidates[ci].form.len())
@@ -523,12 +618,11 @@ impl FactorialTypologyResult {
                 for (bi, pattern) in block.iter().enumerate() {
                     let cand_idx = pattern[form_idx];
                     let cand_name = &form.candidates[cand_idx].form;
-                    // Mark with ">" if this candidate is the original winner (frequency > 0)
-                    let marker = if form.candidates[cand_idx].frequency > 0 {
-                        ">"
-                    } else {
-                        " "
-                    };
+                    // VB6: marks ">" when Valhalla index == 1 (the first/winner candidate).
+                    // After InstallTheWinnersAsMereCandidates, position 1 = the first-listed
+                    // candidate (index 0 in Rust). This is a known VB6 bug (comment in source:
+                    // "This needs fixed: show winners if frequency > 0") — we reproduce it.
+                    let marker = if cand_idx == 0 { ">" } else { " " };
                     let cell = format!("{}{}", marker, cand_name);
                     if bi + 1 < block.len() {
                         out.push_str(&format!("{:<width$}", cell, width = col_widths[bi]));
@@ -543,32 +637,55 @@ impl FactorialTypologyResult {
             block_start += block_size;
         }
 
-        // ── List of Winners ────────────────────────────────────────────────────
-        out.push_str("\n\nList of Winners\n\n");
+        // ── N. List of Winners ─────────────────────────────────────────────────
+        // VB6: PrintLevel1Header("List of Winners"), then per-form / per-candidate output
+        section += 1;
+        out.push_str(&format!("\n{}. List of Winners\n\n", section));
         out.push_str(
             "The following specifies for each candidate whether there is at least one ranking that derives it:\n\n",
         );
 
         for (form_idx, form) in tableau.forms.iter().enumerate() {
+            // VB6: Print "/input/:  " (with 2 trailing spaces)
             out.push_str(&format!("/{}/:\n", form.input));
-            for (cand_idx, cand) in form.candidates.iter().enumerate() {
-                let derivable = self.candidate_derivable[form_idx][cand_idx];
-                let marker = if cand.frequency > 0 { ">" } else { " " };
+
+            // VB6 iterates candidates in two passes: derivable (yes) first, then
+            // non-derivable (no), each group in original file order.
+            let print_candidate = |out: &mut String, cand: &crate::tableau::Candidate, derivable: bool| {
                 let status = if derivable { "yes" } else { "no" };
+                // VB6: "   [rival]:  " + spaces from Len(rival) to 10 + yes/no
+                let spaces = 11usize.saturating_sub(cand.form.len());
                 out.push_str(&format!(
-                    "   {}[{:<12}]  {}\n",
-                    marker, cand.form, status
+                    "   [{}]:  {}{}\n",
+                    cand.form,
+                    " ".repeat(spaces),
+                    status,
                 ));
+            };
+            // Derivable candidates first
+            for (cand_idx, cand) in form.candidates.iter().enumerate() {
+                if self.candidate_derivable[form_idx][cand_idx] {
+                    print_candidate(&mut out, cand, true);
+                }
             }
-            out.push('\n');
+            // Non-derivable candidates second
+            for (cand_idx, cand) in form.candidates.iter().enumerate() {
+                if !self.candidate_derivable[form_idx][cand_idx] {
+                    print_candidate(&mut out, cand, false);
+                }
+            }
+            // VB6: no blank line between forms in this section
         }
 
-        // ── T-Order ────────────────────────────────────────────────────────────
-        out.push_str("\n\nT-Orders\n\n");
-        out.push_str("The t-order is the set of implications in a factorial typology.\n\n");
+        // ── N. T-orders ────────────────────────────────────────────────────────
+        // VB6 section title is "T-orders" (lowercase s) and uses "factorical" (typo)
+        section += 1;
+        out.push_str(&format!("\n{}. T-orders\n\n", section));
+        out.push_str("The t-order is the set of implications in a factorical typology.\n\n");
 
-        // Find always-winning candidates (only one candidate wins for that form)
-        let mut always_winners: Vec<(usize, usize)> = Vec::new(); // (form_idx, cand_idx)
+        // Always-winning candidates (only one derivable candidate for that form):
+        // VB6 uses col headers "Input" and "Output" with raw names (no slashes/brackets)
+        let mut always_winners: Vec<(usize, usize)> = Vec::new();
         for form_idx in 0..nf {
             let winning_cands: Vec<usize> = tableau.forms[form_idx]
                 .candidates
@@ -584,23 +701,88 @@ impl FactorialTypologyResult {
 
         if !always_winners.is_empty() {
             out.push_str("For the following input-output pairs, no other candidate ever wins, so they are not reported separately in the t-order:\n\n");
-            out.push_str(&format!("{:<20}  {}\n", "Input", "Candidate"));
+            // VB6 table: col "Input" and "Output", raw names without slashes/brackets
+            let col1_w = always_winners
+                .iter()
+                .map(|(fi, _)| tableau.forms[*fi].input.len())
+                .max()
+                .unwrap_or(0)
+                .max("Input".len());
+            let col2_w = always_winners
+                .iter()
+                .map(|(fi, ci)| tableau.forms[*fi].candidates[*ci].form.len())
+                .max()
+                .unwrap_or(0)
+                .max("Output".len());
+            out.push_str(&format!(
+                "{:<cw$}  {:<ow$}\n",
+                "Input",
+                "Output",
+                cw = col1_w,
+                ow = col2_w,
+            ));
             for (form_idx, cand_idx) in &always_winners {
                 let form = &tableau.forms[*form_idx];
                 out.push_str(&format!(
-                    "/{:<18}/  [{}]\n",
-                    form.input, form.candidates[*cand_idx].form
+                    "{:<cw$}  {:<ow$}\n",
+                    form.input,
+                    form.candidates[*cand_idx].form,
+                    cw = col1_w,
+                    ow = col2_w,
                 ));
             }
             out.push('\n');
         }
 
+        // T-order implication table (VB6: s.PrintTable with 4 cols, dynamic widths)
         if self.torder.is_empty() {
             out.push_str("No t-order implications were found.\n");
         } else {
+            let col1_w = self
+                .torder
+                .iter()
+                .map(|e| format!("/{}/", tableau.forms[e.implicator_form].input).len())
+                .max()
+                .unwrap_or(0)
+                .max("If this input".len());
+            let col2_w = self
+                .torder
+                .iter()
+                .map(|e| {
+                    let f = &tableau.forms[e.implicator_form];
+                    format!("[{}]", f.candidates[e.implicator_candidate].form).len()
+                })
+                .max()
+                .unwrap_or(0)
+                .max("has this output".len());
+            let col3_w = self
+                .torder
+                .iter()
+                .map(|e| format!("/{}/", tableau.forms[e.implicated_form].input).len())
+                .max()
+                .unwrap_or(0)
+                .max("then this input".len());
+            let col4_w = self
+                .torder
+                .iter()
+                .map(|e| {
+                    let f = &tableau.forms[e.implicated_form];
+                    format!("[{}]", f.candidates[e.implicated_candidate].form).len()
+                })
+                .max()
+                .unwrap_or(0)
+                .max("has this output".len());
+
             out.push_str(&format!(
-                "{:<22}  {:<22}  {:<22}  {}\n",
-                "If this input", "has this output", "then this input", "has this output"
+                "{:<c1$}  {:<c2$}  {:<c3$}  {:<c4$}\n",
+                "If this input",
+                "has this output",
+                "then this input",
+                "has this output",
+                c1 = col1_w,
+                c2 = col2_w,
+                c3 = col3_w,
+                c4 = col4_w,
             ));
             for entry in &self.torder {
                 let imp_form = &tableau.forms[entry.implicator_form];
@@ -608,13 +790,21 @@ impl FactorialTypologyResult {
                 let ted_form = &tableau.forms[entry.implicated_form];
                 let ted_cand = &ted_form.candidates[entry.implicated_candidate];
                 out.push_str(&format!(
-                    "/{:<20}/  [{:<20}]  /{:<20}/  [{}]\n",
-                    imp_form.input, imp_cand.form, ted_form.input, ted_cand.form
+                    "{:<c1$}  {:<c2$}  {:<c3$}  {:<c4$}\n",
+                    format!("/{}/", imp_form.input),
+                    format!("[{}]", imp_cand.form),
+                    format!("/{}/", ted_form.input),
+                    format!("[{}]", ted_cand.form),
+                    c1 = col1_w,
+                    c2 = col2_w,
+                    c3 = col3_w,
+                    c4 = col4_w,
                 ));
             }
         }
 
-        // Non-implicators
+        // Non-implicators: VB6 includes ALL candidates (not just derivable ones)
+        // that are not implicators, using raw names without slashes/brackets.
         let implicator_set: Vec<(usize, usize)> = self
             .torder
             .iter()
@@ -628,10 +818,7 @@ impl FactorialTypologyResult {
                     .candidates
                     .iter()
                     .enumerate()
-                    .filter(move |(ci, _)| {
-                        self.candidate_derivable[fi][*ci]
-                            && !imp_set_ref.contains(&(fi, *ci))
-                    })
+                    .filter(move |(ci, _)| !imp_set_ref.contains(&(fi, *ci)))
                     .map(move |(ci, _)| (fi, ci))
                     .collect::<Vec<_>>()
             })
@@ -639,21 +826,68 @@ impl FactorialTypologyResult {
 
         if !non_implicators.is_empty() {
             out.push_str("\nNothing is implicated by these input-output pairs:\n\n");
-            out.push_str(&format!("{:<20}  {}\n", "Input", "Candidate"));
-            for (form_idx, cand_idx) in &non_implicators {
-                let form = &tableau.forms[*form_idx];
+            // VB6 table: col "Input" and "Candidate", raw names without slashes/brackets
+            let col1_w = non_implicators
+                .iter()
+                .map(|(fi, _)| tableau.forms[*fi].input.len())
+                .max()
+                .unwrap_or(0)
+                .max("Input".len());
+            let col2_w = non_implicators
+                .iter()
+                .map(|(fi, ci)| tableau.forms[*fi].candidates[*ci].form.len())
+                .max()
+                .unwrap_or(0)
+                .max("Candidate".len());
+            out.push_str(&format!(
+                "{:<cw$}  {:<ow$}\n",
+                "Input",
+                "Candidate",
+                cw = col1_w,
+                ow = col2_w,
+            ));
+            // VB6 prints non-implicators sorted per form: derivable (yes) first,
+            // then non-derivable (no), each group in original file order.
+            let print_ni_row = |out: &mut String, form_idx: usize, cand_idx: usize| {
+                let form = &tableau.forms[form_idx];
                 out.push_str(&format!(
-                    "/{:<18}/  [{}]\n",
-                    form.input, form.candidates[*cand_idx].form
+                    "{:<cw$}  {:<ow$}\n",
+                    form.input,
+                    form.candidates[cand_idx].form,
+                    cw = col1_w,
+                    ow = col2_w,
                 ));
+            };
+            // Two passes per form (derivable first, then non-derivable)
+            for fi in 0..nf {
+                for &(f, ci) in &non_implicators {
+                    if f == fi && self.candidate_derivable[fi][ci] {
+                        print_ni_row(&mut out, fi, ci);
+                    }
+                }
+                for &(f, ci) in &non_implicators {
+                    if f == fi && !self.candidate_derivable[fi][ci] {
+                        print_ni_row(&mut out, fi, ci);
+                    }
+                }
             }
+            // VB6 adds 2 blank lines after the non-implicators table
+            out.push_str("\n\n");
         }
 
         out
     }
 
     /// Append the complete listing section: for each pattern, run RCD and show the grammar.
-    pub fn format_full_listing(&self, tableau: &Tableau, apriori: &[Vec<bool>]) -> String {
+    ///
+    /// `section_num` is the 1-based section number for the heading (e.g. 5 or 6 depending
+    /// on whether an a priori section was included).
+    pub fn format_full_listing(
+        &self,
+        tableau: &Tableau,
+        apriori: &[Vec<bool>],
+        section_num: usize,
+    ) -> String {
         let nc = tableau.constraints.len();
         let np = self.patterns.len();
 
@@ -663,9 +897,13 @@ impl FactorialTypologyResult {
 
         let mut out = String::new();
 
-        out.push_str("\n\nComplete Listing of Output Patterns\n\n");
+        // VB6: PrintLevel1Header adds "\n" before + "N. text\n" + "\n" after
+        out.push_str(&format!(
+            "\n{}. Complete Listing of Output Patterns\n\n",
+            section_num
+        ));
 
-        // Width for aligning input column
+        // Width for aligning input column (VB6 uses raw input length, not "/input/" length)
         let max_input_width = tableau.forms.iter().map(|f| f.input.len()).max().unwrap_or(0);
 
         for (pat_idx, pattern) in self.patterns.iter().enumerate() {
@@ -673,22 +911,34 @@ impl FactorialTypologyResult {
                 out.push_str("\n\n------------------------------------------------------------------------------\n");
             }
 
-            out.push_str(&format!("OUTPUT SET #{}:\n", pat_idx + 1));
+            // VB6: PrintPara("OUTPUT SET #N:") adds blank line after
+            out.push_str(&format!("OUTPUT SET #{}:\n\n", pat_idx + 1));
+
+            // VB6: "These are the winning outputs.  PARA> specifies..." splits at PARA
+            // into two PrintPara calls: first prints the part before PARA + blank line,
+            // second prints "> specifies..." + blank line.
             out.push_str(
-                "These are the winning outputs.  > specifies outputs marked as winning candidates in the input file.\n\n",
+                "These are the winning outputs.  \n\
+                 > specifies outputs marked as winning candidates in the input file.\n\n",
             );
 
             for (fi, &ci) in pattern.iter().enumerate() {
                 let form = &tableau.forms[fi];
                 let cand = &form.candidates[ci];
                 let input_padded = format!("/{}/", form.input);
-                let is_actual = cand.frequency > 0;
-                let marker = if is_actual { ">" } else { " " };
-                let actual_label = if is_actual { "  (actual)" } else { "" };
+                // VB6: ">" is always printed unconditionally (line 1198 of FactorialTypology.bas)
+                // VB6: (actual) when candidate index == last candidate (Valhalla == mNumberOfRivals).
+                // This only triggers when VB6's InstallTheWinnersAsMereCandidates ran properly,
+                // which requires the first-listed candidate (mWinner) to have frequency > 0.
+                // When the first-listed candidate has freq=0, the install doesn't mark a winner
+                // and the condition is never met.
+                let is_actual = ci == form.candidates.len() - 1
+                    && form.candidates[0].frequency > 0;
+                let actual_label = if is_actual { " (actual)" } else { "" };
+                // VB6: candidate + " " + optional(" (actual)") — note trailing space always present
                 out.push_str(&format!(
-                    "   {:<width$}  -->  {}{}{}\n",
+                    "   {:<width$} -->  >{} {}\n",
                     input_padded,
-                    marker,
                     cand.form,
                     actual_label,
                     width = max_input_width + 4,
@@ -716,7 +966,6 @@ impl FactorialTypologyResult {
             }
         }
 
-        out.push('\n');
         out
     }
 

@@ -181,7 +181,6 @@
     {
       "id": "TinyIllustrativeFile_ft_defaults",
       "description": "Factorial Typology with default settings (no full listing)",
-      "skip": "Title format mismatch: VB6 outputs 'Results of Factorial Typology Search' (no filename), Rust appends ' for TinyIllustrativeFile.txt'. See tasks/conformance-ft-title.md",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
@@ -193,7 +192,6 @@
     {
       "id": "TinyIllustrativeFile_ft_full_listing",
       "description": "Factorial Typology with full listing enabled",
-      "skip": "Title format mismatch: VB6 omits filename from FT header. See tasks/conformance-ft-title.md",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
@@ -205,7 +203,6 @@
     {
       "id": "TinyIllustrativeFile_ft_apriori",
       "description": "Factorial Typology with a priori rankings (*NoOns >> Max)",
-      "skip": "Title format mismatch: VB6 omits filename from FT header. See tasks/conformance-ft-title.md",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": "examples/TinyIllustrativeFile_apriori.txt",
       "algorithm": "factorial_typology",
@@ -369,7 +366,6 @@
     {
       "id": "ilokano_ft_defaults",
       "description": "Factorial Typology with default settings (no full listing)",
-      "skip": "Title format mismatch: VB6 omits filename from FT header. See tasks/conformance-ft-title.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
@@ -381,7 +377,6 @@
     {
       "id": "ilokano_ft_full_listing",
       "description": "Factorial Typology with full listing enabled",
-      "skip": "Title format mismatch: VB6 omits filename from FT header. See tasks/conformance-ft-title.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "factorial_typology",
