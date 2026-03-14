@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useCallback } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
-import { format_maxent_output, MaxEntOptions, run_maxent } from '../../pkg/ot_soft.js'
+import { format_maxent_output, MaxEntOptions, MaxEntRunner } from '../../pkg/ot_soft.js'
 import { useDownload } from '../contexts/downloadContext.ts'
+import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type MaxEntDefaults, maxentDefaults } from '../wasmDefaults.ts'
+import RunButton from './RunButton.tsx'
+import RunnerProgressBar from './RunnerProgressBar.tsx'
 
 interface MaxEntPanelProps {
   tableau: Tableau
@@ -54,73 +57,93 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
     generateOutputProbHistory,
     sortByWeight,
   } = params
-  const [result, setResult] = useState<MaxEntState | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const download = useDownload()
 
-  function handleRun() {
-    setIsLoading(true)
-    setTimeout(() => {
-      try {
-        const opts = new MaxEntOptions()
-        opts.iterations = iterations
-        opts.weight_min = weightMin
-        opts.weight_max = weightMax
-        opts.use_prior = usePrior
-        opts.sigma_squared = sigmaSquared
-        opts.generate_history = generateHistory
-        opts.generate_output_prob_history = generateOutputProbHistory
-        const r = run_maxent(tableauText, opts)
-        const constraintCount = tableau.constraint_count()
-        const formCount = tableau.form_count()
-
-        const weights = Array.from({ length: constraintCount }, (_, i) => {
-          const c = tableau.get_constraint(i)!
-          return { abbrev: c.abbrev, fullName: c.full_name, weight: r.get_weight(i), index: i }
-        })
-        if (sortByWeight) {
-          weights.sort((a, b) => b.weight - a.weight)
-        }
-
-        // Build forms with candidates
-        const forms = Array.from({ length: formCount }, (_, formIdx) => {
-          const form = tableau.get_form(formIdx)!
-          const totalFreq = Array.from(
-            { length: form.candidate_count() },
-            (_, ci) => form.get_candidate(ci)!.frequency,
-          ).reduce((a, b) => a + b, 0)
-
-          const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
-            const cand = form.get_candidate(candIdx)!
-            return {
-              form: cand.form,
-              obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
-              predPct: r.get_predicted_prob(formIdx, candIdx) * 100,
-              violations: Array.from(
-                { length: constraintCount },
-                (_, ci) => cand.get_violation(ci) ?? 0,
-              ),
-            }
-          })
-
-          return { input: form.input, candidates }
-        })
-
-        setResult({
-          weights,
-          forms,
-          logProb: r.log_prob(),
-          history: r.history() ?? undefined,
-          outputProbHistory: r.output_prob_history() ?? undefined,
-        })
-      } catch (err) {
-        console.error('MaxEnt error:', err)
-        setResult({ error: String(err) })
-      } finally {
-        setIsLoading(false)
-      }
-    }, 0)
+  function buildOpts(): MaxEntOptions {
+    const opts = new MaxEntOptions()
+    opts.iterations = iterations
+    opts.weight_min = weightMin
+    opts.weight_max = weightMax
+    opts.use_prior = usePrior
+    opts.sigma_squared = sigmaSquared
+    opts.generate_history = generateHistory
+    opts.generate_output_prob_history = generateOutputProbHistory
+    return opts
   }
+
+  const createRunner = useCallback(() => {
+    return new MaxEntRunner(tableauText, buildOpts())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    tableauText,
+    iterations,
+    weightMin,
+    weightMax,
+    usePrior,
+    sigmaSquared,
+    generateHistory,
+    generateOutputProbHistory,
+  ])
+
+  const extractResult = useCallback(
+    (runner: MaxEntRunner): MaxEntState => {
+      const r = runner.take_result()
+      const constraintCount = tableau.constraint_count()
+      const formCount = tableau.form_count()
+
+      const weights = Array.from({ length: constraintCount }, (_, i) => {
+        const c = tableau.get_constraint(i)!
+        return { abbrev: c.abbrev, fullName: c.full_name, weight: r.get_weight(i), index: i }
+      })
+      if (sortByWeight) {
+        weights.sort((a, b) => b.weight - a.weight)
+      }
+
+      const forms = Array.from({ length: formCount }, (_, formIdx) => {
+        const form = tableau.get_form(formIdx)!
+        const totalFreq = Array.from(
+          { length: form.candidate_count() },
+          (_, ci) => form.get_candidate(ci)!.frequency,
+        ).reduce((a, b) => a + b, 0)
+
+        const candidates = Array.from({ length: form.candidate_count() }, (_, candIdx) => {
+          const cand = form.get_candidate(candIdx)!
+          return {
+            form: cand.form,
+            obsPct: totalFreq > 0 ? (cand.frequency / totalFreq) * 100 : 0,
+            predPct: r.get_predicted_prob(formIdx, candIdx) * 100,
+            violations: Array.from(
+              { length: constraintCount },
+              (_, ci) => cand.get_violation(ci) ?? 0,
+            ),
+          }
+        })
+
+        return { input: form.input, candidates }
+      })
+
+      const state: MaxEntResultState = {
+        weights,
+        forms,
+        logProb: r.log_prob(),
+        history: r.history() ?? undefined,
+        outputProbHistory: r.output_prob_history() ?? undefined,
+      }
+      r.free()
+      return state
+    },
+    [tableau, sortByWeight],
+  )
+
+  const { state: runnerState, run: handleRun } = useChunkedRunner(createRunner, extractResult)
+
+  const result: MaxEntState | null =
+    runnerState.status === 'done'
+      ? runnerState.result
+      : runnerState.status === 'error'
+        ? { error: runnerState.error }
+        : null
+  const isLoading = runnerState.status === 'running'
 
   function handleDownload() {
     try {
@@ -267,39 +290,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       </div>
 
       <div className="action-bar">
-        <button
-          className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
-          onClick={handleRun}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 22h14" />
-              <path d="M5 2h14" />
-              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
-              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
-            </svg>
-          ) : (
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          )}
-          Run MaxEnt
-        </button>
+        <RunButton isLoading={isLoading} onClick={handleRun} label="Run MaxEnt" />
         {result && !result.error && (
           <button className="download-button" onClick={handleDownload}>
             <svg
@@ -367,6 +358,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         </button>
       </div>
 
+      <RunnerProgressBar state={runnerState} />
       {result?.error && (
         <div className="rcd-status failure">Error running MaxEnt: {result.error}</div>
       )}

@@ -1057,6 +1057,243 @@ fn factorial(n: usize) -> Option<u64> {
     Some(result)
 }
 
+// ─── Chunked FT Runner ────────────────────────────────────────────────────────
+
+/// Execution phase of the FT runner.
+enum FtPhase {
+    /// Running the pre-filter: testing each candidate in isolation.
+    PreFilter,
+    /// Incremental construction: cross-classifying patterns form by form.
+    Construction,
+    /// All computation complete.
+    Done,
+}
+
+/// Chunked Factorial Typology runner for interactive progress reporting.
+///
+/// Processes one form at a time during the incremental construction phase,
+/// yielding control to the browser between forms.
+#[wasm_bindgen]
+pub struct FtRunner {
+    // ── Immutable config ──────────────────────────────────────────────────────
+    tableau: Tableau,
+    apriori: Vec<Vec<bool>>,
+    total_forms: usize,
+
+    // ── Pre-filter state ──────────────────────────────────────────────────────
+    possible: Vec<Vec<usize>>,
+    pre_filter_form_idx: usize,
+
+    // ── Construction state ────────────────────────────────────────────────────
+    patterns: Vec<Vec<usize>>,
+    construction_form_idx: usize,
+
+    // ── Phase ─────────────────────────────────────────────────────────────────
+    phase: FtPhase,
+
+    // ── Final result ───────────────────────────────────────────────────────────
+    result: Option<FactorialTypologyResult>,
+}
+
+#[wasm_bindgen]
+impl FtRunner {
+    #[wasm_bindgen(constructor)]
+    pub fn new(text: &str, apriori_text: &str) -> Result<FtRunner, String> {
+        let tableau = Tableau::parse(text)?;
+        let apriori = if apriori_text.trim().is_empty() {
+            Vec::new()
+        } else {
+            let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+            crate::apriori::parse_apriori(apriori_text, &abbrevs)?
+        };
+        let total_forms = tableau.forms.len();
+        Ok(FtRunner {
+            apriori,
+            total_forms,
+            possible: Vec::new(),
+            pre_filter_form_idx: 0,
+            patterns: Vec::new(),
+            construction_form_idx: 1,
+            phase: FtPhase::PreFilter,
+            result: None,
+            tableau,
+        })
+    }
+
+    /// Advance computation. Returns true when complete.
+    /// Processes one form per call during the pre-filter and construction phases.
+    pub fn run_chunk(&mut self, _max_work: usize) -> bool {
+        match self.phase {
+            FtPhase::PreFilter => self.run_prefilter_step(),
+            FtPhase::Construction => self.run_construction_step(),
+            FtPhase::Done => true,
+        }
+    }
+
+    /// Progress as [completed, total].
+    pub fn progress(&self) -> Vec<f64> {
+        let nf = self.total_forms;
+        if nf == 0 {
+            return vec![1.0, 1.0];
+        }
+        match self.phase {
+            FtPhase::PreFilter => vec![self.pre_filter_form_idx as f64, nf as f64],
+            FtPhase::Construction => vec![
+                (nf + self.construction_form_idx - 1) as f64,
+                (2 * nf - 1) as f64,
+            ],
+            FtPhase::Done => vec![1.0, 1.0],
+        }
+    }
+
+    /// Extract the final result. Only valid after `run_chunk` returns true.
+    pub fn take_result(&mut self) -> FactorialTypologyResult {
+        self.result.take().expect("FtRunner: take_result called before completion")
+    }
+}
+
+impl FtRunner {
+    /// Process one form in the pre-filter phase.
+    fn run_prefilter_step(&mut self) -> bool {
+        let nf = self.total_forms;
+        if nf == 0 {
+            self.finalize();
+            return true;
+        }
+
+        if self.pre_filter_form_idx >= nf {
+            return self.start_construction();
+        }
+
+        let form_idx = self.pre_filter_form_idx;
+        let nc = self.tableau.constraints.len();
+        let form = &self.tableau.forms[form_idx];
+        let mut form_possible = Vec::new();
+
+        for cand_idx in 0..form.candidates.len() {
+            let winner_v: &[i32] = &form.candidates[cand_idx].violations;
+            let rivals: Vec<Vec<i32>> = form.candidates.iter().enumerate()
+                .filter(|(j, _)| *j != cand_idx)
+                .map(|(_, c)| c.violations.clone())
+                .collect();
+            if fast_rcd(&[winner_v], &[rivals], nc, &self.apriori) {
+                form_possible.push(cand_idx);
+            }
+        }
+
+        self.possible.push(form_possible);
+        self.pre_filter_form_idx += 1;
+
+        if self.pre_filter_form_idx >= nf {
+            self.start_construction()
+        } else {
+            false
+        }
+    }
+
+    /// Transition from pre-filter to construction (or directly to done if 0/1 forms).
+    fn start_construction(&mut self) -> bool {
+        let nf = self.total_forms;
+
+        if nf == 0 {
+            self.finalize();
+            return true;
+        }
+
+        // Initialize patterns from form 0's possible candidates
+        self.patterns = self.possible[0].iter().map(|&c| vec![c]).collect();
+
+        if nf == 1 {
+            self.finalize();
+            return true;
+        }
+
+        self.construction_form_idx = 1;
+        self.phase = FtPhase::Construction;
+        false
+    }
+
+    /// Process one form in the construction phase.
+    fn run_construction_step(&mut self) -> bool {
+        let nf = self.total_forms;
+        let nc = self.tableau.constraints.len();
+
+        if self.construction_form_idx >= nf {
+            self.finalize();
+            return true;
+        }
+
+        let form_idx = self.construction_form_idx;
+        let possible_cands = &self.possible[form_idx];
+        let mut new_patterns: Vec<Vec<usize>> = Vec::new();
+
+        for old_pattern in &self.patterns {
+            for &new_cand in possible_cands {
+                let test_n = form_idx + 1;
+                let mut winner_vecs: Vec<Vec<i32>> = Vec::with_capacity(test_n);
+                let mut rival_vecs: Vec<Vec<Vec<i32>>> = Vec::with_capacity(test_n);
+
+                for (fi, &selected) in old_pattern.iter().enumerate() {
+                    let form = &self.tableau.forms[fi];
+                    winner_vecs.push(form.candidates[selected].violations.clone());
+                    let rivals: Vec<Vec<i32>> = form.candidates.iter().enumerate()
+                        .filter(|(j, _)| *j != selected)
+                        .map(|(_, c)| c.violations.clone())
+                        .collect();
+                    rival_vecs.push(rivals);
+                }
+
+                let new_form = &self.tableau.forms[form_idx];
+                winner_vecs.push(new_form.candidates[new_cand].violations.clone());
+                let rivals: Vec<Vec<i32>> = new_form.candidates.iter().enumerate()
+                    .filter(|(j, _)| *j != new_cand)
+                    .map(|(_, c)| c.violations.clone())
+                    .collect();
+                rival_vecs.push(rivals);
+
+                let winner_slices: Vec<&[i32]> = winner_vecs.iter().map(|v| v.as_slice()).collect();
+                if fast_rcd(&winner_slices, &rival_vecs, nc, &self.apriori) {
+                    let mut new_p = old_pattern.clone();
+                    new_p.push(new_cand);
+                    new_patterns.push(new_p);
+                }
+            }
+        }
+
+        self.patterns = new_patterns;
+        self.construction_form_idx += 1;
+
+        if self.construction_form_idx >= nf {
+            self.finalize();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn finalize(&mut self) {
+        let nf = self.total_forms;
+
+        let mut candidate_derivable: Vec<Vec<bool>> = self.tableau.forms.iter()
+            .map(|f| vec![false; f.candidates.len()])
+            .collect();
+        for pattern in &self.patterns {
+            for (form_idx, &cand_idx) in pattern.iter().enumerate() {
+                candidate_derivable[form_idx][cand_idx] = true;
+            }
+        }
+
+        let torder = compute_torder(&self.patterns, nf);
+
+        self.phase = FtPhase::Done;
+        self.result = Some(FactorialTypologyResult {
+            patterns: std::mem::take(&mut self.patterns),
+            candidate_derivable,
+            torder,
+        });
+    }
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]

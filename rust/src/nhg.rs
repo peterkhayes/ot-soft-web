@@ -18,6 +18,33 @@ use crate::tableau::Tableau;
 
 const NO_WINNER: usize = usize::MAX;
 const MAX_TIE_RETRIES: usize = 100;
+const REPORTING_FREQUENCY: usize = 200;
+
+/// Noise variant configuration — extracted from NhgOptions to share between
+/// the batch runner and NhgRunner.
+struct NhgVariantConfig {
+    noise_by_cell: bool,
+    post_mult_noise: bool,
+    noise_for_zero_cells: bool,
+    late_noise: bool,
+    exponential_nhg: bool,
+    negative_weights_ok: bool,
+    resolve_ties_by_skipping: bool,
+}
+
+impl NhgVariantConfig {
+    fn from_opts(opts: &crate::NhgOptions) -> Self {
+        Self {
+            noise_by_cell: opts.noise_by_cell,
+            post_mult_noise: opts.post_mult_noise,
+            noise_for_zero_cells: opts.noise_for_zero_cells,
+            late_noise: opts.late_noise,
+            exponential_nhg: opts.exponential_nhg,
+            negative_weights_ok: opts.negative_weights_ok,
+            resolve_ties_by_skipping: opts.resolve_ties_by_skipping,
+        }
+    }
+}
 
 /// Compute the noisy harmony of each candidate for one input form and return the index
 /// of the winning candidate (lowest harmony). Returns `NO_WINNER` if tie-skipping is
@@ -26,16 +53,16 @@ fn generate_form(
     candidates: &[crate::tableau::Candidate],
     weights: &[f64],
     noise_std: f64,
-    opts: &crate::NhgOptions,
+    config: &NhgVariantConfig,
     rng: &mut Rng,
 ) -> usize {
-    let noise_by_cell = opts.noise_by_cell;
-    let post_mult_noise = opts.post_mult_noise;
-    let noise_for_zero_cells = opts.noise_for_zero_cells;
-    let late_noise = opts.late_noise;
-    let exponential_nhg = opts.exponential_nhg;
-    let negative_weights_ok = opts.negative_weights_ok;
-    let resolve_ties_by_skipping = opts.resolve_ties_by_skipping;
+    let noise_by_cell = config.noise_by_cell;
+    let post_mult_noise = config.post_mult_noise;
+    let noise_for_zero_cells = config.noise_for_zero_cells;
+    let late_noise = config.late_noise;
+    let exponential_nhg = config.exponential_nhg;
+    let negative_weights_ok = config.negative_weights_ok;
+    let resolve_ties_by_skipping = config.resolve_ties_by_skipping;
     let nc = weights.len();
     let n_cands = candidates.len();
 
@@ -490,7 +517,6 @@ impl Tableau {
             nc, pool_size, total_cycles);
 
         // ── History buffer ──────────────────────────────────────────────────
-        const REPORTING_FREQUENCY: usize = 200;
         let mut history_buf = if generate_history {
             let mut header = String::new();
             for (i, c) in self.constraints.iter().enumerate() {
@@ -531,6 +557,7 @@ impl Tableau {
         let mut pool_cursor: usize = pool_size;
 
         // ── Main learning loop ───────────────────────────────────────────────────────────
+        let variant_config = NhgVariantConfig::from_opts(opts);
         if pool_size > 0 {
             for (stage_idx, stage) in schedule.stages.iter().enumerate() {
                 for _ in 0..stage.trials {
@@ -558,7 +585,7 @@ impl Tableau {
                         &self.forms[selected_form].candidates,
                         &weights,
                         noise_std,
-                        opts,
+                        &variant_config,
                         &mut rng,
                     );
 
@@ -646,7 +673,7 @@ impl Tableau {
                     &form.candidates,
                     &weights,
                     noise_std,
-                    opts,
+                    &variant_config,
                     &mut rng,
                 );
                 if winner != NO_WINNER {
@@ -709,6 +736,386 @@ impl Tableau {
             zero_prediction_warning,
             infinity_warning,
         }
+    }
+}
+
+// ─── Chunked NHG Runner ───────────────────────────────────────────────────────
+
+/// Execution phase of the NHG runner.
+enum NhgPhase {
+    Learning,
+    Testing,
+    Done,
+}
+
+/// Chunked NHG runner for interactive progress reporting.
+///
+/// Holds all algorithm state so learning can be split across multiple
+/// `run_chunk` calls, yielding control to the browser between chunks.
+#[wasm_bindgen]
+pub struct NhgRunner {
+    // ── Immutable config ─────────────────────────────────────────────────────
+    tableau: Tableau,
+    schedule: LearningSchedule,
+    noise_std: f64,
+    test_trials: usize,
+    total_learning_trials: usize,
+    is_faith: Vec<bool>,
+    variant_config: NhgVariantConfig,
+    exact_proportions: bool,
+    exponential_nhg: bool,
+    negative_weights_ok: bool,
+
+    // ── Mutable algorithm state ───────────────────────────────────────────────
+    weights: Vec<f64>,
+    training_pool: Vec<(usize, usize)>,
+    pool_cursor: usize,
+    rng: Rng,
+    phase: NhgPhase,
+    current_stage: usize,
+    current_trial_in_stage: usize,
+    trials_completed: usize,
+    infinity_warning: bool,
+    report_counter: usize,
+
+    // ── History buffers ───────────────────────────────────────────────────────
+    history_buf: Option<String>,
+    full_history_buf: Option<String>,
+
+    // ── Testing state ─────────────────────────────────────────────────────────
+    test_counts: Vec<Vec<usize>>,
+    test_trials_completed: usize,
+
+    // ── Final result ───────────────────────────────────────────────────────────
+    result: Option<NhgResult>,
+}
+
+#[wasm_bindgen]
+impl NhgRunner {
+    #[wasm_bindgen(constructor)]
+    pub fn new(text: &str, opts: &crate::NhgOptions) -> Result<NhgRunner, String> {
+        let tableau = Tableau::parse(text)?;
+
+        let schedule = if opts.learning_schedule().is_empty() {
+            LearningSchedule::default_4stage(opts.cycles, opts.initial_plasticity, opts.final_plasticity)
+        } else {
+            LearningSchedule::parse(&opts.learning_schedule())?
+        };
+
+        let nc = tableau.constraints.len();
+        let is_faith: Vec<bool> = tableau.constraints.iter().map(|c| c.is_faithfulness()).collect();
+        let noise_std = if opts.exponential_nhg { 0.1 } else { 1.0 };
+
+        let mut training_pool: Vec<(usize, usize)> = Vec::new();
+        for (fi, form) in tableau.forms.iter().enumerate() {
+            for (ci, cand) in form.candidates.iter().enumerate() {
+                for _ in 0..cand.frequency {
+                    training_pool.push((fi, ci));
+                }
+            }
+        }
+        let pool_size = training_pool.len();
+
+        let schedule = if opts.exact_proportions && pool_size > 0 {
+            let mut s = schedule;
+            s.round_stages_to_multiple(pool_size);
+            s
+        } else {
+            schedule
+        };
+        let total_learning_trials = schedule.total_cycles();
+
+        let history_buf = if opts.generate_history {
+            let mut header = String::new();
+            for (i, c) in tableau.constraints.iter().enumerate() {
+                if i > 0 { header.push('\t'); }
+                header.push_str(&c.abbrev());
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
+        let full_history_buf = if opts.generate_full_history {
+            use std::fmt::Write;
+            let mut header = String::from("Trial\tInput\tGenerated\tHeard");
+            for c in &tableau.constraints {
+                write!(header, "\t{}\tnow", c.abbrev()).unwrap();
+            }
+            header.push('\n');
+            header.push_str("(Initial)\t\t\t");
+            for _ in 0..nc {
+                write!(header, "\t\t{:.4}", 0.0f64).unwrap();
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
+        let test_counts = tableau.forms.iter().map(|f| vec![0usize; f.candidates.len()]).collect();
+        let gaussian_mode = if opts.demi_gaussians { GaussianMode::DemiGaussian } else { GaussianMode::Standard };
+
+        Ok(NhgRunner {
+            schedule,
+            noise_std,
+            test_trials: opts.test_trials,
+            total_learning_trials,
+            is_faith,
+            variant_config: NhgVariantConfig::from_opts(opts),
+            exact_proportions: opts.exact_proportions,
+            exponential_nhg: opts.exponential_nhg,
+            negative_weights_ok: opts.negative_weights_ok,
+            weights: vec![0.0f64; nc],
+            training_pool,
+            pool_cursor: pool_size, // triggers shuffle on first use
+            rng: Rng::new(gaussian_mode),
+            phase: NhgPhase::Learning,
+            current_stage: 0,
+            current_trial_in_stage: 0,
+            trials_completed: 0,
+            infinity_warning: false,
+            report_counter: 0,
+            history_buf,
+            full_history_buf,
+            test_counts,
+            test_trials_completed: 0,
+            tableau,
+            result: None,
+        })
+    }
+
+    /// Advance up to `max_trials` trials. Returns true when all computation
+    /// (learning + testing) is complete.
+    pub fn run_chunk(&mut self, max_trials: usize) -> bool {
+        match self.phase {
+            NhgPhase::Learning => self.run_learning_chunk(max_trials),
+            NhgPhase::Testing => self.run_testing_chunk(max_trials),
+            NhgPhase::Done => true,
+        }
+    }
+
+    /// Progress as [completed, total].
+    pub fn progress(&self) -> Vec<f64> {
+        let total = (self.total_learning_trials + self.test_trials) as f64;
+        let completed = match self.phase {
+            NhgPhase::Learning => self.trials_completed as f64,
+            NhgPhase::Testing => (self.total_learning_trials + self.test_trials_completed) as f64,
+            NhgPhase::Done => total,
+        };
+        vec![completed, total]
+    }
+
+    /// Extract the final NhgResult. Only valid after `run_chunk` returns true.
+    pub fn take_result(&mut self) -> NhgResult {
+        self.result.take().expect("NhgRunner: take_result called before completion")
+    }
+}
+
+impl NhgRunner {
+    fn run_learning_chunk(&mut self, max_trials: usize) -> bool {
+        let pool_size = self.training_pool.len();
+        let nc = self.weights.len();
+
+        if pool_size == 0 {
+            return self.start_testing();
+        }
+
+        let mut work_done = 0;
+
+        while work_done < max_trials {
+            if self.current_stage >= self.schedule.stages.len() {
+                return self.start_testing();
+            }
+
+            let stage_trials = self.schedule.stages[self.current_stage].trials;
+            if self.current_trial_in_stage >= stage_trials {
+                crate::ot_log!("NHG stage {}/{} complete",
+                    self.current_stage + 1, self.schedule.stages.len());
+                self.current_stage += 1;
+                self.current_trial_in_stage = 0;
+                continue;
+            }
+
+            // Select training exemplar
+            let (selected_form, selected_cand) = if self.exact_proportions {
+                if self.pool_cursor >= pool_size {
+                    for i in (1..pool_size).rev() {
+                        let j = (self.rng.uniform() * (i + 1) as f64) as usize;
+                        self.training_pool.swap(i, j);
+                    }
+                    self.pool_cursor = 0;
+                }
+                let pair = self.training_pool[self.pool_cursor];
+                self.pool_cursor += 1;
+                pair
+            } else {
+                let r = self.rng.uniform();
+                let idx = ((r * pool_size as f64) as usize).min(pool_size - 1);
+                self.training_pool[idx]
+            };
+
+            let generated = generate_form(
+                &self.tableau.forms[selected_form].candidates,
+                &self.weights,
+                self.noise_std,
+                &self.variant_config,
+                &mut self.rng,
+            );
+
+            if generated == NO_WINNER {
+                self.infinity_warning = true;
+            }
+
+            if generated != NO_WINNER && generated != selected_cand {
+                let (plast_mark, plast_faith) = {
+                    let stage = &self.schedule.stages[self.current_stage];
+                    (stage.plast_mark, stage.plast_faith)
+                };
+
+                let winner_violations: Vec<i32> =
+                    self.tableau.forms[selected_form].candidates[generated].violations.clone();
+                let target_violations: Vec<i32> =
+                    self.tableau.forms[selected_form].candidates[selected_cand].violations.clone();
+                let winner_form = self.tableau.forms[selected_form].candidates[generated].form.clone();
+                let target_form = self.tableau.forms[selected_form].candidates[selected_cand].form.clone();
+                let form_input = self.tableau.forms[selected_form].input.clone();
+
+                let tracking = self.full_history_buf.is_some();
+                let mut changed = if tracking { vec![false; nc] } else { vec![] };
+                let mut deltas = if tracking { vec![0.0f64; nc] } else { vec![] };
+
+                for (c, w) in self.weights.iter_mut().enumerate() {
+                    let wv = winner_violations[c] as f64;
+                    let tv = target_violations[c] as f64;
+                    if wv != tv {
+                        let plast = if self.is_faith[c] { plast_faith } else { plast_mark };
+                        let delta = plast * (wv - tv);
+                        *w += delta;
+                        if *w < 0.0 && !self.negative_weights_ok && !self.exponential_nhg {
+                            *w = 0.0;
+                        }
+                        if tracking {
+                            changed[c] = true;
+                            deltas[c] = delta;
+                        }
+                    }
+                }
+
+                if let Some(ref mut buf) = self.full_history_buf {
+                    use std::fmt::Write;
+                    write!(buf, "{}\t{}\t{}", form_input, winner_form, target_form).unwrap();
+                    for c in 0..nc {
+                        if changed[c] {
+                            write!(buf, "\t{:.4}\t{:.4}", deltas[c], self.weights[c]).unwrap();
+                        } else {
+                            buf.push_str("\t\t");
+                        }
+                    }
+                    buf.push('\n');
+                }
+            }
+
+            self.current_trial_in_stage += 1;
+            self.trials_completed += 1;
+            self.report_counter += 1;
+            work_done += 1;
+
+            if let Some(ref mut buf) = self.history_buf {
+                if self.report_counter.is_multiple_of(REPORTING_FREQUENCY) {
+                    use std::fmt::Write;
+                    for (i, w) in self.weights.iter().enumerate() {
+                        if i > 0 { buf.push('\t'); }
+                        write!(buf, "{w:.4}").unwrap();
+                    }
+                    buf.push('\n');
+                }
+            }
+        }
+
+        false
+    }
+
+    fn start_testing(&mut self) -> bool {
+        if self.test_trials == 0 {
+            self.finalize();
+            true
+        } else {
+            self.phase = NhgPhase::Testing;
+            false
+        }
+    }
+
+    fn run_testing_chunk(&mut self, max_trials: usize) -> bool {
+        let mut work_done = 0;
+        while work_done < max_trials && self.test_trials_completed < self.test_trials {
+            for (fi, form) in self.tableau.forms.iter().enumerate() {
+                let winner = generate_form(
+                    &form.candidates,
+                    &self.weights,
+                    self.noise_std,
+                    &self.variant_config,
+                    &mut self.rng,
+                );
+                if winner != NO_WINNER {
+                    self.test_counts[fi][winner] += 1;
+                }
+            }
+            self.test_trials_completed += 1;
+            work_done += 1;
+        }
+
+        if self.test_trials_completed >= self.test_trials {
+            self.finalize();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn finalize(&mut self) {
+        let test_probs: Vec<Vec<f64>> = self.test_counts.iter().map(|form_counts| {
+            let total: usize = form_counts.iter().sum();
+            if total == 0 {
+                vec![0.0; form_counts.len()]
+            } else {
+                form_counts.iter().map(|&c| c as f64 / total as f64).collect()
+            }
+        }).collect();
+
+        let mut log_likelihood = 0.0f64;
+        let mut zero_prediction_warning = false;
+        for (fi, form) in self.tableau.forms.iter().enumerate() {
+            let total_freq: f64 = form.candidates.iter().map(|c| c.frequency as f64).sum();
+            if total_freq <= 0.0 { continue; }
+            for (ci, cand) in form.candidates.iter().enumerate() {
+                if cand.frequency > 0 {
+                    let pred = test_probs[fi][ci];
+                    if pred > 0.0 {
+                        log_likelihood += cand.frequency as f64 * pred.ln();
+                    } else {
+                        log_likelihood += cand.frequency as f64 * 0.001_f64.ln();
+                        zero_prediction_warning = true;
+                    }
+                }
+            }
+        }
+
+        self.phase = NhgPhase::Done;
+        self.result = Some(NhgResult {
+            weights: self.weights.clone(),
+            test_probs,
+            test_counts: self.test_counts.clone(),
+            log_likelihood,
+            schedule_description: self.schedule.format_description(),
+            test_trials: self.test_trials,
+            exponential_nhg: self.exponential_nhg,
+            history: self.history_buf.take(),
+            full_history: self.full_history_buf.take(),
+            zero_prediction_warning,
+            infinity_warning: self.infinity_warning,
+        });
     }
 }
 

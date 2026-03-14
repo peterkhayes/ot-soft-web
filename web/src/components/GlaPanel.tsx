@@ -16,6 +16,8 @@ import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type GlaDefaults, glaDefaults } from '../wasmDefaults.ts'
 import HasseDiagram from './HasseDiagram.tsx'
+import RunButton from './RunButton.tsx'
+import RunnerProgressBar from './RunnerProgressBar.tsx'
 import TextFileEditor from './TextFileEditor.tsx'
 
 interface GlaPanelProps {
@@ -529,39 +531,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       )}
 
       <div className="action-bar">
-        <button
-          className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
-          onClick={handleRun}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 22h14" />
-              <path d="M5 2h14" />
-              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
-              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
-            </svg>
-          ) : (
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          )}
-          Run GLA
-        </button>
+        <RunButton isLoading={isLoading} onClick={handleRun} label="Run GLA" />
         {result && !result.error && (
           <button className="download-button" onClick={handleDownload}>
             <svg
@@ -663,17 +633,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         </button>
       </div>
 
-      {runnerState.status === 'running' && runnerState.total > 0 && (
-        <div className="progress-bar-container">
-          <div
-            className="progress-bar-fill"
-            style={{ width: `${(runnerState.completed / runnerState.total) * 100}%` }}
-          />
-          <span className="progress-bar-label">
-            {Math.round((runnerState.completed / runnerState.total) * 100)}%
-          </span>
-        </div>
-      )}
+      <RunnerProgressBar state={runnerState} />
       {result?.error && <div className="rcd-status failure">Error running GLA: {result.error}</div>}
       {successResult && (
         <div className="maxent-results">

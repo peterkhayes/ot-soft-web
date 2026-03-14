@@ -438,6 +438,224 @@ impl Tableau {
     }
 }
 
+// ─── Chunked MaxEnt Runner ────────────────────────────────────────────────────
+
+/// Chunked MaxEnt runner for interactive progress reporting.
+///
+/// Holds all GIS state so iterations can be split across multiple
+/// `run_chunk` calls, yielding control to the browser between chunks.
+#[wasm_bindgen]
+pub struct MaxEntRunner {
+    // ── Immutable config ──────────────────────────────────────────────────────
+    tableau: Tableau,
+    total_iterations: usize,
+    weight_min: f64,
+    weight_max: f64,
+    use_prior: bool,
+    sigma_squared: f64,
+
+    // ── Pre-computed ──────────────────────────────────────────────────────────
+    total_freq_per_form: Vec<f64>,
+    observed: Vec<f64>,
+    slowing_factor: f64,
+
+    // ── Mutable state ─────────────────────────────────────────────────────────
+    weights: Vec<f64>,
+    current_iter: usize,
+
+    // ── History buffers ───────────────────────────────────────────────────────
+    history_buf: Option<String>,
+    output_prob_history_buf: Option<String>,
+
+    // ── Final result ───────────────────────────────────────────────────────────
+    result: Option<MaxEntResult>,
+}
+
+#[wasm_bindgen]
+impl MaxEntRunner {
+    #[wasm_bindgen(constructor)]
+    pub fn new(text: &str, opts: &crate::MaxEntOptions) -> Result<MaxEntRunner, String> {
+        let tableau = Tableau::parse(text)?;
+        let nc = tableau.constraints.len();
+
+        let total_freq_per_form: Vec<f64> = tableau.forms.iter()
+            .map(|form| form.candidates.iter().map(|c| c.frequency as f64).sum())
+            .collect();
+
+        let mut observed = vec![0.0f64; nc];
+        for form in &tableau.forms {
+            for cand in &form.candidates {
+                let freq = cand.frequency as f64;
+                for (c_idx, obs) in observed.iter_mut().enumerate() {
+                    *obs += freq * cand.violations[c_idx] as f64;
+                }
+            }
+        }
+        for obs in &mut observed {
+            if *obs == 0.0 { *obs = 1e-9; }
+        }
+
+        let mut slowing_factor = 1.0f64;
+        for form in &tableau.forms {
+            for cand in &form.candidates {
+                let total: f64 = cand.violations.iter().map(|&v| v as f64).sum();
+                if total > slowing_factor { slowing_factor = total; }
+            }
+        }
+
+        let weights = vec![0.0f64; nc];
+
+        let history_buf = if opts.generate_history {
+            use std::fmt::Write;
+            let mut header = String::new();
+            for c in &tableau.constraints {
+                header.push('\t');
+                header.push_str(&c.abbrev());
+            }
+            header.push('\n');
+            // Row 0: initial weights (all zeros)
+            let mut row = String::from("0");
+            for w in &weights {
+                write!(row, "\t{w:.4}").unwrap();
+            }
+            row.push('\n');
+            Some(header + &row)
+        } else {
+            None
+        };
+
+        let output_prob_history_buf = if opts.generate_output_prob_history {
+            let mut header = String::new();
+            for (form_idx, form) in tableau.forms.iter().enumerate() {
+                if form_idx > 0 { header.push('\t'); }
+                header.push_str(&form.input);
+                for cand in &form.candidates {
+                    header.push('\t');
+                    header.push_str(&cand.form);
+                }
+            }
+            header.push('\n');
+            Some(header)
+        } else {
+            None
+        };
+
+        Ok(MaxEntRunner {
+            total_iterations: opts.iterations,
+            weight_min: opts.weight_min,
+            weight_max: opts.weight_max,
+            use_prior: opts.use_prior,
+            sigma_squared: opts.sigma_squared,
+            total_freq_per_form,
+            observed,
+            slowing_factor,
+            weights,
+            current_iter: 0,
+            history_buf,
+            output_prob_history_buf,
+            result: None,
+            tableau,
+        })
+    }
+
+    /// Advance up to `max_iters` GIS iterations. Returns true when complete.
+    pub fn run_chunk(&mut self, max_iters: usize) -> bool {
+        let nc = self.weights.len();
+        let mut work_done = 0;
+
+        while work_done < max_iters && self.current_iter < self.total_iterations {
+            self.current_iter += 1;
+            let iter_num = self.current_iter;
+
+            let predicted = self.tableau.calculate_predicted_probs(&self.weights);
+
+            if let Some(ref mut buf) = self.output_prob_history_buf {
+                use std::fmt::Write;
+                for (form_idx, form) in self.tableau.forms.iter().enumerate() {
+                    write!(buf, "{iter_num}\t").unwrap();
+                    for (cand_idx, _) in form.candidates.iter().enumerate() {
+                        write!(buf, "\t{}", predicted[form_idx][cand_idx]).unwrap();
+                    }
+                }
+                buf.push('\n');
+            }
+
+            let mut expected = vec![0.0f64; nc];
+            for (form_idx, form) in self.tableau.forms.iter().enumerate() {
+                let total_freq = self.total_freq_per_form[form_idx];
+                for (cand_idx, cand) in form.candidates.iter().enumerate() {
+                    let pred_prob = predicted[form_idx][cand_idx];
+                    for (c_idx, exp) in expected.iter_mut().enumerate() {
+                        *exp += total_freq * pred_prob * cand.violations[c_idx] as f64;
+                    }
+                }
+            }
+
+            for (c_idx, w) in self.weights.iter_mut().enumerate() {
+                if self.use_prior {
+                    let delta = delta_using_prior(
+                        expected[c_idx], self.observed[c_idx], *w,
+                        self.slowing_factor, self.sigma_squared,
+                    );
+                    *w = (*w - delta / 1000.0).clamp(self.weight_min, self.weight_max);
+                } else {
+                    if expected[c_idx] <= 0.0 { continue; }
+                    let delta = (self.observed[c_idx] / expected[c_idx]).ln() / self.slowing_factor;
+                    *w = (*w - delta).clamp(self.weight_min, self.weight_max);
+                }
+            }
+
+            if let Some(ref mut buf) = self.history_buf {
+                use std::fmt::Write;
+                write!(buf, "{iter_num}").unwrap();
+                for w in &self.weights {
+                    write!(buf, "\t{w:.4}").unwrap();
+                }
+                buf.push('\n');
+            }
+
+            work_done += 1;
+        }
+
+        if self.current_iter >= self.total_iterations {
+            self.finalize();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Progress as [completed, total].
+    pub fn progress(&self) -> Vec<f64> {
+        vec![self.current_iter as f64, self.total_iterations as f64]
+    }
+
+    /// Extract the final MaxEntResult. Only valid after `run_chunk` returns true.
+    pub fn take_result(&mut self) -> MaxEntResult {
+        self.result.take().expect("MaxEntRunner: take_result called before completion")
+    }
+}
+
+impl MaxEntRunner {
+    fn finalize(&mut self) {
+        let predicted_probs = self.tableau.calculate_predicted_probs(&self.weights);
+        let log_prob = self.tableau.calculate_log_prob(&self.weights, &predicted_probs);
+        crate::ot_log!("MaxEnt DONE: log_prob = {:.6} after {} iterations", log_prob, self.total_iterations);
+        self.result = Some(MaxEntResult {
+            weights: self.weights.clone(),
+            predicted_probs,
+            log_prob,
+            iterations: self.total_iterations,
+            weight_min: self.weight_min,
+            weight_max: self.weight_max,
+            use_prior: self.use_prior,
+            sigma_squared: self.sigma_squared,
+            history: self.history_buf.take(),
+            output_prob_history: self.output_prob_history_buf.take(),
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tableau::Tableau;

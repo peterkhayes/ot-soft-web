@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import {
@@ -6,12 +6,15 @@ import {
   format_factorial_typology_output,
   format_ft_sum,
   FtOptions,
-  run_factorial_typology,
+  FtRunner,
 } from '../../pkg/ot_soft.js'
 import { useDownload } from '../contexts/downloadContext.ts'
+import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { makeOutputFilename } from '../utils.ts'
 import { type FtDefaults, ftDefaults } from '../wasmDefaults.ts'
+import RunButton from './RunButton.tsx'
+import RunnerProgressBar from './RunnerProgressBar.tsx'
 import TextFileEditor from './TextFileEditor.tsx'
 
 interface FactorialTypologyPanelProps {
@@ -68,121 +71,123 @@ function FactorialTypologyPanel({
   tableauText,
   inputFilename,
 }: FactorialTypologyPanelProps) {
-  const [result, setResult] = useState<FtState | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [params, setParams] = useLocalStorage<FtParams>('otsoft:params:ft', ftDefaults())
   const download = useDownload()
   const { includeFullListing, includeFtsum, includeCompactSum } = params
   const [aprioriText, setAprioriText] = useState('')
   const [showApriori, setShowApriori] = useState(false)
 
-  function handleRun() {
-    setIsLoading(true)
-    setTimeout(() => {
-      try {
-        const ftResult = run_factorial_typology(tableauText, aprioriText)
-        const patternCount = ftResult.pattern_count()
-        const formCount = tableau.form_count()
-        const constraintCount = tableau.constraint_count()
+  const createRunner = useCallback(() => {
+    return new FtRunner(tableauText, aprioriText)
+  }, [tableauText, aprioriText])
 
-        // Extract form inputs
-        const formInputs: string[] = []
+  const extractResult = useCallback(
+    (runner: FtRunner): FtState => {
+      const ftResult = runner.take_result()
+      const patternCount = ftResult.pattern_count()
+      const formCount = tableau.form_count()
+      const constraintCount = tableau.constraint_count()
+
+      const formInputs: string[] = []
+      for (let fi = 0; fi < formCount; fi++) {
+        formInputs.push(tableau.get_form(fi)!.input)
+      }
+
+      const patterns: { candidates: string[]; isWinner: boolean[] }[] = []
+      for (let pi = 0; pi < patternCount; pi++) {
+        const candidates: string[] = []
+        const isWinner: boolean[] = []
         for (let fi = 0; fi < formCount; fi++) {
-          formInputs.push(tableau.get_form(fi)!.input)
-        }
-
-        // Extract patterns
-        const patterns: { candidates: string[]; isWinner: boolean[] }[] = []
-        for (let pi = 0; pi < patternCount; pi++) {
-          const candidates: string[] = []
-          const isWinner: boolean[] = []
-          for (let fi = 0; fi < formCount; fi++) {
-            const ci = ftResult.get_pattern_candidate(pi, fi) ?? 0
-            const form = tableau.get_form(fi)!
-            const cand = form.get_candidate(ci)!
-            candidates.push(cand.form)
-            isWinner.push(cand.frequency > 0)
-          }
-          patterns.push({ candidates, isWinner })
-        }
-
-        // Extract winner derivability data
-        const winners: FtWinnersRow[] = []
-        for (let fi = 0; fi < formCount; fi++) {
+          const ci = ftResult.get_pattern_candidate(pi, fi) ?? 0
           const form = tableau.get_form(fi)!
-          const row: FtWinnersRow = { formInput: form.input, candidates: [] }
-          for (let ci = 0; ci < form.candidate_count(); ci++) {
-            const cand = form.get_candidate(ci)!
-            row.candidates.push({
-              form: cand.form,
-              isWinner: cand.frequency > 0,
-              derivable: ftResult.is_candidate_derivable(fi, ci),
-            })
-          }
-          winners.push(row)
+          const cand = form.get_candidate(ci)!
+          candidates.push(cand.form)
+          isWinner.push(cand.frequency > 0)
         }
+        patterns.push({ candidates, isWinner })
+      }
 
-        // Extract t-order
-        const torder: FtTOrderEntry[] = []
-        for (let i = 0; i < ftResult.torder_count(); i++) {
-          const impFi = ftResult.get_torder_implicator_form(i)
-          const impCi = ftResult.get_torder_implicator_candidate(i)
-          const tedFi = ftResult.get_torder_implicated_form(i)
-          const tedCi = ftResult.get_torder_implicated_candidate(i)
-          torder.push({
-            implicatorInput: tableau.get_form(impFi)!.input,
-            implicatorCandidate: tableau.get_form(impFi)!.get_candidate(impCi)!.form,
-            implicatedInput: tableau.get_form(tedFi)!.input,
-            implicatedCandidate: tableau.get_form(tedFi)!.get_candidate(tedCi)!.form,
+      const winners: FtWinnersRow[] = []
+      for (let fi = 0; fi < formCount; fi++) {
+        const form = tableau.get_form(fi)!
+        const row: FtWinnersRow = { formInput: form.input, candidates: [] }
+        for (let ci = 0; ci < form.candidate_count(); ci++) {
+          const cand = form.get_candidate(ci)!
+          row.candidates.push({
+            form: cand.form,
+            isWinner: cand.frequency > 0,
+            derivable: ftResult.is_candidate_derivable(fi, ci),
           })
         }
-
-        // Compute always winners (forms with exactly 1 derivable candidate)
-        const alwaysWinners: { input: string; candidate: string }[] = []
-        for (const row of winners) {
-          const derivable = row.candidates.filter((c) => c.derivable)
-          if (derivable.length === 1) {
-            alwaysWinners.push({ input: row.formInput, candidate: derivable[0].form })
-          }
-        }
-
-        // Compute non-implicators: derivable candidates not in t-order implicator set
-        const implicatorKeys = new Set<string>()
-        for (let i = 0; i < ftResult.torder_count(); i++) {
-          implicatorKeys.add(
-            `${ftResult.get_torder_implicator_form(i)}:${ftResult.get_torder_implicator_candidate(i)}`,
-          )
-        }
-        const nonImplicators: { input: string; candidate: string }[] = []
-        for (let fi = 0; fi < formCount; fi++) {
-          const form = tableau.get_form(fi)!
-          for (let ci = 0; ci < form.candidate_count(); ci++) {
-            if (ftResult.is_candidate_derivable(fi, ci) && !implicatorKeys.has(`${fi}:${ci}`)) {
-              nonImplicators.push({ input: form.input, candidate: form.get_candidate(ci)!.form })
-            }
-          }
-        }
-
-        setResult({
-          data: {
-            patternCount,
-            constraintCount,
-            formInputs,
-            patterns,
-            winners,
-            torder,
-            alwaysWinners,
-            nonImplicators,
-          },
-        })
-      } catch (err) {
-        console.error('Factorial Typology error:', err)
-        setResult({ error: String(err) })
-      } finally {
-        setIsLoading(false)
+        winners.push(row)
       }
-    }, 0)
-  }
+
+      const torder: FtTOrderEntry[] = []
+      for (let i = 0; i < ftResult.torder_count(); i++) {
+        const impFi = ftResult.get_torder_implicator_form(i)
+        const impCi = ftResult.get_torder_implicator_candidate(i)
+        const tedFi = ftResult.get_torder_implicated_form(i)
+        const tedCi = ftResult.get_torder_implicated_candidate(i)
+        torder.push({
+          implicatorInput: tableau.get_form(impFi)!.input,
+          implicatorCandidate: tableau.get_form(impFi)!.get_candidate(impCi)!.form,
+          implicatedInput: tableau.get_form(tedFi)!.input,
+          implicatedCandidate: tableau.get_form(tedFi)!.get_candidate(tedCi)!.form,
+        })
+      }
+
+      const alwaysWinners: { input: string; candidate: string }[] = []
+      for (const row of winners) {
+        const derivable = row.candidates.filter((c) => c.derivable)
+        if (derivable.length === 1) {
+          alwaysWinners.push({ input: row.formInput, candidate: derivable[0].form })
+        }
+      }
+
+      const implicatorKeys = new Set<string>()
+      for (let i = 0; i < ftResult.torder_count(); i++) {
+        implicatorKeys.add(
+          `${ftResult.get_torder_implicator_form(i)}:${ftResult.get_torder_implicator_candidate(i)}`,
+        )
+      }
+      const nonImplicators: { input: string; candidate: string }[] = []
+      for (let fi = 0; fi < formCount; fi++) {
+        const form = tableau.get_form(fi)!
+        for (let ci = 0; ci < form.candidate_count(); ci++) {
+          if (ftResult.is_candidate_derivable(fi, ci) && !implicatorKeys.has(`${fi}:${ci}`)) {
+            nonImplicators.push({ input: form.input, candidate: form.get_candidate(ci)!.form })
+          }
+        }
+      }
+
+      ftResult.free()
+      return {
+        data: {
+          patternCount,
+          constraintCount,
+          formInputs,
+          patterns,
+          winners,
+          torder,
+          alwaysWinners,
+          nonImplicators,
+        },
+      }
+    },
+    [tableau],
+  )
+
+  const { state: runnerState, run: handleRun } = useChunkedRunner(createRunner, extractResult)
+
+  const result: FtState | null =
+    runnerState.status === 'done'
+      ? runnerState.result
+      : runnerState.status === 'error'
+        ? { error: runnerState.error }
+        : null
+  const isLoading = runnerState.status === 'running'
+
+  const successResult = result && !result.error ? result.data : null
 
   function handleDownload() {
     try {
@@ -216,8 +221,6 @@ function FactorialTypologyPanel({
       alert('Error generating CompactSum download: ' + err)
     }
   }
-
-  const successResult = result && !result.error ? result.data : null
 
   return (
     <section className="analysis-panel">
@@ -281,39 +284,7 @@ function FactorialTypologyPanel({
       </div>
 
       <div className="action-bar">
-        <button
-          className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
-          onClick={handleRun}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 22h14" />
-              <path d="M5 2h14" />
-              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
-              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
-            </svg>
-          ) : (
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-          )}
-          Run Factorial Typology
-        </button>
+        <RunButton isLoading={isLoading} onClick={handleRun} label="Run Factorial Typology" />
 
         {successResult && (
           <button className="download-button" onClick={handleDownload}>
@@ -367,6 +338,7 @@ function FactorialTypologyPanel({
         )}
       </div>
 
+      <RunnerProgressBar state={runnerState} />
       {result?.error && (
         <div className="rcd-status failure">Error running Factorial Typology: {result.error}</div>
       )}
