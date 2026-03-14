@@ -14,7 +14,7 @@
 //! on `<td>` directly), so the comparison extracts cell grids — each cell as
 //! (text content, CSS shading class) — and compares those.
 
-use ot_soft::{FredOptions, FtOptions, MaxEntOptions};
+use ot_soft::{FredOptions, FtOptions, GlaOptions, MaxEntOptions};
 use regex::Regex;
 use serde::Deserialize;
 use std::fs;
@@ -512,6 +512,226 @@ fn conformance_tests() {
             failures.join("\n")
         );
     }
+}
+
+// ── GLA structural conformance ───────────────────────────────────────────────
+//
+// GLA (Stochastic OT and online MaxEnt) is non-deterministic, so exact byte
+// comparison against a golden file isn't possible.  Instead we verify that
+// format_gla_output produces the correct structure: section headings present,
+// mode name in header, and that SOT-only vs MaxEnt-only sections are correctly
+// included or excluded.
+
+/// Assert expected structure for a Stochastic OT formatted output.
+fn assert_gla_sot_structure(output: &str, label: &str) {
+    assert!(
+        output.contains("GLA-Stochastic OT"),
+        "{label}: missing 'GLA-Stochastic OT' in header"
+    );
+    assert!(output.contains("OTSoft 2.7"), "{label}: missing version line");
+    assert!(
+        output.contains("1. Ranking Values Found"),
+        "{label}: missing section 1 (Ranking Values Found)"
+    );
+    assert!(
+        output.contains("2. Matchup to Input Frequencies"),
+        "{label}: missing section 2 (Matchup to Input Frequencies)"
+    );
+    assert!(
+        output.contains("3. Testing the Grammar: Details"),
+        "{label}: missing section 3 (Testing the Grammar: Details)"
+    );
+    assert!(
+        output.contains("4. Ranking Values (sorted)"),
+        "{label}: missing section 4 (Ranking Values sorted)"
+    );
+    assert!(
+        output.contains("5. Ranking Value to Ranking Probability Conversion"),
+        "{label}: missing section 5 (Pairwise Ranking Probabilities)"
+    );
+    assert!(
+        output.contains("Log likelihood of data:"),
+        "{label}: missing log likelihood line"
+    );
+    // MaxEnt-only sections must NOT appear
+    assert!(
+        !output.contains("1. Weights Found"),
+        "{label}: SOT output should not contain 'Weights Found'"
+    );
+}
+
+/// Assert expected structure for a GLA-MaxEnt formatted output.
+fn assert_gla_maxent_structure(output: &str, label: &str) {
+    assert!(
+        output.contains("GLA-MaxEnt"),
+        "{label}: missing 'GLA-MaxEnt' in header"
+    );
+    assert!(output.contains("OTSoft 2.7"), "{label}: missing version line");
+    assert!(
+        output.contains("1. Weights Found"),
+        "{label}: missing section 1 (Weights Found)"
+    );
+    assert!(
+        output.contains("2. Matchup to Input Frequencies"),
+        "{label}: missing section 2 (Matchup to Input Frequencies)"
+    );
+    assert!(
+        output.contains("3. Weights (sorted)"),
+        "{label}: missing section 3 (Weights sorted)"
+    );
+    assert!(
+        output.contains("Log likelihood of data:"),
+        "{label}: missing log likelihood line"
+    );
+    // SOT-only sections must NOT appear in MaxEnt output
+    assert!(
+        !output.contains("Testing the Grammar: Details"),
+        "{label}: MaxEnt output should not contain 'Testing the Grammar: Details'"
+    );
+    assert!(
+        !output.contains("Ranking Value to Ranking Probability Conversion"),
+        "{label}: MaxEnt output should not contain pairwise probability section"
+    );
+    assert!(
+        !output.contains("1. Ranking Values Found"),
+        "{label}: MaxEnt output should not contain 'Ranking Values Found'"
+    );
+}
+
+#[test]
+fn gla_structural_conformance() {
+    let root = repo_root();
+
+    // Both example files are tested; skip gracefully if an input file is missing.
+    let cases: &[(&str, &str)] = &[
+        (
+            "examples/TinyIllustrativeFile.txt",
+            "TinyIllustrativeFile.txt",
+        ),
+        (
+            "examples/IlokanoHiatusResolution.txt",
+            "IlokanoHiatusResolution.txt",
+        ),
+    ];
+
+    for &(rel_path, filename) in cases {
+        let input_text = match fs::read_to_string(root.join(rel_path)) {
+            Ok(t) => t,
+            Err(_) => {
+                eprintln!("gla_structural: [SKIP] {filename} — input file missing");
+                continue;
+            }
+        };
+
+        // Use a short training run (500 cycles) so the test is fast.
+
+        // Stochastic OT
+        let mut sot_opts = GlaOptions::new();
+        sot_opts.maxent_mode = false;
+        sot_opts.cycles = 500;
+        sot_opts.test_trials = 100;
+        let sot_output = ot_soft::format_gla_output(&input_text, filename, &sot_opts)
+            .unwrap_or_else(|e| panic!("GLA-SOT failed for {filename}: {e}"));
+        assert_gla_sot_structure(&sot_output, &format!("{filename}/sot"));
+
+        // MaxEnt
+        let mut maxent_opts = GlaOptions::new();
+        maxent_opts.maxent_mode = true;
+        maxent_opts.cycles = 500;
+        maxent_opts.test_trials = 100;
+        let maxent_output = ot_soft::format_gla_output(&input_text, filename, &maxent_opts)
+            .unwrap_or_else(|e| panic!("GLA-MaxEnt failed for {filename}: {e}"));
+        assert_gla_maxent_structure(&maxent_output, &format!("{filename}/maxent"));
+    }
+}
+
+// ── GLA convergence assertions ───────────────────────────────────────────────
+//
+// For TinyIllustrativeFile the RCD solution is known: *NoOns and *Coda rank
+// strictly above Max and Dep.  After a full default training run, GLA should
+// reliably produce ranking values (SOT) or weights (MaxEnt) that respect this
+// ordering.  Constraint indices match the column order in the input file:
+//   0 = *NoOns, 1 = *Coda, 2 = Max, 3 = Dep
+
+#[test]
+fn gla_convergence_tiny_illustrative() {
+    let root = repo_root();
+    let input_text = match fs::read_to_string(root.join("examples/TinyIllustrativeFile.txt")) {
+        Ok(t) => t,
+        Err(_) => {
+            eprintln!("gla_convergence: [SKIP] TinyIllustrativeFile.txt not found");
+            return;
+        }
+    };
+
+    // Use the default cycle count (1M) and plasticity schedule.  On this tiny
+    // 4-constraint / 3-form file a complete run takes well under a second.
+
+    // ── Stochastic OT ──────────────────────────────────────────────────────
+    let mut sot_opts = GlaOptions::new();
+    sot_opts.maxent_mode = false;
+    sot_opts.test_trials = 1000; // enough trials for reliable frequency estimates
+    let sot = ot_soft::run_gla(&input_text, &sot_opts)
+        .expect("GLA-SOT failed on TinyIllustrativeFile");
+
+    // Constraint indices from TinyIllustrativeFile column order:
+    //   0 = *NoOns,  1 = *Coda,  2 = Max,  3 = Dep
+    let nosons = sot.get_ranking_value(0);
+    let coda = sot.get_ranking_value(1);
+    let max = sot.get_ranking_value(2);
+    let dep = sot.get_ranking_value(3);
+
+    // RCD stratum 1 (*NoOns, *Coda) must rank strictly above stratum 2 (Max, Dep).
+    assert!(nosons > max, "SOT: *NoOns ({nosons:.4}) should rank above Max ({max:.4})");
+    assert!(nosons > dep, "SOT: *NoOns ({nosons:.4}) should rank above Dep ({dep:.4})");
+    assert!(coda > max,  "SOT: *Coda ({coda:.4}) should rank above Max ({max:.4})");
+    assert!(coda > dep,  "SOT: *Coda ({coda:.4}) should rank above Dep ({dep:.4})");
+
+    // Predicted winners: SOT test_probs are sampled — with 1000 trials and a
+    // converged grammar the winner's frequency should be overwhelming.
+    // Form 0 /a/: ?a=cand 0 wins over a=cand 1
+    // Form 1 /tat/: ta=cand 0 wins over tat=cand 1
+    // Form 2 /at/: ?a=cand 0 wins over ?at=cand 1, a=cand 2, at=cand 3
+    for (form_idx, form_name) in [(0, "/a/"), (1, "/tat/"), (2, "/at/")] {
+        let winner_prob = sot.get_test_prob(form_idx, 0);
+        assert!(
+            winner_prob > 0.5,
+            "SOT: {form_name} winner (cand 0) should have predicted freq > 0.5, got {winner_prob:.4}"
+        );
+    }
+
+    // ── Online MaxEnt ───────────────────────────────────────────────────────
+    // MaxEnt weight ordering differs from SOT ranking: the grammar is correct iff
+    //   w[Dep]   < w[*NoOns]  — so that ?a beats a  in /a/
+    //   w[Max]   < w[*Coda]   — so that ta beats tat in /tat/
+    // (The /at/ condition follows from both of the above.)
+    //
+    // Note: we compare weights directly rather than checking predicted probabilities,
+    // because linearly-separable categorical data can drive weights to extreme values
+    // that cause exp(-harmony) to underflow to 0 even for the correct winner.
+    let mut me_opts = GlaOptions::new();
+    me_opts.maxent_mode = true;
+    me_opts.test_trials = 0;
+    let me = ot_soft::run_gla(&input_text, &me_opts)
+        .expect("GLA-MaxEnt failed on TinyIllustrativeFile");
+
+    let nosons = me.get_ranking_value(0); // *NoOns  (index 0 = col order in file)
+    let coda   = me.get_ranking_value(1); // *Coda
+    let max_w  = me.get_ranking_value(2); // Max
+    let dep    = me.get_ranking_value(3); // Dep
+
+    // ?a wins /a/   iff H(?a) = w_Dep   < H(a)  = w_*NoOns
+    assert!(
+        dep < nosons,
+        "MaxEnt: Dep weight ({dep:.4}) should be less than *NoOns ({nosons:.4})\n\
+         (all weights: *NoOns={nosons:.4}, *Coda={coda:.4}, Max={max_w:.4}, Dep={dep:.4})"
+    );
+    // ta  wins /tat/ iff H(ta) = w_Max   < H(tat) = w_*Coda
+    assert!(
+        max_w < coda,
+        "MaxEnt: Max weight ({max_w:.4}) should be less than *Coda ({coda:.4})\n\
+         (all weights: *NoOns={nosons:.4}, *Coda={coda:.4}, Max={max_w:.4}, Dep={dep:.4})"
+    );
 }
 
 // ── Unit tests for HTML extraction ──────────────────────────────────────────

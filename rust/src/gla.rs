@@ -875,7 +875,12 @@ impl Tableau {
                                 let plast = if is_faith[c] { stage.plast_faith } else { stage.plast_mark };
                                 let gen_v = gen_cand.violations[c] as f64;
                                 let obs_v = obs_cand.violations[c] as f64;
-                                let likelihood_change = plast * (gen_v - obs_v);
+                                // Reproduces VB6 RankingValueAdjustment:
+                                //   LikelihoodBasedChange = plast * (obs_viols − gen_viols)
+                                //   rv -= LikelihoodBasedChange
+                                // Net effect: rv += plast * (gen_viols − obs_viols),
+                                // i.e. promote when the generated (wrong) candidate violates more.
+                                let likelihood_change = plast * (obs_v - gen_v);
                                 let prior_change = if gaussian_prior {
                                     plast * *rv / sigma_sq / 2.0
                                 } else {
