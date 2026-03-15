@@ -4,12 +4,10 @@
 
 ## UX
 
-- [Diagnostics if ranking fails](tasks/diagnostics-ranking-fails.md)
-- [HTML shading customization](tasks/html-shading-options.md)
-- [Options button layout consistency](tasks/options-button-layout.md)
-
 ## Features
 
+- [Diagnostics if ranking fails](tasks/diagnostics-ranking-fails.md)
+- [HTML shading customization](tasks/html-shading-options.md)
 - [Excel file parsing (.xlsx)](tasks/excel-parsing.md)
 - [Praat export](tasks/praat-export.md)
 - [R export](tasks/r-export.md)

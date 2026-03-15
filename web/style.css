@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    OT-Soft — Scholarly Modernism Design System
    A refined interface for linguistic analysis
+   [Author's note - Claude's words, not mine]
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -645,10 +646,10 @@ button:disabled {
 }
 
 /* Axis mode selector */
-.axis-mode-selector {
+.axis-mode-options {
     display: flex;
-    align-items: center;
-    gap: var(--space-sm);
+    flex-direction: column;
+    gap: 0.4rem;
     margin-bottom: var(--space-sm);
     font-family: var(--font-body);
     font-size: 0.85rem;
@@ -657,7 +658,6 @@ button:disabled {
 .axis-mode-label {
     font-weight: 600;
     color: var(--charcoal-soft);
-    margin-right: var(--space-2xs);
 }
 
 .axis-mode-option {

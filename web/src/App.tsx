@@ -257,38 +257,39 @@ function App() {
                     <span className="panel-number">02</span>
                   </div>
                   {!parseError && (
-                    <div className="axis-mode-selector">
-                      <span className="axis-mode-label">Axis layout</span>
-                      {(
-                        [
-                          [AxisMode.SwitchAll, 'Switch all'],
-                          [AxisMode.SwitchWhereNeeded, 'Switch where needed'],
-                          [AxisMode.NeverSwitch, 'Never switch'],
-                        ] as const
-                      ).map(([value, label]) => (
-                        <label key={value} className="axis-mode-option">
+                    <div className="options-two-col">
+                      <div className="axis-mode-options">
+                        <span className="axis-mode-label">Axis layout</span>
+                        {(
+                          [
+                            [AxisMode.SwitchAll, 'Switch all'],
+                            [AxisMode.SwitchWhereNeeded, 'Switch where needed'],
+                            [AxisMode.NeverSwitch, 'Never switch'],
+                          ] as const
+                        ).map(([value, label]) => (
+                          <label key={value} className="axis-mode-option">
+                            <input
+                              type="radio"
+                              name="axis-mode"
+                              value={value}
+                              checked={axisMode === value}
+                              onChange={() => setAxisMode(value)}
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                      <div className="axis-mode-options">
+                        <span className="axis-mode-label">Display</span>
+                        <label className="axis-mode-option">
                           <input
-                            type="radio"
-                            name="axis-mode"
-                            value={value}
-                            checked={axisMode === value}
-                            onChange={() => setAxisMode(value)}
+                            type="checkbox"
+                            checked={sortByHarmony}
+                            onChange={(e) => setSortByHarmony(e.target.checked)}
                           />
-                          {label}
+                          Sort candidates by harmony
                         </label>
-                      ))}
-                    </div>
-                  )}
-                  {!parseError && (
-                    <div className="axis-mode-selector">
-                      <label className="axis-mode-option">
-                        <input
-                          type="checkbox"
-                          checked={sortByHarmony}
-                          onChange={(e) => setSortByHarmony(e.target.checked)}
-                        />
-                        Sort candidates by harmony
-                      </label>
+                      </div>
                     </div>
                   )}
                   {parseError ? (
