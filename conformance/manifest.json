@@ -214,7 +214,6 @@
     {
       "id": "ilokano_rcd_defaults",
       "description": "RCD with default settings (Skeletal Basis, FRed enabled, mini-tableaux)",
-      "skip": "Constraint ordering within strata differs from VB6 for Ilokano dataset. See tasks/conformance-ilokano-constraint-order.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -229,7 +228,6 @@
     {
       "id": "ilokano_rcd_no_fred",
       "description": "RCD with FRed disabled (sections 4 and 5 omitted)",
-      "skip": "Constraint ordering within strata differs from VB6 for Ilokano dataset. See tasks/conformance-ilokano-constraint-order.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -244,7 +242,6 @@
     {
       "id": "ilokano_rcd_mib",
       "description": "RCD with Most Informative Basis (MIB) instead of Skeletal",
-      "skip": "Constraint ordering within strata differs from VB6 for Ilokano dataset. See tasks/conformance-ilokano-constraint-order.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -259,7 +256,6 @@
     {
       "id": "ilokano_bcd_defaults",
       "description": "BCD with default settings (non-specific)",
-      "skip": "Constraint ordering within strata differs from VB6 for Ilokano dataset. See tasks/conformance-ilokano-constraint-order.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -275,7 +271,6 @@
     {
       "id": "ilokano_bcd_specific",
       "description": "BCD with Favor Specificity heuristic enabled",
-      "skip": "Constraint ordering within strata differs from VB6 for Ilokano dataset. See tasks/conformance-ilokano-constraint-order.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -291,7 +286,6 @@
     {
       "id": "ilokano_lfcd_defaults",
       "description": "LFCD with default settings",
-      "skip": "Constraint ordering within strata differs from VB6 for Ilokano dataset. See tasks/conformance-ilokano-constraint-order.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "lfcd",
@@ -306,7 +300,6 @@
     {
       "id": "ilokano_lfcd_mib",
       "description": "LFCD with Most Informative Basis",
-      "skip": "Constraint ordering within strata differs from VB6 for Ilokano dataset. See tasks/conformance-ilokano-constraint-order.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "lfcd",

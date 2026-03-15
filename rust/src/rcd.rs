@@ -301,6 +301,72 @@ impl RCDResult {
         mini_tableaux
     }
 
+    /// Returns constraint indices reordered by stratum, matching VB6's exact
+    /// `PrintTableaux.bas:SortTheConstraints` algorithm.
+    ///
+    /// VB6 uses an O(n²) selection-sort that swaps whenever an inner element has
+    /// a strictly smaller stratum than the current outer element. This is **not**
+    /// a stable sort — equal-stratum constraints can end up in a different relative
+    /// order than they appear in the input file (see task
+    /// `conformance-ilokano-constraint-order.md`).
+    pub(crate) fn sorted_constraint_indices(&self, num_constraints: usize) -> Vec<usize> {
+        let mut indices: Vec<usize> = (0..num_constraints).collect();
+        self.vb6_sort_constraint_slice(&mut indices);
+        indices
+    }
+
+    /// Sort a slice of global constraint indices in-place using VB6's unstable selection sort
+    /// (stratum ascending). Equivalent to VB6's `SortTheConstraints`.
+    fn vb6_sort_constraint_slice(&self, indices: &mut Vec<usize>) {
+        let strata = &self.constraint_strata;
+        let n = indices.len();
+        for outer in 0..n {
+            for inner in (outer + 1)..n {
+                let s_outer = strata.get(indices[outer]).copied().unwrap_or(usize::MAX);
+                let s_inner = strata.get(indices[inner]).copied().unwrap_or(usize::MAX);
+                if s_inner < s_outer {
+                    indices.swap(outer, inner);
+                }
+            }
+        }
+    }
+
+    /// Returns candidate indices sorted for tableau display: winner first (index 0),
+    /// followed by rivals in harmony order (fewer violations through sorted constraints).
+    ///
+    /// Matches VB6's `PrintTableaux.bas:SortTheCandidates` behaviour.
+    pub(crate) fn sorted_candidate_indices(
+        &self,
+        form: &crate::tableau::InputForm,
+        sorted_constraints: &[usize],
+    ) -> Vec<usize> {
+        let winner_idx = form.candidates.iter().position(|c| c.frequency > 0);
+
+        let mut rival_indices: Vec<usize> = (0..form.candidates.len())
+            .filter(|&i| Some(i) != winner_idx)
+            .collect();
+
+        rival_indices.sort_by(|&a, &b| {
+            for &c_idx in sorted_constraints {
+                let va = form.candidates[a].violations[c_idx];
+                let vb = form.candidates[b].violations[c_idx];
+                match va.cmp(&vb) {
+                    std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
+                    std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+                    std::cmp::Ordering::Equal => continue,
+                }
+            }
+            std::cmp::Ordering::Equal
+        });
+
+        let mut result = Vec::with_capacity(form.candidates.len());
+        if let Some(wi) = winner_idx {
+            result.push(wi);
+        }
+        result.extend(rival_indices);
+        result
+    }
+
     /// Generate formatted text output for the RCD analysis
     pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
         self.format_output_with_options(tableau, filename, "Recursive Constraint Demotion", &[], true)
@@ -431,12 +497,15 @@ impl RCDResult {
                 header.push(' ');
             }
 
-            for (c_idx, constraint) in tableau.constraints.iter().enumerate() {
+            // Sort constraints by stratum (matches VB6 SortTheConstraints)
+            let sorted = self.sorted_constraint_indices(tableau.constraints.len());
+
+            for (pos, &c_idx) in sorted.iter().enumerate() {
                 let c_stratum = self.constraint_strata[c_idx];
 
                 // Add separator before this constraint
-                if c_idx > 0 {
-                    let prev_stratum = self.constraint_strata[c_idx - 1];
+                if pos > 0 {
+                    let prev_stratum = self.constraint_strata[sorted[pos - 1]];
                     if c_stratum != prev_stratum {
                         header.push('|');
                     } else {
@@ -444,26 +513,26 @@ impl RCDResult {
                     }
                 }
 
-                header.push_str(&constraint.abbrev());
+                header.push_str(&tableau.constraints[c_idx].abbrev());
             }
             output.push_str(&header);
             output.push('\n');
 
-            // Find winner
-            let winner_idx = form.candidates.iter()
-                .position(|c| c.frequency > 0);
+            // Find winner and sort candidates (winner first, rivals by harmony)
+            let winner_idx = form.candidates.iter().position(|c| c.frequency > 0);
+            let sorted_cands = self.sorted_candidate_indices(form, &sorted);
 
-            // Output each candidate
-            for (cand_idx, candidate) in form.candidates.iter().enumerate() {
-                let is_winner = Some(cand_idx) == winner_idx;
+            // Output each candidate (in sorted order)
+            for &orig_cand_idx in &sorted_cands {
+                let candidate = &form.candidates[orig_cand_idx];
+                let is_winner = Some(orig_cand_idx) == winner_idx;
                 let marker = if is_winner { ">" } else { " " };
 
-                // Find the first fatal violation (if any) for this loser
+                // Find position (in sorted order) of the first fatal violation for this loser
                 let first_fatal_idx = if !is_winner {
                     winner_idx.and_then(|wi| {
                         let winner = &form.candidates[wi];
-                        candidate.violations.iter().enumerate()
-                            .position(|(idx, &viols)| viols > winner.violations[idx])
+                        sorted.iter().position(|&c_idx| candidate.violations[c_idx] > winner.violations[c_idx])
                     })
                 } else {
                     None
@@ -472,15 +541,15 @@ impl RCDResult {
                 // Candidate surface form (right-aligned to match expected output)
                 output.push_str(&format!("{}{:<width$} ", marker, candidate.form, width = max_cand_width));
 
-                // Violations with stratum separators
-                for (c_idx, &viols) in candidate.violations.iter().enumerate() {
+                // Violations with stratum separators (in sorted constraint order)
+                for (pos, &c_idx) in sorted.iter().enumerate() {
+                    let viols = candidate.violations[c_idx];
                     let c_stratum = self.constraint_strata[c_idx];
-                    let constraint_abbrev = &tableau.constraints[c_idx].abbrev();
-                    let col_width = constraint_abbrev.len();
+                    let col_width = tableau.constraints[c_idx].abbrev().len();
 
                     // Add separator
-                    if c_idx > 0 {
-                        let prev_stratum = self.constraint_strata[c_idx - 1];
+                    if pos > 0 {
+                        let prev_stratum = self.constraint_strata[sorted[pos - 1]];
                         if c_stratum != prev_stratum {
                             output.push('|');
                         } else {
@@ -489,7 +558,7 @@ impl RCDResult {
                     }
 
                     // Mark violation as fatal only if it's the FIRST fatal violation
-                    let is_fatal = first_fatal_idx == Some(c_idx);
+                    let is_fatal = first_fatal_idx == Some(pos);
                     output.push_str(&format_violation(col_width, viols, is_fatal));
                 }
                 output.push('\n');
@@ -624,6 +693,11 @@ impl RCDResult {
 
         output.push_str(&format!("\n/{}/: \n", form.input));
 
+        // Sort included constraints by stratum using VB6's unstable selection sort,
+        // matching VB6's PrepareMiniTableaux which collects in input order then calls SortTheConstraints.
+        let mut sorted_constraints = mini.included_constraints.clone();
+        self.vb6_sort_constraint_slice(&mut sorted_constraints);
+
         // Build header with only included constraints
         let sep_char = '\u{00A6}'; // Broken bar (¦)
         let max_cand_width = winner.form.len().max(loser.form.len()).max(2);
@@ -633,13 +707,13 @@ impl RCDResult {
             header.push(' ');
         }
 
-        for (i, &c_idx) in mini.included_constraints.iter().enumerate() {
+        for (i, &c_idx) in sorted_constraints.iter().enumerate() {
             let constraint = &tableau.constraints[c_idx];
             let c_stratum = self.constraint_strata[c_idx];
 
             // Add separator before this constraint
             if i > 0 {
-                let prev_c_idx = mini.included_constraints[i - 1];
+                let prev_c_idx = sorted_constraints[i - 1];
                 let prev_stratum = self.constraint_strata[prev_c_idx];
                 if c_stratum != prev_stratum {
                     header.push('|');
@@ -655,14 +729,14 @@ impl RCDResult {
 
         // Output winner
         output.push_str(&format!(">{:<width$} ", winner.form, width = max_cand_width));
-        for (i, &c_idx) in mini.included_constraints.iter().enumerate() {
+        for (i, &c_idx) in sorted_constraints.iter().enumerate() {
             let constraint = &tableau.constraints[c_idx];
             let c_stratum = self.constraint_strata[c_idx];
             let col_width = constraint.abbrev().len();
 
             // Add separator
             if i > 0 {
-                let prev_c_idx = mini.included_constraints[i - 1];
+                let prev_c_idx = sorted_constraints[i - 1];
                 let prev_stratum = self.constraint_strata[prev_c_idx];
                 if c_stratum != prev_stratum {
                     output.push('|');
@@ -678,14 +752,14 @@ impl RCDResult {
         // Output loser (without fatal violation markers in mini-tableaux)
         output.push_str(&format!(" {:<width$} ", loser.form, width = max_cand_width));
 
-        for (i, &c_idx) in mini.included_constraints.iter().enumerate() {
+        for (i, &c_idx) in sorted_constraints.iter().enumerate() {
             let constraint = &tableau.constraints[c_idx];
             let c_stratum = self.constraint_strata[c_idx];
             let col_width = constraint.abbrev().len();
 
             // Add separator
             if i > 0 {
-                let prev_c_idx = mini.included_constraints[i - 1];
+                let prev_c_idx = sorted_constraints[i - 1];
                 let prev_stratum = self.constraint_strata[prev_c_idx];
                 if c_stratum != prev_stratum {
                     output.push('|');
@@ -819,6 +893,7 @@ impl RCDResult {
             .map(|c| c.abbrev().len() + 1)
             .sum();
 
+        let sorted = self.sorted_constraint_indices(tableau.constraints.len());
         for form in &tableau.forms {
             let winner_idx = form.candidates.iter().position(|c| c.frequency > 0);
             let use_reversed = match axis_mode {
@@ -836,9 +911,9 @@ impl RCDResult {
                 }
             };
             if use_reversed {
-                out.push_str(&self.format_html_reversed_form_table(tableau, form, winner_idx));
+                out.push_str(&self.format_html_reversed_form_table(tableau, form, winner_idx, &sorted));
             } else {
-                out.push_str(&self.format_html_form_table(tableau, form, winner_idx));
+                out.push_str(&self.format_html_form_table(tableau, form, winner_idx, &sorted));
             }
         }
 
@@ -928,24 +1003,28 @@ impl RCDResult {
     }
 
     /// Render a single input form as an HTML tableau table.
+    ///
+    /// `sorted` is the list of constraint indices sorted by stratum (from
+    /// `sorted_constraint_indices`), matching VB6's `SortTheConstraints`.
     fn format_html_form_table(
         &self,
         tableau: &Tableau,
         form: &crate::tableau::InputForm,
         winner_idx: Option<usize>,
+        sorted: &[usize],
     ) -> String {
-        let num_constraints = tableau.constraints.len();
+        let num_constraints = sorted.len();
         let mut out = String::new();
 
         out.push_str("<table>\n");
 
-        // Header row: input form + constraint abbreviations
+        // Header row: input form + constraint abbreviations (in sorted stratum order)
         out.push_str("  <tr>\n");
         out.push_str(&format!("    <th>/{}/</th>\n", html_escape(&form.input)));
-        for c_idx in 0..num_constraints {
-            let is_last = c_idx + 1 == num_constraints;
-            let has_border = !is_last
-                && self.constraint_strata[c_idx] != self.constraint_strata[c_idx + 1];
+        for (pos, &c_idx) in sorted.iter().enumerate() {
+            let is_last = pos + 1 == num_constraints;
+            let next_stratum = if is_last { usize::MAX } else { self.constraint_strata[sorted[pos + 1]] };
+            let has_border = !is_last && self.constraint_strata[c_idx] != next_stratum;
             let class = html_cell_class(false, is_last, has_border);
             out.push_str(&format!(
                 "    <th class=\"{}\">{}</th>\n",
@@ -955,28 +1034,29 @@ impl RCDResult {
         }
         out.push_str("  </tr>\n");
 
-        // Compute winner shading point (0-based constraint index where all losers are dead).
-        // Cells strictly after this index are shaded in the winner row.
+        // Sort candidates: winner first, rivals by harmony (matches VB6 SortTheCandidates)
+        let sorted_cands = self.sorted_candidate_indices(form, sorted);
+
+        // Compute winner shading point (sorted position where all losers are dead).
+        // Cells strictly after this position are shaded in the winner row.
         let winner_shading_point: usize = if let Some(wi) = winner_idx {
             let winner = &form.candidates[wi];
-            let losers: Vec<usize> = form.candidates.iter()
-                .enumerate()
-                .filter(|(i, c)| *i != wi && c.frequency == 0)
-                .map(|(i, _)| i)
+            let losers: Vec<usize> = sorted_cands.iter().copied()
+                .filter(|&i| i != wi)
                 .collect();
             if losers.is_empty() {
                 usize::MAX
             } else {
                 let mut dead = vec![false; losers.len()];
                 let mut found = usize::MAX;
-                for c_idx in 0..num_constraints {
+                for (pos, &c_idx) in sorted.iter().enumerate() {
                     for (l_pos, &l_idx) in losers.iter().enumerate() {
                         if form.candidates[l_idx].violations[c_idx] > winner.violations[c_idx] {
                             dead[l_pos] = true;
                         }
                     }
                     if dead.iter().all(|&d| d) {
-                        found = c_idx;
+                        found = pos;
                         break;
                     }
                 }
@@ -986,9 +1066,10 @@ impl RCDResult {
             usize::MAX
         };
 
-        // Candidate rows
-        for (cand_idx, candidate) in form.candidates.iter().enumerate() {
-            let is_winner = Some(cand_idx) == winner_idx;
+        // Candidate rows (in sorted order: winner first, rivals by harmony)
+        for &orig_cand_idx in &sorted_cands {
+            let candidate = &form.candidates[orig_cand_idx];
+            let is_winner = Some(orig_cand_idx) == winner_idx;
             out.push_str("  <tr>\n");
 
             // Candidate label cell
@@ -1001,35 +1082,33 @@ impl RCDResult {
 
             if is_winner {
                 // Winner row: shade cells strictly after the winner shading point
-                for c_idx in 0..num_constraints {
-                    let is_shaded = c_idx > winner_shading_point;
-                    let is_last = c_idx + 1 == num_constraints;
-                    let has_border = !is_last
-                        && self.constraint_strata[c_idx] != self.constraint_strata[c_idx + 1];
+                for (pos, &c_idx) in sorted.iter().enumerate() {
+                    let is_shaded = pos > winner_shading_point;
+                    let is_last = pos + 1 == num_constraints;
+                    let next_stratum = if is_last { usize::MAX } else { self.constraint_strata[sorted[pos + 1]] };
+                    let has_border = !is_last && self.constraint_strata[c_idx] != next_stratum;
                     let class = html_cell_class(is_shaded, is_last, has_border);
                     let content = format_html_viol(candidate.violations[c_idx], 0, false);
                     out.push_str(&format!("    <td class=\"{class}\">{content}</td>\n"));
                 }
             } else {
-                // Loser row: find first fatal violation, shade cells after it.
+                // Loser row: find first fatal violation (in sorted order), shade cells after it.
                 // The fatal cell itself is NOT shaded (style chosen before flag is set).
                 let first_fatal = if let Some(wi) = winner_idx {
                     let winner = &form.candidates[wi];
-                    candidate.violations.iter()
-                        .enumerate()
-                        .position(|(i, &v)| v > winner.violations[i])
+                    sorted.iter().position(|&c_idx| candidate.violations[c_idx] > winner.violations[c_idx])
                 } else {
                     None
                 };
 
                 let mut fatal_seen = false;
-                for c_idx in 0..num_constraints {
-                    let is_fatal = first_fatal == Some(c_idx);
+                for (pos, &c_idx) in sorted.iter().enumerate() {
+                    let is_fatal = first_fatal == Some(pos);
                     // Shade based on fatal_seen BEFORE updating it (matches VB6 behavior)
                     let is_shaded = fatal_seen;
-                    let is_last = c_idx + 1 == num_constraints;
-                    let has_border = !is_last
-                        && self.constraint_strata[c_idx] != self.constraint_strata[c_idx + 1];
+                    let is_last = pos + 1 == num_constraints;
+                    let next_stratum = if is_last { usize::MAX } else { self.constraint_strata[sorted[pos + 1]] };
+                    let has_border = !is_last && self.constraint_strata[c_idx] != next_stratum;
                     let class = html_cell_class(is_shaded, is_last, has_border);
                     let winner_viols = winner_idx
                         .map(|wi| form.candidates[wi].violations[c_idx])
@@ -1054,23 +1133,28 @@ impl RCDResult {
     ///
     /// In this layout, the first row shows the input + candidate names as columns,
     /// and each subsequent row shows one constraint with violations per candidate.
+    /// `sorted` is the list of constraint indices sorted by stratum (from
+    /// `sorted_constraint_indices`), matching VB6's `SortTheConstraints`.
     fn format_html_reversed_form_table(
         &self,
         tableau: &Tableau,
         form: &crate::tableau::InputForm,
         winner_idx: Option<usize>,
+        sorted: &[usize],
     ) -> String {
-        let num_constraints = tableau.constraints.len();
-        let num_candidates = form.candidates.len();
         let mut out = String::new();
+
+        // Sort candidates: winner first, rivals by harmony
+        let sorted_cands = self.sorted_candidate_indices(form, sorted);
 
         out.push_str("<table>\n");
 
-        // Header row: input form + candidate names as columns
+        // Header row: input form + candidate names as columns (sorted)
         out.push_str("  <tr>\n");
         out.push_str(&format!("    <th>/{}/</th>\n", html_escape(&form.input)));
-        for (cand_idx, candidate) in form.candidates.iter().enumerate() {
-            let is_winner = Some(cand_idx) == winner_idx;
+        for &orig_cand_idx in &sorted_cands {
+            let candidate = &form.candidates[orig_cand_idx];
+            let is_winner = Some(orig_cand_idx) == winner_idx;
             let label = if is_winner {
                 format!("&#x261E;&nbsp;{}", html_escape(&candidate.form))
             } else {
@@ -1080,11 +1164,11 @@ impl RCDResult {
         }
         out.push_str("  </tr>\n");
 
-        // One row per constraint
-        for c_idx in 0..num_constraints {
+        // One row per constraint (in sorted stratum order)
+        for (pos, &c_idx) in sorted.iter().enumerate() {
             // Stratum separator: add a visual break between strata via a class
-            let stratum_break = c_idx > 0
-                && self.constraint_strata[c_idx] != self.constraint_strata[c_idx - 1];
+            let stratum_break = pos > 0
+                && self.constraint_strata[c_idx] != self.constraint_strata[sorted[pos - 1]];
 
             out.push_str("  <tr>\n");
             let th_class = if stratum_break { " class=\"stratum-break\"" } else { "" };
@@ -1094,8 +1178,8 @@ impl RCDResult {
                 html_escape(&tableau.constraints[c_idx].abbrev()),
             ));
 
-            for cand_idx in 0..num_candidates {
-                let viols = form.candidates[cand_idx].violations[c_idx];
+            for &orig_cand_idx in &sorted_cands {
+                let viols = form.candidates[orig_cand_idx].violations[c_idx];
                 let winner_viols = winner_idx
                     .map(|wi| form.candidates[wi].violations[c_idx])
                     .unwrap_or(0);
@@ -1501,15 +1585,38 @@ impl Tableau {
         necessity
     }
 
-    /// Test if a constraint is necessary by running RCD without it
+    /// Test if a constraint is necessary by running RCD without it.
+    ///
+    /// Mirrors VB6's `FindUnnecessaryConstraints`:
+    /// 1. First check if removing this constraint makes any winner-rival pair
+    ///    identical (same violations on all constraints). If so, the constraint
+    ///    is necessary and we skip the RCD check (VB6 lines 5942–5957).
+    /// 2. Otherwise, run RCD without the constraint; if RCD fails the constraint
+    ///    is necessary.
     fn is_constraint_necessary(&self, constraint_idx: usize, apriori: &[Vec<bool>]) -> bool {
-        // Create modified tableau with constraint violations zeroed
+        let nc = self.constraints.len();
+
+        // Step 1: check for any winner-rival pair that becomes identical after zeroing
+        for form in &self.forms {
+            let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
+                Some(w) => w,
+                None => continue,
+            };
+            for rival in form.candidates.iter().filter(|c| c.frequency == 0) {
+                let identical = (0..nc).all(|c_idx| {
+                    let w_v = if c_idx == constraint_idx { 0 } else { winner.violations[c_idx] };
+                    let r_v = if c_idx == constraint_idx { 0 } else { rival.violations[c_idx] };
+                    w_v == r_v
+                });
+                if identical {
+                    return true;
+                }
+            }
+        }
+
+        // Step 2: run RCD without the constraint
         let modified_tableau = self.clone_with_constraint_removed(constraint_idx);
-
-        // Run RCD on modified tableau (without computing extra analyses to avoid recursion)
         let test_result = modified_tableau.run_rcd_internal(false, apriori);
-
-        // Constraint is necessary if RCD fails without it
         !test_result.success
     }
 
