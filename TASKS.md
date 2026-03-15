@@ -2,7 +2,13 @@
 
 ## Bugs
 
+- [Stochastic OT: investigate accuracy discrepancy with VB6](tasks/stochastic-ot-accuracy.md)
+- [Stochastic OT: initial plasticity default mismatch](tasks/stochastic-ot-plasticity-default.md)
+- [NHG download: add raw count columns](tasks/nhg-raw-counts-download.md)
+
 ## UX
+
+- [RCD: consider defaulting "Show details" to off](tasks/rcd-show-details-default.md)
 
 ## Features
 
@@ -19,3 +25,4 @@
 - [Edge case test examples](tasks/edge-case-examples.md)
 - [Conformance: HTML table extraction for VB6 golden files](tasks/conformance-html-table-extraction.md)
 - [Conformance: Ilokano constraint ordering within strata](tasks/conformance-ilokano-constraint-order.md)
+- [Collect golden files for BasicRCD_FT and Anttila examples](tasks/collect-basicrcd-anttila-golden.md)

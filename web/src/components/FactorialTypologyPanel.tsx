@@ -154,7 +154,7 @@ function FactorialTypologyPanel({
       for (let fi = 0; fi < formCount; fi++) {
         const form = tableau.get_form(fi)!
         for (let ci = 0; ci < form.candidate_count(); ci++) {
-          if (ftResult.is_candidate_derivable(fi, ci) && !implicatorKeys.has(`${fi}:${ci}`)) {
+          if (!implicatorKeys.has(`${fi}:${ci}`)) {
             nonImplicators.push({ input: form.input, candidate: form.get_candidate(ci)!.form })
           }
         }
