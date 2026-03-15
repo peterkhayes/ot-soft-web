@@ -317,7 +317,7 @@ impl RCDResult {
 
     /// Sort a slice of global constraint indices in-place using VB6's unstable selection sort
     /// (stratum ascending). Equivalent to VB6's `SortTheConstraints`.
-    fn vb6_sort_constraint_slice(&self, indices: &mut Vec<usize>) {
+    fn vb6_sort_constraint_slice(&self, indices: &mut [usize]) {
         let strata = &self.constraint_strata;
         let n = indices.len();
         for outer in 0..n {
