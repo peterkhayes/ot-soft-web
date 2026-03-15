@@ -66,7 +66,7 @@ export interface GlaDefaults {
   showApriori: boolean
   useCustomSchedule: boolean
   customSchedule: string
-  multipleRunsCount: 10 | 100 | 1000
+  multipleRunsCount: number
 }
 
 let _gla: GlaDefaults | null = null

@@ -1,5 +1,5 @@
 ---
-status: open
+status: done
 type: ux
 priority: medium
 depends_on: []

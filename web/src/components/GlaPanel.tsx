@@ -444,16 +444,15 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         <div className="nhg-options-label">Multiple runs</div>
         <label className="param-label">
           Number of runs
-          <select
+          <input
+            type="number"
+            className="param-input"
             value={multipleRunsCount}
+            min={1}
             onChange={(e) =>
-              setParams({ multipleRunsCount: parseInt(e.target.value) as 10 | 100 | 1000 })
+              setParams({ multipleRunsCount: Math.max(1, parseInt(e.target.value) || 1) })
             }
-          >
-            <option value={10}>10</option>
-            <option value={100}>100</option>
-            <option value={1000}>1000</option>
-          </select>
+          />
         </label>
       </div>
 
