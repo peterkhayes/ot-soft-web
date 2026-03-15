@@ -11,7 +11,6 @@
 - [GLA: multiple runs count should be text input](tasks/gla-multiple-runs-input.md)
 - [GLA: multiple runs progress indicator](tasks/gla-multiple-runs-progress.md)
 - [Pairwise Ranking Probabilities as HTML table](tasks/pairwise-table-native.md)
-- [Mobile: section numbers positioning](tasks/mobile-section-numbers.md)
 - [Options button layout consistency](tasks/options-button-layout.md)
 
 ## Features
