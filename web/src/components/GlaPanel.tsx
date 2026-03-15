@@ -137,7 +137,12 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
       const values = Array.from({ length: constraintCount }, (_, i) => {
         const c = tableau.get_constraint(i)!
-        return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i), active: r.get_active_constraint(i) }
+        return {
+          fullName: c.full_name,
+          abbrev: c.abbrev,
+          value: r.get_ranking_value(i),
+          active: r.get_active_constraint(i),
+        }
       })
 
       const forms = Array.from({ length: formCount }, (_, formIdx) => {
@@ -198,7 +203,10 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     () => new GlaMultipleRunsRunner(tableauText, multipleRunsCount, buildOpts()),
     [tableauText, multipleRunsCount, buildOpts],
   )
-  const extractMultipleRunsResult = useCallback((runner: GlaMultipleRunsRunner) => runner.take_result(), [])
+  const extractMultipleRunsResult = useCallback(
+    (runner: GlaMultipleRunsRunner) => runner.take_result(),
+    [],
+  )
   const {
     state: multipleRunsState,
     run: handleMultipleRuns,
@@ -705,8 +713,8 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           <div className="maxent-weights">
             <h3 className="results-subheader">Active Constraints</h3>
             <p className="active-constraints-note">
-              A constraint is active if it causes the winning candidate to defeat a rival in at least
-              one competition.
+              A constraint is active if it causes the winning candidate to defeat a rival in at
+              least one competition.
             </p>
             <table className="weights-table">
               <thead>
