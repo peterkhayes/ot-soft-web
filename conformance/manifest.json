@@ -134,13 +134,12 @@
     },
     {
       "id": "TinyIllustrativeFile_maxent_defaults",
-      "description": "MaxEnt with 5 GIS iterations (VB6 default 'precision'), no prior",
-      "skip": "Header and content mismatch: VB6 says 'Result of' (singular), Rust says 'Results of'; also line count differs (72 vs 44). See tasks/conformance-maxent-output.md",
+      "description": "MaxEnt with 0 GIS iterations (golden collected with VB6 default), no prior",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "maxent",
       "params": {
-        "iterations": 5,
+        "iterations": 0,
         "weight_min": 0.0,
         "weight_max": 50.0,
         "use_prior": false,

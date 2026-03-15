@@ -125,6 +125,10 @@ fn normalize(text: &str) -> String {
     let tabbed_re = Regex::new(r"(?m)^For a tabbed listing[^\n]*\n[^\n]*\n").unwrap();
     let text = tabbed_re.replace_all(&text, "");
 
+    // Normalize learning time lines: VB6 and Rust will have different timings.
+    let learning_time_re = Regex::new(r"(?m)^Learning time:\s+\S+\s+minutes$").unwrap();
+    let text = learning_time_re.replace_all(&text, "Learning time: <TIME> minutes");
+
     // Collapse runs of 3+ blank lines into exactly 2 blank lines.
     // VB6 and Rust may differ in spacing between sections.
     let blank_re = Regex::new(r"\n{4,}").unwrap();

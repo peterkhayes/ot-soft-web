@@ -22,9 +22,6 @@ pub struct MaxEntResult {
     log_prob: f64,
     /// Number of GIS iterations actually run
     iterations: usize,
-    /// Parameters used
-    weight_min: f64,
-    weight_max: f64,
     /// Gaussian prior parameters (None if no prior)
     use_prior: bool,
     sigma_squared: f64,
@@ -32,6 +29,8 @@ pub struct MaxEntResult {
     history: Option<String>,
     /// Optional history of output probabilities recorded at each GIS iteration.
     output_prob_history: Option<String>,
+    /// Learning time in seconds.
+    learning_time_secs: f64,
 }
 
 #[wasm_bindgen]
@@ -73,119 +72,181 @@ impl MaxEntResult {
     }
 
     /// Format results as text output for download.
-    /// Reproduces the structure of OTSoft's MaxEnt text output.
+    ///
+    /// Reproduces the structure of VB6 OTSoft's MaxEnt text output
+    /// (DraftOutput.txt), matching the section ordering and formatting of
+    /// MyMaxEnt.frm: PrintAHeader, MaxEntCore (sections 1–2), PrintMaxentResults
+    /// (section 3), PrintTableaux (section 4), PrintFinalDetails.
     pub fn format_output(&self, tableau: &Tableau, filename: &str, sort_by_weight: bool) -> String {
         let nc = tableau.constraints.len();
         let mut out = String::new();
 
-        // Header
+        // ── Header ──────────────────────────────────────────────────────────
+        // Reproduces MyMaxEnt.frm:PrintAHeader → mTmpFile output.
         out.push_str(&format!(
-            "Results of Applying Maximum Entropy to {}\n\n\n",
+            "Result of Applying Maximum Entropy to {}\n\n\n",
             filename
         ));
 
+        out.push_str("OTSoft 2.7, release date 2/1/2026\n\n");
         let now = chrono::Local::now();
         out.push_str(&format!(
-            "{}\n\n",
+            "{}\n\n\n",
             now.format("%-m-%-d-%Y, %-I:%M %p")
                 .to_string()
                 .to_lowercase()
         ));
-        out.push_str("OTSoft 2.7, release date 2/1/2026\n\n\n");
 
-        // Parameters
-        out.push_str("Parameters:\n");
-        out.push_str(&format!("   Iterations: {}\n", self.iterations));
-        out.push_str(&format!("   Weight minimum: {}\n", self.weight_min));
-        out.push_str(&format!("   Weight maximum: {}\n", self.weight_max));
-        if self.use_prior {
-            out.push_str(&format!("   Sigma squared: {}\n", self.sigma_squared));
-            out.push_str("   A Gaussian prior for MaxEnt learning was in effect.\n");
+        // VB6: "For more detailed examination..." note referencing TabbedOutput.txt.
+        let file_stem = filename.rsplit_once('.').map_or(filename, |(s, _)| s);
+        out.push_str("For more detailed examination of results, please use a spreadsheet program to open the file \n");
+        out.push_str(&format!(
+            "TabbedOutput.txt, located in the folder FilesFor{}.\n\n\n",
+            file_stem
+        ));
+
+        // ── Section 1: Constraints and weights ──────────────────────────────
+        // Reproduces MaxEntCore → PrintLevel1Header("Constraints and weights").
+        // Format: weight right-justified in 8 chars, tab, constraint full name.
+        out.push_str("\n1. Constraints and weights\n\n\n");
+        for (c_idx, constraint) in tableau.constraints.iter().enumerate() {
+            out.push_str(&format!(
+                "{:>8}\t{}\n",
+                format!("{:.3}", self.weights[c_idx]),
+                constraint.full_name()
+            ));
         }
-        out.push_str("\n\n");
+        out.push('\n');
 
-        // Section 1: Constraint weights
-        out.push_str("1. Constraint Weights\n\n");
+        // ── Section 2: Inputs, candidates, frequencies, proportions, probs ──
+        // Reproduces MaxEntCore frequency/proportion table via s.PrintTable.
+        // Each form produces a sub-table with a header row, a dummy "input" row
+        // (VB6 RivalIndex=0), and one row per candidate.
+        out.push_str("\n2. Inputs, candidates, input frequencies, input proportions, predicted probabilities\n\n");
+        for (form_idx, form) in tableau.forms.iter().enumerate() {
+            // Header row
+            out.push_str("Inputs  Candidates  Input frequencies  Input proportions  Predicted probabilities\n");
 
+            // VB6 RivalIndex=0 row: input form name, blank candidate, zeros
+            out.push_str(&format!(
+                "{}  {}  0  0.000  0.000\n",
+                form.input, ""
+            ));
+
+            // Candidate rows (VB6 RivalIndex=1..N)
+            let total_freq: f64 = form.candidates.iter().map(|c| c.frequency as f64).sum();
+            for (cand_idx, cand) in form.candidates.iter().enumerate() {
+                let obs_prop = if total_freq > 0.0 {
+                    cand.frequency as f64 / total_freq
+                } else {
+                    0.0
+                };
+                let pred_prob = self.predicted_probs
+                    .get(form_idx)
+                    .and_then(|f| f.get(cand_idx))
+                    .copied()
+                    .unwrap_or(0.0);
+                out.push_str(&format!(
+                    "  {}  {}  {:.3}  {:.3}\n",
+                    cand.form, cand.frequency, obs_prop, pred_prob
+                ));
+            }
+            out.push_str("\n\n");
+        }
+
+        // Probability of data (VB6: PrintPara with Str(LogProbabilityOfData()))
+        out.push_str(&format!("Probability of data = {}\n\n\n", self.log_prob));
+
+        // ── Section 3: Weights Found ─────────────────────────────────────────
+        // Reproduces PrintMaxentResults with ThingFound="Weights".
+        // Format: weight padded to 10 chars, weight again, 3 spaces, constraint name.
         let constraint_order: Vec<usize> = if sort_by_weight {
             crate::tableau::sorted_indices_descending(&self.weights)
         } else {
             (0..self.weights.len()).collect()
         };
 
+        out.push_str("\n3. Weights Found\n\n");
         for &c_idx in &constraint_order {
-            let constraint = &tableau.constraints[c_idx];
+            let w = format!("{:.3}", self.weights[c_idx]);
             out.push_str(&format!(
-                "   {:<42}{:.3}\n",
-                constraint.full_name(),
-                self.weights[c_idx],
+                "{:<10}{w}   {}\n",
+                w,
+                tableau.constraints[c_idx].full_name()
             ));
         }
-        out.push('\n');
-        out.push_str(&format!("   Log probability of data: {:.6}\n", self.log_prob));
-        out.push_str("\n\n");
 
-        // Section 2: Tableaux with predicted probabilities
-        out.push_str("2. Tableaux\n\n");
-
+        // ── Section 4: Tableaux ──────────────────────────────────────────────
+        // Reproduces PrintTableaux: per-form tableaux with harmony, exp(-H),
+        // predicted, observed, and constraint violation columns.
+        out.push_str("\n4. Tableaux\n\n");
         for (form_idx, form) in tableau.forms.iter().enumerate() {
-            out.push_str(&format!("\n/{}/:\n", form.input));
-
-            // Calculate total frequency and observed proportions
             let total_freq: f64 = form.candidates.iter().map(|c| c.frequency as f64).sum();
 
-            // Header row: constraint abbreviations
-            let max_cand_width = form.candidates.iter()
-                .map(|c| c.form.len())
-                .max()
-                .unwrap_or(0)
-                .max(2);
-
-            // Build header
-            let mut header = format!("{:<width$}  {:>7}  {:>7}", "", "Obs%", "Pred%", width = max_cand_width + 2);
+            // Header row
+            out.push_str("Input  Candidate  Harmony  exp(-H)  Predicted  Observed");
             for c_idx in 0..nc {
-                header.push_str(&format!("  {:>width$}", tableau.constraints[c_idx].abbrev(), width = tableau.constraints[c_idx].abbrev().len().max(3)));
+                out.push_str(&format!("  {}", tableau.constraints[c_idx].abbrev()));
             }
-            out.push_str(&header);
+            out.push('\n');
+
+            // Weights row (columns 1–6 empty, then weights in constraint columns)
+            out.push_str("                                                        ");
+            for c_idx in 0..nc {
+                let col_w = tableau.constraints[c_idx].abbrev().len().max(5);
+                out.push_str(&format!("  {:>width$}", format!("{:.3}", self.weights[c_idx]), width = col_w));
+            }
             out.push('\n');
 
             // Candidate rows
             for (cand_idx, cand) in form.candidates.iter().enumerate() {
-                let obs_pct = if total_freq > 0.0 {
-                    cand.frequency as f64 / total_freq * 100.0
+                let obs_prop = if total_freq > 0.0 {
+                    cand.frequency as f64 / total_freq
                 } else {
                     0.0
                 };
-                let pred_pct = self.predicted_probs
+                let pred_prob = self.predicted_probs
                     .get(form_idx)
                     .and_then(|f| f.get(cand_idx))
                     .copied()
-                    .unwrap_or(0.0)
-                    * 100.0;
+                    .unwrap_or(0.0);
 
-                let marker = if cand.frequency > 0 { ">" } else { " " };
-                let mut row = format!(
-                    "{}{:<width$}  {:>6.1}%  {:>6.1}%",
-                    marker,
-                    cand.form,
-                    obs_pct,
-                    pred_pct,
-                    width = max_cand_width
-                );
+                // Compute harmony = dot product of weights and violations
+                let harmony: f64 = (0..nc)
+                    .map(|c| self.weights[c] * cand.violations[c] as f64)
+                    .sum();
+                let e_harmony = (-harmony).exp();
+
+                // VB6: Input column only filled for first candidate (RivalIndex=1).
+                // In VB6 v2.7 the loop starts at 1 and the If RivalIndex=0 check
+                // never fires, so the Input column is always empty.
+                out.push_str(&format!(
+                    "  {}  {:.3}  {:.3}  {:.3}  {:.3}",
+                    cand.form, harmony, e_harmony, pred_prob, obs_prop
+                ));
+
+                // Violation columns as asterisks
                 for c_idx in 0..nc {
-                    let col_width = tableau.constraints[c_idx].abbrev().len().max(3);
+                    let col_w = tableau.constraints[c_idx].abbrev().len().max(5);
                     let v = cand.violations[c_idx];
-                    if v == 0 {
-                        row.push_str(&format!("  {:>width$}", "", width = col_width));
+                    let stars = if v > 0 {
+                        "*".repeat(v as usize)
                     } else {
-                        row.push_str(&format!("  {:>width$}", v, width = col_width));
-                    }
+                        String::new()
+                    };
+                    out.push_str(&format!("  {:>width$}", stars, width = col_w));
                 }
-                out.push_str(&row);
                 out.push('\n');
             }
             out.push('\n');
         }
+
+        // ── Learning time ────────────────────────────────────────────────────
+        // Reproduces PrintFinalDetails.
+        out.push_str(&format!(
+            "Learning time:  {:.3} minutes\n\n\n",
+            self.learning_time_secs / 60.0
+        ));
 
         out
     }
@@ -277,6 +338,8 @@ impl Tableau {
 
         crate::ot_log!("Starting MaxEnt with {} constraints, {} forms, {} iterations (weights: {}..{}, prior: {})",
             nc, self.forms.len(), iterations, weight_min, weight_max, use_prior);
+
+        let learning_start = chrono::Utc::now();
 
         // ── History buffer ──────────────────────────────────────────────────
         let mut history_buf = if generate_history {
@@ -381,6 +444,11 @@ impl Tableau {
             }
         }
 
+        let learning_time_secs = {
+            let elapsed = chrono::Utc::now() - learning_start;
+            elapsed.num_milliseconds() as f64 / 1000.0
+        };
+
         // Calculate final predicted probabilities
         let predicted_probs = self.calculate_predicted_probs(&weights);
 
@@ -393,12 +461,11 @@ impl Tableau {
             predicted_probs,
             log_prob,
             iterations,
-            weight_min,
-            weight_max,
             use_prior,
             sigma_squared,
             history: history_buf,
             output_prob_history: output_prob_history_buf,
+            learning_time_secs,
         }
     }
 
@@ -656,12 +723,11 @@ impl MaxEntRunner {
             predicted_probs,
             log_prob,
             iterations: self.total_iterations,
-            weight_min: self.weight_min,
-            weight_max: self.weight_max,
             use_prior: self.use_prior,
             sigma_squared: self.sigma_squared,
             history: self.history_buf.take(),
             output_prob_history: self.output_prob_history_buf.take(),
+            learning_time_secs: 0.0, // Not tracked in chunked runner
         });
     }
 }

@@ -22,51 +22,82 @@ test('MaxEnt: load example, run, see results, download', async () => {
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileMaxEntOutput.txt')
   expect(normalizeOutput(downloads[0].content)).toMatchInlineSnapshot(`
-    "Results of Applying Maximum Entropy to TinyIllustrativeFile.txt
+    "Result of Applying Maximum Entropy to TinyIllustrativeFile.txt
 
-
-    <TIMESTAMP>
 
     OTSoft 2.7, release date 2/1/2026
 
-
-    Parameters:
-       Iterations: 5
-       Weight minimum: 0
-       Weight maximum: 50
+    <TIMESTAMP>
 
 
-    1. Constraint Weights
-
-       *No Onset                                 20.725
-       *Coda                                     20.725
-       Max(t)                                    0.000
-       Dep(?)                                    0.000
-
-       Log probability of data: -0.000000
+    For more detailed examination of results, please use a spreadsheet program to open the file 
+    TabbedOutput.txt, located in the folder FilesForTinyIllustrativeFile.
 
 
-    2. Tableaux
+
+    1. Constraints and weights
 
 
-    /a/:
-             Obs%    Pred%  *NoOns  *Coda  Max  Dep
-    >?a   100.0%   100.0%                        1
-     a      0.0%     0.0%       1                 
+      20.725	*No Onset
+      20.725	*Coda
+       0.000	Max(t)
+       0.000	Dep(?)
 
 
-    /tat/:
-              Obs%    Pred%  *NoOns  *Coda  Max  Dep
-    >ta    100.0%   100.0%                   1     
-     tat     0.0%     0.0%              1          
+    2. Inputs, candidates, input frequencies, input proportions, predicted probabilities
+
+    Inputs  Candidates  Input frequencies  Input proportions  Predicted probabilities
+    a    0  0.000  0.000
+      ?a  1  1.000  1.000
+      a  0  0.000  0.000
 
 
-    /at/:
-              Obs%    Pred%  *NoOns  *Coda  Max  Dep
-    >?a    100.0%   100.0%                   1    1
-     ?at     0.0%     0.0%              1         1
-     a       0.0%     0.0%       1           1     
-     at      0.0%     0.0%       1      1          
+    Inputs  Candidates  Input frequencies  Input proportions  Predicted probabilities
+    tat    0  0.000  0.000
+      ta  1  1.000  1.000
+      tat  0  0.000  0.000
+
+
+    Inputs  Candidates  Input frequencies  Input proportions  Predicted probabilities
+    at    0  0.000  0.000
+      ?a  1  1.000  1.000
+      ?at  0  0.000  0.000
+      a  0  0.000  0.000
+      at  0  0.000  0.000
+
+
+    Probability of data = -0.000000003991123878821702
+
+
+
+    3. Weights Found
+
+    20.725    20.725   *No Onset
+    20.725    20.725   *Coda
+    0.000     0.000   Max(t)
+    0.000     0.000   Dep(?)
+
+    4. Tableaux
+
+    Input  Candidate  Harmony  exp(-H)  Predicted  Observed  *NoOns  *Coda  Max  Dep
+                                                              20.725  20.725  0.000  0.000
+      ?a  0.000  1.000  1.000  1.000                            *
+      a  20.725  0.000  0.000  0.000       *                     
+
+    Input  Candidate  Harmony  exp(-H)  Predicted  Observed  *NoOns  *Coda  Max  Dep
+                                                              20.725  20.725  0.000  0.000
+      ta  0.000  1.000  1.000  1.000                     *       
+      tat  20.725  0.000  0.000  0.000              *              
+
+    Input  Candidate  Harmony  exp(-H)  Predicted  Observed  *NoOns  *Coda  Max  Dep
+                                                              20.725  20.725  0.000  0.000
+      ?a  0.000  1.000  1.000  1.000                     *      *
+      ?at  20.725  0.000  0.000  0.000              *             *
+      a  20.725  0.000  0.000  0.000       *             *       
+      at  41.451  0.000  0.000  0.000       *      *              
+
+    Learning time:  0.000 minutes
+
 
     "
   `)

@@ -1,5 +1,5 @@
 ---
-status: open
+status: done
 type: bug
 priority: medium
 depends_on: []
@@ -10,20 +10,12 @@ depends_on: []
 ## Affected cases
 - `TinyIllustrativeFile_maxent_defaults`
 
-## Description
+## Resolution
 
-Two known differences:
+Rewrote `MaxEntResult::format_output` to match VB6 section structure:
+1. Fixed title: "Result" (singular) matching VB6's `PrintAHeader`
+2. Added all 4 VB6 sections: Constraints/weights, Inputs/candidates/frequencies, Weights Found, Tableaux
+3. Added learning time footer with normalization in conformance tests
+4. Fixed section spacing to match VB6 blank-line patterns
 
-1. **Title typo**: VB6 outputs `"Result of Applying Maximum Entropy..."` (singular), Rust outputs `"Results of Applying Maximum Entropy..."` (plural).
-
-2. **Line count mismatch**: Expected 72 lines, actual 44 lines. This suggests significant structural differences beyond just the title — sections may be missing or formatted differently.
-
-## Fix
-
-Compare `conformance/golden/TinyIllustrativeFile/maxent_defaults.txt` line-by-line against `format_maxent_output` output to identify all differences:
-- Fix the title to match VB6 (`Result of` not `Results of`)
-- Identify and fix any missing sections or structural mismatches
-
-## Acceptance Criteria
-- [ ] `TinyIllustrativeFile_maxent_defaults` passes without a skip
-- [ ] `make conformance-test` reports 0 failures for this case
+Also fixed manifest: golden file was collected with 0 iterations (VB6 default), not 5. Updated `iterations: 0` to match.
