@@ -1215,6 +1215,53 @@ button:disabled {
     font-family: var(--font-mono);
 }
 
+.pairwise-note {
+    font-size: 0.85rem;
+    color: var(--charcoal-soft);
+    margin-bottom: var(--space-sm);
+}
+
+.table-scroll-wrapper {
+    overflow-x: auto;
+}
+
+table.pairwise-table {
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+table.pairwise-table th,
+table.pairwise-table td {
+    padding: 0.35rem 0.6rem;
+    text-align: right;
+    border-bottom: 1px solid var(--taupe-light);
+    white-space: nowrap;
+}
+
+table.pairwise-table thead th {
+    font-weight: 600;
+    color: var(--charcoal-soft);
+    font-size: 0.8rem;
+    background: var(--cream);
+}
+
+table.pairwise-table tbody th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--charcoal-soft);
+    font-size: 0.8rem;
+    background: var(--cream);
+}
+
+table.pairwise-table td {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+table.pairwise-table .pairwise-empty {
+    background: var(--taupe-light);
+}
+
 .log-prob {
     margin-top: var(--space-md);
     font-size: 0.85rem;

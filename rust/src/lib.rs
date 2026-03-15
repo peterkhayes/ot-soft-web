@@ -773,6 +773,28 @@ pub fn gla_pairwise_probabilities(text: &str, ranking_values: Vec<f64>) -> Resul
     Ok(result.format_pairwise_probabilities(&tableau, 5))
 }
 
+/// Structured pairwise ranking probability data for GLA (Stochastic OT).
+///
+/// Returns a JSON string with `{ headers: string[], matrix: string[][] }`.
+/// `headers` are constraint abbreviations sorted by ranking value (descending).
+/// `matrix[i][j]` is P(headers[i] >> headers[j+1]) for the upper triangle, empty for the lower.
+#[wasm_bindgen]
+pub fn gla_pairwise_probabilities_json(
+    text: &str,
+    ranking_values: Vec<f64>,
+) -> Result<String, String> {
+    let tableau = Tableau::parse(text)?;
+    if tableau.constraints.len() != ranking_values.len() {
+        return Err(format!(
+            "ranking_values length {} != constraint count {}",
+            ranking_values.len(),
+            tableau.constraints.len()
+        ));
+    }
+    let result = GlaResult::for_pairwise_table(ranking_values);
+    Ok(result.pairwise_probabilities_json(&tableau))
+}
+
 /// Generate a GraphViz DOT string for a GLA (Stochastic OT) Hasse diagram.
 ///
 /// `text`: tableau file contents (used to obtain constraint abbreviations).

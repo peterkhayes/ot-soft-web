@@ -4,7 +4,7 @@ import type { GlaResult, Tableau } from '../../pkg/ot_soft.js'
 import {
   format_gla_output,
   gla_hasse_dot,
-  gla_pairwise_probabilities,
+  gla_pairwise_probabilities_json,
   GlaMultipleRunsRunner,
   GlaOptions,
   GlaRunner,
@@ -35,7 +35,7 @@ interface GlaResultState {
   logLikelihood: number
   maxentMode: boolean
   hasseDot?: string
-  pairwiseTable?: string
+  pairwiseData?: { headers: string[]; matrix: string[][] }
   history?: string
   fullHistory?: string
   candidateProbHistory?: string
@@ -165,7 +165,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       })
 
       let hasseDot: string | undefined
-      let pairwiseTable: string | undefined
+      let pairwiseData: { headers: string[]; matrix: string[][] } | undefined
       if (!maxentMode) {
         const rankingValues = new Float64Array(values.map((v) => v.value))
         try {
@@ -174,9 +174,11 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           console.warn('GLA Hasse diagram generation failed:', e)
         }
         try {
-          pairwiseTable = gla_pairwise_probabilities(tableauText, rankingValues)
+          pairwiseData = JSON.parse(
+            gla_pairwise_probabilities_json(tableauText, rankingValues),
+          ) as { headers: string[]; matrix: string[][] }
         } catch (e) {
-          console.warn('GLA pairwise probabilities generation failed:', e)
+          console.warn('GLA pairwise probabilities data generation failed:', e)
         }
       }
 
@@ -186,7 +188,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         logLikelihood: r.log_likelihood(),
         maxentMode: r.is_maxent_mode(),
         hasseDot,
-        pairwiseTable,
+        pairwiseData,
         history: r.history() ?? undefined,
         fullHistory: r.full_history() ?? undefined,
         candidateProbHistory: r.candidate_prob_history() ?? undefined,
@@ -704,10 +706,38 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               downloadName={`${inputFilename ? inputFilename.replace(/\.[^.]+$/, '') : 'tableau'}Hasse`}
             />
           )}
-          {successResult.pairwiseTable && (
+          {successResult.pairwiseData && (
             <div className="pairwise-probabilities">
               <h3 className="results-subheader">Pairwise Ranking Probabilities</h3>
-              <pre className="pairwise-table">{successResult.pairwiseTable}</pre>
+              <p className="pairwise-note">
+                The computed ranking values imply the pairwise ranking probabilities given below. In
+                the table, the probability given is that of the row constraint outranking the column
+                constraint.
+              </p>
+              <div className="table-scroll-wrapper">
+                <table className="pairwise-table">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      {successResult.pairwiseData.headers.slice(1).map((h) => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {successResult.pairwiseData.matrix.map((row, i) => (
+                      <tr key={i}>
+                        <th>{successResult.pairwiseData!.headers[i]}</th>
+                        {row.map((cell, j) => (
+                          <td key={j} className={cell === '' ? 'pairwise-empty' : ''}>
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
           <div className="maxent-weights">

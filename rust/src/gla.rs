@@ -641,6 +641,46 @@ impl GlaResult {
     /// triangle is empty (shaded in VB6).
     ///
     /// Only meaningful in Stochastic OT mode (not MaxEnt).
+    pub fn pairwise_probabilities_json(&self, tableau: &Tableau) -> String {
+        let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
+        let n = sorted.len();
+        let headers: Vec<String> =
+            sorted.iter().map(|&i| tableau.constraints[i].abbrev()).collect();
+
+        let matrix: Vec<Vec<String>> = (0..n.saturating_sub(1))
+            .map(|i| {
+                (1..n)
+                    .map(|j| {
+                        if j <= i {
+                            String::new()
+                        } else {
+                            let diff =
+                                self.ranking_values[sorted[i]] - self.ranking_values[sorted[j]];
+                            crate::hasse::lookup_gla_probability_full(diff).to_string()
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+
+        // Build JSON manually to avoid adding serde_json as a production dependency.
+        let json_str = |s: &str| -> String { format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")) };
+        let headers_json: Vec<String> = headers.iter().map(|h| json_str(h)).collect();
+        let matrix_json: Vec<String> = matrix
+            .iter()
+            .map(|row| {
+                let cells: Vec<String> = row.iter().map(|c| json_str(c)).collect();
+                format!("[{}]", cells.join(","))
+            })
+            .collect();
+        format!(
+            "{{\"headers\":[{}],\"matrix\":[{}]}}",
+            headers_json.join(","),
+            matrix_json.join(",")
+        )
+    }
+
+    /// Only meaningful in Stochastic OT mode (not MaxEnt).
     pub fn format_pairwise_probabilities(&self, tableau: &Tableau, section_num: usize) -> String {
         let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
         let n = sorted.len();
@@ -2010,6 +2050,41 @@ mod tests {
         // Should contain probability values (at least "0.5" somewhere)
         assert!(table.contains("0.5") || table.contains("0.9") || table.contains(">.999999"),
             "table should contain probability values");
+    }
+
+    #[test]
+    fn test_gla_sot_pairwise_probabilities_json() {
+        let tableau = Tableau::parse(&load_tiny()).unwrap();
+        let result = tableau.run_gla(&crate::GlaOptions {
+            cycles: 500, initial_plasticity: 2.0, final_plasticity: 0.001, test_trials: 200,
+            ..Default::default()
+        });
+
+        let json_str = result.pairwise_probabilities_json(&tableau);
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let headers = parsed["headers"].as_array().unwrap();
+        assert_eq!(headers.len(), tableau.constraints.len());
+
+        let matrix = parsed["matrix"].as_array().unwrap();
+        // Matrix has n-1 rows (all but last constraint)
+        assert_eq!(matrix.len(), tableau.constraints.len() - 1);
+        // Each row has n-1 columns (all but first constraint)
+        for row in matrix {
+            assert_eq!(row.as_array().unwrap().len(), tableau.constraints.len() - 1);
+        }
+
+        // Upper triangle should have probability values, lower triangle empty strings
+        let first_row = matrix[0].as_array().unwrap();
+        assert!(!first_row[0].as_str().unwrap().is_empty(), "first cell should be a probability");
+
+        // Every header should be a constraint abbreviation
+        let abbrevs: Vec<String> = (0..tableau.constraints.len())
+            .map(|i| tableau.constraints[i].abbrev())
+            .collect();
+        for h in headers {
+            assert!(abbrevs.contains(&h.as_str().unwrap().to_string()));
+        }
     }
 
     #[test]
