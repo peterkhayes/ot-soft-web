@@ -1110,7 +1110,7 @@ button:disabled {
     display: flex;
     gap: var(--space-lg);
     flex-wrap: wrap;
-    margin-bottom: var(--space-lg);
+    margin-bottom: var(--space-md);
 }
 
 .param-label {
@@ -1490,8 +1490,8 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
-    margin-bottom: var(--space-lg);
-    padding: var(--space-sm) 0;
+    margin-bottom: var(--space-md);
+    padding: 0.5rem 0;
 }
 
 .nhg-options-label {
@@ -1521,8 +1521,9 @@ button:disabled {
     margin-left: 1.6rem;
 }
 
-/* Two option groups side-by-side on wider screens */
-.options-two-col {
+/* Two or three option groups side-by-side on wider screens */
+.options-two-col,
+.options-three-col {
     display: grid;
     grid-template-columns: 1fr;
 }
@@ -1533,9 +1534,9 @@ button:disabled {
         column-gap: var(--space-lg);
     }
 
-    /* Children handle their own bottom margin; remove it from the last in each column */
-    .options-two-col > .nhg-options:last-child {
-        margin-bottom: var(--space-lg);
+    .options-three-col {
+        grid-template-columns: 1fr 1fr 1fr;
+        column-gap: var(--space-lg);
     }
 }
 

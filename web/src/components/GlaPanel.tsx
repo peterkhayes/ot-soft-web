@@ -267,7 +267,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         <span className="panel-number">04</span>
       </div>
 
-      <div className="nhg-options" style={{ marginBottom: '1rem' }}>
+      <div className="nhg-options">
         <div className="nhg-options-label">Framework</div>
         <label className="nhg-checkbox">
           <input
@@ -278,6 +278,16 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           />
           Stochastic OT (ranking values)
         </label>
+        {!maxentMode && (
+          <label className="nhg-checkbox nhg-checkbox-indent">
+            <input
+              type="checkbox"
+              checked={magriUpdateRule}
+              onChange={(e) => setParams({ magriUpdateRule: e.target.checked })}
+            />
+            Use the Magri update rule
+          </label>
+        )}
         <label className="nhg-checkbox">
           <input
             type="radio"
@@ -287,6 +297,41 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
           />
           Online MaxEnt (weights)
         </label>
+        {maxentMode && (
+          <>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={negativeWeightsOk}
+                onChange={(e) => setParams({ negativeWeightsOk: e.target.checked })}
+              />
+              Allow constraint weights to go negative
+            </label>
+            <label className="nhg-checkbox nhg-checkbox-indent">
+              <input
+                type="checkbox"
+                checked={gaussianPrior}
+                onChange={(e) => setParams({ gaussianPrior: e.target.checked })}
+              />
+              Gaussian prior (L2 regularization)
+            </label>
+            {gaussianPrior && (
+              <label className="param-label" style={{ marginLeft: '3rem' }}>
+                σ
+                <input
+                  type="number"
+                  className="param-input"
+                  value={sigma}
+                  min={0.0001}
+                  step={0.1}
+                  onChange={(e) =>
+                    setParams({ sigma: Math.max(0.0001, parseFloat(e.target.value) || 1) })
+                  }
+                />
+              </label>
+            )}
+          </>
+        )}
       </div>
 
       <div className="maxent-params">
@@ -346,58 +391,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         )}
       </div>
 
-      {!maxentMode && (
-        <div className="nhg-options">
-          <div className="nhg-options-label">Stochastic OT options</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={magriUpdateRule}
-              onChange={(e) => setParams({ magriUpdateRule: e.target.checked })}
-            />
-            Use the Magri update rule
-          </label>
-        </div>
-      )}
-
-      {maxentMode && (
-        <div className="nhg-options">
-          <div className="nhg-options-label">MaxEnt options</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={negativeWeightsOk}
-              onChange={(e) => setParams({ negativeWeightsOk: e.target.checked })}
-            />
-            Allow constraint weights to go negative
-          </label>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={gaussianPrior}
-              onChange={(e) => setParams({ gaussianPrior: e.target.checked })}
-            />
-            Gaussian prior (L2 regularization)
-          </label>
-          {gaussianPrior && (
-            <label className="param-label" style={{ marginLeft: '1.5rem' }}>
-              σ
-              <input
-                type="number"
-                className="param-input"
-                value={sigma}
-                min={0.0001}
-                step={0.1}
-                onChange={(e) =>
-                  setParams({ sigma: Math.max(0.0001, parseFloat(e.target.value) || 1) })
-                }
-              />
-            </label>
-          )}
-        </div>
-      )}
-
-      <div className="options-two-col">
+      <div className="options-three-col">
         <div className="nhg-options">
           <div className="nhg-options-label">Learning schedule</div>
           <label className="nhg-checkbox">
@@ -445,49 +439,47 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
         <div className="nhg-options">
           <div className="nhg-options-label">Multiple runs</div>
-          <label className="param-label">
-            Number of runs
-            <input
-              type="number"
-              className="param-input"
-              value={multipleRunsCount}
-              min={1}
-              onChange={(e) =>
-                setParams({ multipleRunsCount: Math.max(1, parseInt(e.target.value) || 1) })
-              }
-            />
-          </label>
+          <input
+            type="number"
+            className="param-input"
+            aria-label="Number of runs"
+            value={multipleRunsCount}
+            min={1}
+            onChange={(e) =>
+              setParams({ multipleRunsCount: Math.max(1, parseInt(e.target.value) || 1) })
+            }
+          />
         </div>
-      </div>
 
-      <div className="nhg-options">
-        <div className="nhg-options-label">Output options</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={generateHistory}
-            onChange={(e) => setParams({ generateHistory: e.target.checked })}
-          />
-          Generate history of {maxentMode ? 'weights' : 'ranking values'}
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={generateFullHistory}
-            onChange={(e) => setParams({ generateFullHistory: e.target.checked })}
-          />
-          Generate full history (with input/output annotations)
-        </label>
-        {maxentMode && (
+        <div className="nhg-options">
+          <div className="nhg-options-label">Output options</div>
           <label className="nhg-checkbox">
             <input
               type="checkbox"
-              checked={generateCandidateProbHistory}
-              onChange={(e) => setParams({ generateCandidateProbHistory: e.target.checked })}
+              checked={generateHistory}
+              onChange={(e) => setParams({ generateHistory: e.target.checked })}
             />
-            Generate history of candidate probabilities
+            Generate history of {maxentMode ? 'weights' : 'ranking values'}
           </label>
-        )}
+          <label className="nhg-checkbox">
+            <input
+              type="checkbox"
+              checked={generateFullHistory}
+              onChange={(e) => setParams({ generateFullHistory: e.target.checked })}
+            />
+            Generate full history (with input/output annotations)
+          </label>
+          {maxentMode && (
+            <label className="nhg-checkbox">
+              <input
+                type="checkbox"
+                checked={generateCandidateProbHistory}
+                onChange={(e) => setParams({ generateCandidateProbHistory: e.target.checked })}
+              />
+              Generate history of candidate probabilities
+            </label>
+          )}
+        </div>
       </div>
 
       {!maxentMode && (
