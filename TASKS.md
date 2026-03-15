@@ -7,7 +7,6 @@
 - [Diagnostics if ranking fails](tasks/diagnostics-ranking-fails.md)
 - [HTML shading customization](tasks/html-shading-options.md)
 - [GLA "Active Constraints" section](tasks/gla-active-constraints.md)
-- [GLA: desktop controls layout](tasks/gla-desktop-controls-layout.md)
 - [Pairwise Ranking Probabilities as HTML table](tasks/pairwise-table-native.md)
 - [Options button layout consistency](tasks/options-button-layout.md)
 

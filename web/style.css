@@ -1521,6 +1521,24 @@ button:disabled {
     margin-left: 1.6rem;
 }
 
+/* Two option groups side-by-side on wider screens */
+.options-two-col {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 600px) {
+    .options-two-col {
+        grid-template-columns: 1fr 1fr;
+        column-gap: var(--space-lg);
+    }
+
+    /* Children handle their own bottom margin; remove it from the last in each column */
+    .options-two-col > .nhg-options:last-child {
+        margin-bottom: var(--space-lg);
+    }
+}
+
 .text-file-editor {
     margin-top: 0.5rem;
 }
