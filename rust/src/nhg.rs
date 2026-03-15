@@ -913,6 +913,16 @@ impl NhgRunner {
     }
 }
 
+impl crate::gla::ChunkedRunner for NhgRunner {
+    fn run_chunk(&mut self, max_work: usize) -> bool {
+        NhgRunner::run_chunk(self, max_work)
+    }
+    fn progress(&self) -> [f64; 2] {
+        let p = NhgRunner::progress(self);
+        [p[0], p[1]]
+    }
+}
+
 impl NhgRunner {
     fn run_learning_chunk(&mut self, max_trials: usize) -> bool {
         let pool_size = self.training_pool.len();

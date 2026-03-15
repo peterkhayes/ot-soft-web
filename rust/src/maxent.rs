@@ -636,6 +636,16 @@ impl MaxEntRunner {
     }
 }
 
+impl crate::gla::ChunkedRunner for MaxEntRunner {
+    fn run_chunk(&mut self, max_work: usize) -> bool {
+        MaxEntRunner::run_chunk(self, max_work)
+    }
+    fn progress(&self) -> [f64; 2] {
+        let p = MaxEntRunner::progress(self);
+        [p[0], p[1]]
+    }
+}
+
 impl MaxEntRunner {
     fn finalize(&mut self) {
         let predicted_probs = self.tableau.calculate_predicted_probs(&self.weights);

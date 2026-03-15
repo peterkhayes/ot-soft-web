@@ -1103,7 +1103,7 @@ impl Tableau {
 /// Not exported via wasm_bindgen, but mirrored by a TypeScript interface.
 /// Implemented by each algorithm's runner struct for consistency.
 #[allow(dead_code)]
-trait ChunkedRunner {
+pub(crate) trait ChunkedRunner {
     /// Advance up to `max_work` units of work. Returns true when done.
     fn run_chunk(&mut self, max_work: usize) -> bool;
     /// Progress as [completed, total].

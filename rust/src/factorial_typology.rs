@@ -1152,6 +1152,16 @@ impl FtRunner {
     }
 }
 
+impl crate::gla::ChunkedRunner for FtRunner {
+    fn run_chunk(&mut self, max_work: usize) -> bool {
+        FtRunner::run_chunk(self, max_work)
+    }
+    fn progress(&self) -> [f64; 2] {
+        let p = FtRunner::progress(self);
+        [p[0], p[1]]
+    }
+}
+
 impl FtRunner {
     /// Process one form in the pre-filter phase.
     fn run_prefilter_step(&mut self) -> bool {
