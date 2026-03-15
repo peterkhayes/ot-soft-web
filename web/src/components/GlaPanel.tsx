@@ -79,7 +79,9 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   const [isLoadingMultiple, setIsLoadingMultiple] = useState(false)
   const download = useDownload()
 
-  function buildOpts(): GlaOptions {
+  // useCallback rather than useMemo: GlaOptions is a WASM heap object with no cleanup
+  // phase available in useMemo, so we build it lazily on demand to avoid leaking abandoned instances.
+  const buildOpts = useCallback((): GlaOptions => {
     const opts = new GlaOptions()
     opts.maxent_mode = maxentMode
     opts.cycles = cycles
@@ -102,14 +104,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       opts.learning_schedule = customSchedule
     }
     return opts
-  }
-
-  const createRunner = useCallback(() => {
-    setScheduleError(null)
-    return new GlaRunner(tableauText, buildOpts())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    tableauText,
     maxentMode,
     cycles,
     initialPlasticity,
@@ -128,6 +123,11 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
     useCustomSchedule,
     customSchedule,
   ])
+
+  const createRunner = useCallback(() => {
+    setScheduleError(null)
+    return new GlaRunner(tableauText, buildOpts())
+  }, [tableauText, buildOpts])
 
   const extractResult = useCallback(
     (runner: GlaRunner): GlaState => {

@@ -59,7 +59,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
   } = params
   const download = useDownload()
 
-  function buildOpts(): MaxEntOptions {
+  const createRunner = useCallback(() => {
     const opts = new MaxEntOptions()
     opts.iterations = iterations
     opts.weight_min = weightMin
@@ -68,12 +68,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
     opts.sigma_squared = sigmaSquared
     opts.generate_history = generateHistory
     opts.generate_output_prob_history = generateOutputProbHistory
-    return opts
-  }
-
-  const createRunner = useCallback(() => {
-    return new MaxEntRunner(tableauText, buildOpts())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return new MaxEntRunner(tableauText, opts)
   }, [
     tableauText,
     iterations,

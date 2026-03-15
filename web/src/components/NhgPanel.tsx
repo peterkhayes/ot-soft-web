@@ -72,7 +72,9 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const download = useDownload()
 
-  function buildOpts(): NhgOptions {
+  // useCallback rather than useMemo: NhgOptions is a WASM heap object with no cleanup
+  // phase available in useMemo, so we build it lazily on demand to avoid leaking abandoned instances.
+  const buildOpts = useCallback((): NhgOptions => {
     const opts = new NhgOptions()
     opts.cycles = cycles
     opts.initial_plasticity = initialPlasticity
@@ -93,14 +95,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
       opts.learning_schedule = customSchedule
     }
     return opts
-  }
-
-  const createRunner = useCallback(() => {
-    setScheduleError(null)
-    return new NhgRunner(tableauText, buildOpts())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    tableauText,
     cycles,
     initialPlasticity,
     finalPlasticity,
@@ -119,6 +114,11 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
     useCustomSchedule,
     customSchedule,
   ])
+
+  const createRunner = useCallback(() => {
+    setScheduleError(null)
+    return new NhgRunner(tableauText, buildOpts())
+  }, [tableauText, buildOpts])
 
   const extractResult = useCallback(
     (runner: NhgRunner): NhgState => {
