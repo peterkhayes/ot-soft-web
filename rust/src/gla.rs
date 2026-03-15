@@ -592,6 +592,52 @@ fn parse_apriori_from_opts(
     crate::apriori::parse_apriori(&text, &abbrevs)
 }
 
+/// Build a stripped-down GlaOptions for collate runs (no history, no schedule/apriori text).
+fn collate_run_opts(opts: &crate::GlaOptions) -> crate::GlaOptions {
+    crate::GlaOptions {
+        maxent_mode: opts.maxent_mode,
+        cycles: opts.cycles,
+        initial_plasticity: opts.initial_plasticity,
+        final_plasticity: opts.final_plasticity,
+        test_trials: opts.test_trials,
+        negative_weights_ok: opts.negative_weights_ok,
+        gaussian_prior: opts.gaussian_prior,
+        sigma: opts.sigma,
+        magri_update_rule: opts.magri_update_rule,
+        exact_proportions: opts.exact_proportions,
+        apriori_gap: opts.apriori_gap,
+        generate_history: false,
+        generate_full_history: false,
+        generate_candidate_prob_history: false,
+        learning_schedule: String::new(),
+        apriori_text: String::new(),
+    }
+}
+
+/// Append G and O records for one GLA run to `out`.
+///
+/// G records: `G\t{run_idx}\t{constraint_abbrev}\t{ranking_value}`
+/// O records: `O\t{run_idx}\t{form_idx}\t{input}\t{rival_idx}\t{rival_form}\t{freq}\t{pct_gen}`
+/// VB6 skips candidate 0 (the winner), so O records start from rival index 1.
+fn append_collate_run(tableau: &Tableau, run_idx: usize, result: &GlaResult, out: &mut String) {
+    // G records: constraint ranking values / weights
+    for (ci, constraint) in tableau.constraints.iter().enumerate() {
+        out.push_str(&format!("G\t{}\t{}\t{:.3}\n", run_idx, constraint.abbrev(), result.ranking_values[ci]));
+    }
+
+    // O records: rival candidates with predicted probabilities.
+    for (fi, form) in tableau.forms.iter().enumerate() {
+        for ri in 1..form.candidates.len() {
+            let cand = &form.candidates[ri];
+            let pct_gen = result.test_probs.get(fi).and_then(|f| f.get(ri)).copied().unwrap_or(0.0) * 100.0;
+            out.push_str(&format!(
+                "O\t{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\n",
+                run_idx, fi + 1, form.input, ri, cand.form, cand.frequency, pct_gen,
+            ));
+        }
+    }
+}
+
 impl Tableau {
     /// Run the Gradual Learning Algorithm using the default 4-stage schedule.
     ///
@@ -617,68 +663,12 @@ impl Tableau {
         apriori: &[Vec<bool>],
         opts: &crate::GlaOptions,
     ) -> String {
-        let nc = self.constraints.len();
+        let run_opts = collate_run_opts(opts);
         let mut out = String::new();
-
-        // Override history flags for collate runs (never needed)
-        let run_opts = crate::GlaOptions {
-            maxent_mode: opts.maxent_mode,
-            cycles: opts.cycles,
-            initial_plasticity: opts.initial_plasticity,
-            final_plasticity: opts.final_plasticity,
-            test_trials: opts.test_trials,
-            negative_weights_ok: opts.negative_weights_ok,
-            gaussian_prior: opts.gaussian_prior,
-            sigma: opts.sigma,
-            magri_update_rule: opts.magri_update_rule,
-            exact_proportions: opts.exact_proportions,
-            apriori_gap: opts.apriori_gap,
-            generate_history: false,
-            generate_full_history: false,
-            generate_candidate_prob_history: false,
-            learning_schedule: String::new(),
-            apriori_text: String::new(),
-        };
-
         for run_idx in 1..=run_count {
             let result = self.run_gla_with_schedule(schedule, apriori, &run_opts);
-
-            // G records: constraint ranking values / weights
-            for ci in 0..nc {
-                out.push_str(&format!(
-                    "G\t{}\t{}\t{:.3}\n",
-                    run_idx,
-                    self.constraints[ci].abbrev(),
-                    result.ranking_values[ci],
-                ));
-            }
-
-            // O records: rival candidates with predicted probabilities.
-            // VB6 loops from RivalIndex=1, skipping candidate 0 (the winner).
-            for (fi, form) in self.forms.iter().enumerate() {
-                for ri in 1..form.candidates.len() {
-                    let cand = &form.candidates[ri];
-                    let pct_gen = result
-                        .test_probs
-                        .get(fi)
-                        .and_then(|f| f.get(ri))
-                        .copied()
-                        .unwrap_or(0.0)
-                        * 100.0;
-                    out.push_str(&format!(
-                        "O\t{}\t{}\t{}\t{}\t{}\t{}\t{:.4}\n",
-                        run_idx,
-                        fi + 1,
-                        form.input,
-                        ri,
-                        cand.form,
-                        cand.frequency,
-                        pct_gen,
-                    ));
-                }
-            }
+            append_collate_run(self, run_idx, &result, &mut out);
         }
-
         out
     }
 
@@ -1623,6 +1613,78 @@ impl ChunkedRunner for GlaRunner {
 
     fn progress(&self) -> [f64; 2] {
         let p = GlaRunner::progress(self);
+        [p[0], p[1]]
+    }
+}
+
+// ─── GlaMultipleRunsRunner ────────────────────────────────────────────────────
+
+/// Chunked runner for the "Run N times & Download" (CollateRuns) workflow.
+///
+/// Each `run_chunk(max_runs)` call completes up to `max_runs` full GLA runs,
+/// yielding control to the browser between calls for progress updates.
+/// Progress is reported as [runs_completed, run_count].
+#[wasm_bindgen]
+pub struct GlaMultipleRunsRunner {
+    tableau: Tableau,
+    schedule: LearningSchedule,
+    apriori: Vec<Vec<bool>>,
+    run_opts: crate::GlaOptions,
+    run_count: usize,
+    runs_completed: usize,
+    output: String,
+}
+
+#[wasm_bindgen]
+impl GlaMultipleRunsRunner {
+    #[wasm_bindgen(constructor)]
+    pub fn new(text: &str, run_count: u32, opts: &crate::GlaOptions) -> Result<GlaMultipleRunsRunner, String> {
+        let tableau = Tableau::parse(text)?;
+        let schedule = crate::build_gla_schedule(opts)?;
+        let apriori = crate::parse_gla_apriori(&tableau, opts)?;
+        let run_opts = collate_run_opts(opts);
+        let run_count = run_count as usize;
+
+        Ok(GlaMultipleRunsRunner {
+            tableau,
+            schedule,
+            apriori,
+            run_opts,
+            run_count,
+            runs_completed: 0,
+            output: String::new(),
+        })
+    }
+
+    /// Run up to `max_runs` complete GLA runs. Returns true when all runs are done.
+    pub fn run_chunk(&mut self, max_runs: usize) -> bool {
+        let end = (self.runs_completed + max_runs).min(self.run_count);
+        for run_idx in (self.runs_completed + 1)..=end {
+            let result = self.tableau.run_gla_with_schedule(&self.schedule, &self.apriori, &self.run_opts);
+            append_collate_run(&self.tableau, run_idx, &result, &mut self.output);
+        }
+        self.runs_completed = end;
+        self.runs_completed >= self.run_count
+    }
+
+    /// Progress as [completed_runs, total_runs].
+    pub fn progress(&self) -> Vec<f64> {
+        vec![self.runs_completed as f64, self.run_count as f64]
+    }
+
+    /// Extract the final collated output. Only valid after `run_chunk` returns true.
+    pub fn take_result(&mut self) -> String {
+        std::mem::take(&mut self.output)
+    }
+}
+
+impl ChunkedRunner for GlaMultipleRunsRunner {
+    fn run_chunk(&mut self, max_work: usize) -> bool {
+        GlaMultipleRunsRunner::run_chunk(self, max_work)
+    }
+
+    fn progress(&self) -> [f64; 2] {
+        let p = GlaMultipleRunsRunner::progress(self);
         [p[0], p[1]]
     }
 }

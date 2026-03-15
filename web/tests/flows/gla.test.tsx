@@ -1,5 +1,5 @@
 import { page } from '@vitest/browser/context'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 
 import { loadExample, renderApp } from '../helpers'
 
@@ -129,8 +129,8 @@ test('GLA: multiple runs downloads CollateRuns.txt', { timeout: 60000 }, async (
   // Click "Run 10 times & Download" (default is 10 runs)
   await page.getByText('Run 10 times & Download').click()
 
-  // Download should appear with CollateRuns filename
-  expect(downloads).toHaveLength(1)
+  // Wait for all runs to complete and trigger the download
+  await vi.waitFor(() => expect(downloads).toHaveLength(1), { timeout: 55000 })
   expect(downloads[0].filename).toContain('CollateRuns')
 
   // Content should have G and O records
@@ -139,7 +139,7 @@ test('GLA: multiple runs downloads CollateRuns.txt', { timeout: 60000 }, async (
   expect(content).toMatch(/^O\t/m)
 })
 
-test('GLA: exact proportions runs successfully', { timeout: 30000 }, async () => {
+test('GLA: exact proportions runs successfully', { timeout: 60000 }, async () => {
   renderApp()
   await loadExample()
 

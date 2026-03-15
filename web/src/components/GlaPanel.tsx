@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { GlaResult, Tableau } from '../../pkg/ot_soft.js'
 import {
-  format_gla_multiple_runs_output,
   format_gla_output,
   gla_hasse_dot,
   gla_pairwise_probabilities,
+  GlaMultipleRunsRunner,
   GlaOptions,
   GlaRunner,
 } from '../../pkg/ot_soft.js'
@@ -76,7 +76,6 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   } = params
 
   const [scheduleError, setScheduleError] = useState<string | null>(null)
-  const [isLoadingMultiple, setIsLoadingMultiple] = useState(false)
   const download = useDownload()
 
   // useCallback rather than useMemo: GlaOptions is a WASM heap object with no cleanup
@@ -195,6 +194,25 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
   const { state: runnerState, run: handleRun } = useChunkedRunner(createRunner, extractResult)
 
+  const createMultipleRunsRunner = useCallback(
+    () => new GlaMultipleRunsRunner(tableauText, multipleRunsCount, buildOpts()),
+    [tableauText, multipleRunsCount, buildOpts],
+  )
+  const extractMultipleRunsResult = useCallback((runner: GlaMultipleRunsRunner) => runner.take_result(), [])
+  const {
+    state: multipleRunsState,
+    run: handleMultipleRuns,
+    reset: resetMultipleRuns,
+  } = useChunkedRunner(createMultipleRunsRunner, extractMultipleRunsResult, 1)
+
+  // Download and reset when multiple runs completes
+  useEffect(() => {
+    if (multipleRunsState.status === 'done') {
+      download(multipleRunsState.result, makeOutputFilename(inputFilename, 'CollateRuns'))
+      resetMultipleRuns()
+    }
+  }, [multipleRunsState, download, inputFilename, resetMultipleRuns])
+
   const result: GlaState | null =
     runnerState.status === 'done'
       ? runnerState.result
@@ -202,6 +220,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         ? { error: runnerState.error }
         : null
   const isLoading = runnerState.status === 'running'
+  const isLoadingMultiple = multipleRunsState.status === 'running'
 
   function handleDownload() {
     try {
@@ -213,23 +232,6 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       console.error('Download error:', err)
       alert('Error generating download: ' + err)
     }
-  }
-
-  function handleMultipleRuns() {
-    setIsLoadingMultiple(true)
-    setScheduleError(null)
-    setTimeout(() => {
-      try {
-        const opts = buildOpts()
-        const output = format_gla_multiple_runs_output(tableauText, multipleRunsCount, opts)
-        download(output, makeOutputFilename(inputFilename, 'CollateRuns'))
-      } catch (err) {
-        console.error('Multiple runs error:', err)
-        alert('Error running multiple GLA runs: ' + err)
-      } finally {
-        setIsLoadingMultiple(false)
-      }
-    }, 0)
   }
 
   const atDefaults = isAtDefaults(params, glaDefaults())
@@ -611,7 +613,9 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          {isLoadingMultiple ? 'Running…' : `Run ${multipleRunsCount} times & Download`}
+          {multipleRunsState.status === 'running'
+            ? `Run ${multipleRunsState.completed}/${multipleRunsState.total}…`
+            : `Run ${multipleRunsCount} times & Download`}
         </button>
         <button
           className="reset-button"
@@ -633,6 +637,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       </div>
 
       <RunnerProgressBar state={runnerState} />
+      <RunnerProgressBar state={multipleRunsState} />
       {result?.error && <div className="rcd-status failure">Error running GLA: {result.error}</div>}
       {successResult && (
         <div className="maxent-results">
