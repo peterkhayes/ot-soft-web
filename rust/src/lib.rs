@@ -770,7 +770,7 @@ pub fn gla_pairwise_probabilities(text: &str, ranking_values: Vec<f64>) -> Resul
     }
     // Build a minimal GlaResult just for formatting the pairwise table
     let result = GlaResult::for_pairwise_table(ranking_values);
-    Ok(result.format_pairwise_probabilities(&tableau))
+    Ok(result.format_pairwise_probabilities(&tableau, 5))
 }
 
 /// Generate a GraphViz DOT string for a GLA (Stochastic OT) Hasse diagram.

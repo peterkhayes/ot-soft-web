@@ -27,7 +27,7 @@ interface GlaPanelProps {
 }
 
 interface GlaResultState {
-  values: { fullName: string; abbrev: string; value: number }[]
+  values: { fullName: string; abbrev: string; value: number; active: boolean }[]
   forms: {
     input: string
     candidates: { form: string; obsPct: number; genPct: number }[]
@@ -137,7 +137,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
 
       const values = Array.from({ length: constraintCount }, (_, i) => {
         const c = tableau.get_constraint(i)!
-        return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i) }
+        return { fullName: c.full_name, abbrev: c.abbrev, value: r.get_ranking_value(i), active: r.get_active_constraint(i) }
       })
 
       const forms = Array.from({ length: formCount }, (_, formIdx) => {
@@ -702,6 +702,34 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
               <pre className="pairwise-table">{successResult.pairwiseTable}</pre>
             </div>
           )}
+          <div className="maxent-weights">
+            <h3 className="results-subheader">Active Constraints</h3>
+            <p className="active-constraints-note">
+              A constraint is active if it causes the winning candidate to defeat a rival in at least
+              one competition.
+            </p>
+            <table className="weights-table">
+              <thead>
+                <tr>
+                  <th>Constraint</th>
+                  <th className="weight-col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...successResult.values]
+                  .sort((a, b) => b.value - a.value)
+                  .map((v, i) => (
+                    <tr key={i}>
+                      <td>
+                        <span className="abbrev">{v.abbrev}</span>
+                        <span className="full-name"> ({v.fullName})</span>
+                      </td>
+                      <td className="weight-col">{v.active ? 'Active' : 'Inactive'}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>

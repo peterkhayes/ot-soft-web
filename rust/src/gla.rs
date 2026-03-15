@@ -200,6 +200,74 @@ fn adjust_apriori_down(rv: &mut [f64], apriori: &[Vec<bool>], gap: f64) {
     }
 }
 
+// ─── Active Constraint Detection ─────────────────────────────────────────────
+//
+// Reproduces VB6 boersma.frm:GLATestGrammar (active constraint tracking) and
+// PrintActiveConstraints.
+//
+// A constraint is "active" if it causes the winning candidate to defeat a rival
+// in at least one input form, using deterministic (no-noise) evaluation over the
+// final ranking values.
+
+fn compute_active_constraints(tableau: &Tableau, ranking_values: &[f64]) -> Vec<bool> {
+    let nc = ranking_values.len();
+    let mut active = vec![false; nc];
+
+    // Sort constraint indices by descending ranking value (same order VB6 uses via SlotFiller)
+    let mut sorted: Vec<usize> = (0..nc).collect();
+    sorted.sort_by(|&a, &b| {
+        ranking_values[b]
+            .partial_cmp(&ranking_values[a])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    for form in &tableau.forms {
+        let n_cands = form.candidates.len();
+        if n_cands < 2 {
+            continue;
+        }
+
+        // Find winner by king-of-hill evaluation (deterministic, no noise)
+        let mut winner = 0;
+        for ci in 1..n_cands {
+            for &c in &sorted {
+                match form.candidates[winner].violations[c]
+                    .cmp(&form.candidates[ci].violations[c])
+                {
+                    std::cmp::Ordering::Greater => {
+                        winner = ci;
+                        break;
+                    }
+                    std::cmp::Ordering::Less => break,
+                    std::cmp::Ordering::Equal => {}
+                }
+            }
+        }
+
+        // A constraint is active if it kills any rival: winner violates it less
+        // than the rival, and it is the first distinguishing constraint in sorted order.
+        for rival in 0..n_cands {
+            if rival == winner {
+                continue;
+            }
+            for &c in &sorted {
+                match form.candidates[winner].violations[c]
+                    .cmp(&form.candidates[rival].violations[c])
+                {
+                    std::cmp::Ordering::Less => {
+                        active[c] = true;
+                        break;
+                    }
+                    std::cmp::Ordering::Greater => break,
+                    std::cmp::Ordering::Equal => {}
+                }
+            }
+        }
+    }
+
+    active
+}
+
 // ─── GLA Result ──────────────────────────────────────────────────────────────
 
 /// Result of running the Gradual Learning Algorithm (GLA)
@@ -241,6 +309,8 @@ pub struct GlaResult {
     full_history: Option<String>,
     /// Optional history of candidate probabilities at every trial (MaxEnt only).
     candidate_prob_history: Option<String>,
+    /// Which constraints are active (cause the winner to defeat a rival).
+    active_constraints: Vec<bool>,
 }
 
 impl GlaResult {
@@ -265,6 +335,7 @@ impl GlaResult {
             history: None,
             full_history: None,
             candidate_prob_history: None,
+            active_constraints: Vec::new(),
         }
     }
 }
@@ -309,6 +380,10 @@ impl GlaResult {
 
     pub fn candidate_prob_history(&self) -> Option<String> {
         self.candidate_prob_history.clone()
+    }
+
+    pub fn get_active_constraint(&self, constraint_index: usize) -> bool {
+        self.active_constraints.get(constraint_index).copied().unwrap_or(false)
     }
 
     /// Format results as text output for download.
@@ -480,8 +555,38 @@ impl GlaResult {
 
         // Pairwise ranking probabilities (Stochastic OT only)
         if !self.maxent_mode {
+            section_num += 1;
             out.push_str("\n\n");
-            out.push_str(&self.format_pairwise_probabilities(tableau));
+            out.push_str(&self.format_pairwise_probabilities(tableau, section_num));
+        }
+
+        // Active Constraints
+        // Reproduces VB6 boersma.frm:PrintActiveConstraints.
+        // Lists constraints in sorted order with "Active" or "Inactive" status.
+        {
+            section_num += 1;
+            let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
+            let name_width = tableau.constraints.iter()
+                .map(|c| c.full_name().len())
+                .max()
+                .unwrap_or(10)
+                .max(10);
+            out.push_str(&format!("\n\n{section_num}. Active Constraints\n\n"));
+            out.push_str("A constraint is active if it causes the winning candidate to defeat a rival\nin at least one competition.\n\n");
+            out.push_str(&format!("   {:<width$}  Status\n", "Constraint", width = name_width));
+            for &c_idx in &sorted {
+                let status = if self.active_constraints.get(c_idx).copied().unwrap_or(false) {
+                    "Active"
+                } else {
+                    "Inactive"
+                };
+                out.push_str(&format!(
+                    "   {:<width$}  {}\n",
+                    tableau.constraints[c_idx].full_name(),
+                    status,
+                    width = name_width
+                ));
+            }
         }
 
         // A priori rankings (if any)
@@ -536,13 +641,13 @@ impl GlaResult {
     /// triangle is empty (shaded in VB6).
     ///
     /// Only meaningful in Stochastic OT mode (not MaxEnt).
-    pub fn format_pairwise_probabilities(&self, tableau: &Tableau) -> String {
+    pub fn format_pairwise_probabilities(&self, tableau: &Tableau, section_num: usize) -> String {
         let sorted = crate::tableau::sorted_indices_descending(&self.ranking_values);
         let n = sorted.len();
         let abbrevs: Vec<String> = sorted.iter().map(|&i| tableau.constraints[i].abbrev()).collect();
 
         let mut out = String::new();
-        out.push_str("5. Ranking Value to Ranking Probability Conversion\n\n");
+        out.push_str(&format!("{section_num}. Ranking Value to Ranking Probability Conversion\n\n"));
         out.push_str("The computed ranking values imply the pairwise ranking probabilities given below.\n");
         out.push_str("In the table, the probability given is that of the constraint in the row headings\n");
         out.push_str("outranking the constraint in the column headings.\n\n");
@@ -1061,6 +1166,8 @@ impl Tableau {
 
         crate::ot_log!("GLA ({}) DONE: log_likelihood = {:.6}", mode_name, log_likelihood);
 
+        let active_constraints = compute_active_constraints(self, &ranking_values);
+
         GlaResult {
             ranking_values,
             test_probs,
@@ -1080,6 +1187,7 @@ impl Tableau {
             history: history_buf,
             full_history: full_history_buf,
             candidate_prob_history: cand_prob_history_buf,
+            active_constraints,
         }
     }
 }
@@ -1602,6 +1710,7 @@ impl GlaRunner {
             history: self.history_buf.take(),
             full_history: self.full_history_buf.take(),
             candidate_prob_history: self.cand_prob_history_buf.take(),
+            active_constraints: compute_active_constraints(&self.tableau, &self.ranking_values),
         });
     }
 }
@@ -1889,7 +1998,7 @@ mod tests {
             ..Default::default()
         });
 
-        let table = result.format_pairwise_probabilities(&tableau);
+        let table = result.format_pairwise_probabilities(&tableau, 5);
         assert!(table.contains("5. Ranking Value to Ranking Probability Conversion"));
         assert!(table.contains("outranking the constraint in the column headings"));
 
