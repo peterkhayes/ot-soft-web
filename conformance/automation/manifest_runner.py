@@ -137,20 +137,19 @@ def run_all(
         logger.info("Input file: %s (%d cases)", input_file, len(group_cases))
         logger.info("=" * 70)
 
-        # Open the input file (relaunches OTSoft with this file)
-        abs_input = os.path.join(repo_root, input_file)
-        try:
-            driver.open_file(abs_input)
-        except Exception as e:
-            logger.error("Failed to open file %s: %s", input_file, e)
-            for case in group_cases:
-                results["errors"].append(case["id"])
-                results["details"][case["id"]] = f"File open failed: {e}"
-            continue
-
-        # Start MsgBox dismisser for this batch, with try/finally for cleanup
+        # Start MsgBox dismisser early so it catches dialogs during file open
         driver.start_msgbox_dismisser()
         try:
+            # Open the input file (relaunches OTSoft with this file)
+            abs_input = os.path.join(repo_root, input_file)
+            try:
+                driver.open_file(abs_input)
+            except Exception as e:
+                logger.error("Failed to open file %s: %s", input_file, e)
+                for case in group_cases:
+                    results["errors"].append(case["id"])
+                    results["details"][case["id"]] = f"File open failed: {e}"
+                continue
             for i, case in enumerate(group_cases):
                 try:
                     success = run_case(driver, case, repo_root)

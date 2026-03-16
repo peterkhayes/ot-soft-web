@@ -48,13 +48,17 @@ APRIORI_MENU_PATH = (
 _DISMISS_BUTTON_TITLES = {"ok", "end", "abort", "close", "yes"}
 
 
+_DISMISS_BUTTON_CLASSES = ("Button", "ThunderRT6CommandButton")
+
+
 def _dismiss_msgboxes(app) -> list[str]:
     """
     Find and dismiss any visible MsgBox dialogs belonging to the app.
 
     Matches dismiss buttons case-insensitively ("OK", "Ok", "End", etc.)
     and handles VB6 runtime-error dialogs ("End" button) in addition to
-    ordinary MsgBox ("OK") dialogs.
+    ordinary MsgBox ("OK") dialogs.  Searches both standard Windows
+    Button controls and VB6 ThunderRT6CommandButton controls.
 
     Returns a list of dismissed message strings (title + body text).
     """
@@ -64,11 +68,18 @@ def _dismiss_msgboxes(app) -> list[str]:
             try:
                 if not win.is_visible():
                     continue
-                # Find the first button whose title matches a dismiss action.
+                # Skip the main OTSoft window (it has buttons too)
+                if win.rectangle().width() > 400 and win.rectangle().height() > 400:
+                    continue
+                # Find the first button whose title matches a dismiss action,
+                # searching both standard and VB6 button classes.
                 dismiss_btn = None
-                for btn in win.children(class_name="Button"):
-                    if btn.window_text().strip().lower() in _DISMISS_BUTTON_TITLES:
-                        dismiss_btn = btn
+                for cls in _DISMISS_BUTTON_CLASSES:
+                    for btn in win.children(class_name=cls):
+                        if btn.window_text().strip().lower() in _DISMISS_BUTTON_TITLES:
+                            dismiss_btn = btn
+                            break
+                    if dismiss_btn is not None:
                         break
                 if dismiss_btn is None:
                     continue
