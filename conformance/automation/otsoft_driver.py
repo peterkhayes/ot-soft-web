@@ -89,7 +89,7 @@ _DISMISS_BUTTON_TITLES = {"ok", "end", "abort", "close", "yes"}
 _DISMISS_BUTTON_CLASSES = ("Button", "ThunderRT6CommandButton")
 
 
-def _dismiss_msgboxes(app) -> list[str]:
+def _dismiss_msgboxes(app, *, skip_handle: int | None = None) -> list[str]:
     """
     Find and dismiss any visible MsgBox dialogs belonging to the app.
 
@@ -97,6 +97,9 @@ def _dismiss_msgboxes(app) -> list[str]:
     and handles VB6 runtime-error dialogs ("End" button) in addition to
     ordinary MsgBox ("OK") dialogs.  Searches both standard Windows
     Button controls and VB6 ThunderRT6CommandButton controls.
+
+    Args:
+        skip_handle: Window handle to skip (e.g. the main OTSoft window).
 
     Returns a list of dismissed message strings (title + body text).
     """
@@ -106,8 +109,10 @@ def _dismiss_msgboxes(app) -> list[str]:
             try:
                 if not win.is_visible():
                     continue
-                # Skip the main OTSoft window (it has buttons too)
-                if win.rectangle().width() > 400 and win.rectangle().height() > 400:
+                # Skip the main OTSoft window (it has buttons too).
+                # Identify it by handle rather than size heuristics, since
+                # VB6 Caution dialogs can be large.
+                if skip_handle is not None and win.handle == skip_handle:
                     continue
                 # Find the first button whose title matches a dismiss action,
                 # searching both standard and VB6 button classes.
@@ -144,14 +149,16 @@ def _dismiss_msgboxes(app) -> list[str]:
 class MsgBoxDismisser:
     """Background thread that auto-dismisses known VB6 message boxes."""
 
-    def __init__(self, get_app):
+    def __init__(self, get_app, get_skip_handle):
         """
         Args:
             get_app: Callable returning the current pywinauto Application.
                      Called on every poll so that a fresh app reference is
                      used after OTSoft is relaunched between test cases.
+            get_skip_handle: Callable returning the main window handle to skip.
         """
         self._get_app = get_app
+        self._get_skip_handle = get_skip_handle
         self._stop = threading.Event()
         self._thread = None
         self._dismissed = []
@@ -175,7 +182,9 @@ class MsgBoxDismisser:
 
     def _run(self):
         while not self._stop.is_set():
-            self._dismissed.extend(_dismiss_msgboxes(self._get_app()))
+            self._dismissed.extend(
+                _dismiss_msgboxes(self._get_app(), skip_handle=self._get_skip_handle())
+            )
             self._stop.wait(0.3)
 
 
@@ -187,6 +196,11 @@ class OTSoftDriver:
         self.app = None
         self.main_win = None
         self._msgbox_dismisser = None
+
+    @property
+    def _main_win_handle(self) -> int | None:
+        """Return the main window handle, or None if not yet found."""
+        return self.main_win.handle if self.main_win else None
 
     def launch(self):
         """Launch OTSoft.exe and connect to the main window."""
@@ -200,7 +214,7 @@ class OTSoftDriver:
         # Wait a moment for them to appear, then dismiss any dialogs and find
         # the main window (the one with a menu bar).
         time.sleep(2)
-        _dismiss_msgboxes(self.app)
+        _dismiss_msgboxes(self.app, skip_handle=self._main_win_handle)
         self._find_main_window()
 
     def _find_main_window(self):
@@ -243,7 +257,10 @@ class OTSoftDriver:
     def start_msgbox_dismisser(self):
         """Start background thread to auto-dismiss MsgBox dialogs."""
         if self._msgbox_dismisser is None:
-            self._msgbox_dismisser = MsgBoxDismisser(lambda: self.app)
+            self._msgbox_dismisser = MsgBoxDismisser(
+                lambda: self.app,
+                lambda: self._main_win_handle,
+            )
         self._msgbox_dismisser.start()
 
     def stop_msgbox_dismisser(self):
@@ -295,7 +312,7 @@ class OTSoftDriver:
 
         # Dismiss any startup MsgBoxes
         time.sleep(1)
-        _dismiss_msgboxes(self.app)
+        _dismiss_msgboxes(self.app, skip_handle=self._main_win_handle)
 
         # Verify file was loaded by checking button caption
         try:
@@ -414,7 +431,7 @@ class OTSoftDriver:
         self._set_menu_checked(True, *APRIORI_MENU_PATH)
         # VB6 may show an error dialog asynchronously; give it a moment to appear.
         time.sleep(0.5)
-        _dismiss_msgboxes(self.app)
+        _dismiss_msgboxes(self.app, skip_handle=self._main_win_handle)
 
     def disable_apriori_rankings(self):
         """Disable the a priori rankings menu toggle if currently enabled."""
@@ -631,7 +648,7 @@ class OTSoftDriver:
             try:
                 if condition():
                     logger.info("%s completed in %.1fs", label.capitalize(), time.time() - start)
-                    _dismiss_msgboxes(self.app)
+                    _dismiss_msgboxes(self.app, skip_handle=self._main_win_handle)
                     return
             except Exception:
                 pass
@@ -648,6 +665,6 @@ class OTSoftDriver:
             self._click_menu("&Options", "Restore &default settings")
             logger.info("Restored default settings")
             time.sleep(0.5)
-            _dismiss_msgboxes(self.app)
+            _dismiss_msgboxes(self.app, skip_handle=self._main_win_handle)
         except Exception as e:
             logger.warning("Could not restore defaults: %s", e)
