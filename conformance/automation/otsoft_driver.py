@@ -17,10 +17,26 @@ logger = logging.getLogger(__name__)
 
 # How long to wait for the app to become idle after launching
 LAUNCH_TIMEOUT = 10
-# How long to wait for algorithm completion
-ALGORITHM_TIMEOUT = 300
+# How long to wait for algorithm completion (most finish in seconds)
+ALGORITHM_TIMEOUT = 60
+# Longer timeout for expensive algorithms (factorial typology)
+ALGORITHM_TIMEOUT_LONG = 300
 # Polling interval when waiting for output files
 POLL_INTERVAL = 0.5
+
+
+class DialogDismissedError(Exception):
+    """Raised when a VB6 dialog was dismissed during an operation.
+
+    Attributes:
+        messages: List of dismissed dialog message strings.
+    """
+
+    def __init__(self, messages: list[str]):
+        self.messages = messages
+        summary = "; ".join(messages)
+        super().__init__(f"VB6 dialog(s) dismissed during operation: {summary}")
+
 
 # Menu paths used in multiple places
 APRIORI_MENU_PATH = (
@@ -380,6 +396,7 @@ class OTSoftDriver:
         self._poll_until(
             lambda: ft_btn.is_enabled() and self.main_win.is_enabled(),
             label="factorial typology",
+            timeout=ALGORITHM_TIMEOUT_LONG,
         )
 
     def run_maxent(self, params: dict):
@@ -508,12 +525,29 @@ class OTSoftDriver:
         Poll until condition() returns True, with timeout.
 
         Dismisses any MsgBox dialogs upon completion.
+
+        Raises:
+            DialogDismissedError: If a VB6 dialog was dismissed during polling.
+            TimeoutError: If the condition is not met within the timeout.
         """
         logger.info("Waiting for %s completion (timeout=%ss)...", label, timeout)
         start = time.time()
         time.sleep(1)  # Give the operation a moment to start
 
+        # Snapshot the dismisser state so we only detect NEW dialogs
+        dismissed_before = len(self._msgbox_dismisser.dismissed) if self._msgbox_dismisser else 0
+
         while time.time() - start < timeout:
+            # Check for dialogs dismissed since we started polling
+            if self._msgbox_dismisser:
+                new_dismissed = self._msgbox_dismisser.dismissed[dismissed_before:]
+                if new_dismissed:
+                    logger.error(
+                        "%s: dialog(s) dismissed during operation: %s",
+                        label, new_dismissed,
+                    )
+                    raise DialogDismissedError(new_dismissed)
+
             try:
                 if condition():
                     logger.info("%s completed in %.1fs", label.capitalize(), time.time() - start)
@@ -523,7 +557,8 @@ class OTSoftDriver:
                 pass
             time.sleep(POLL_INTERVAL)
 
-        logger.warning("%s timed out after %ss", label.capitalize(), timeout)
+        elapsed = time.time() - start
+        raise TimeoutError(f"{label} timed out after {elapsed:.0f}s")
 
     # ── Reset between test cases ──────────────────────────────────────
 

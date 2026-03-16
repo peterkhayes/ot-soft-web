@@ -12,7 +12,7 @@ import re
 import shutil
 from collections import defaultdict
 
-from otsoft_driver import OTSoftDriver
+from otsoft_driver import OTSoftDriver, DialogDismissedError
 from file_collector import collect_output, get_apriori_dest, cleanup_output_dir
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ def run_all(
         return {"passed": [], "failed": [], "errors": []}
 
     groups = group_by_input(cases)
-    results = {"passed": [], "failed": [], "errors": []}
+    results = {"passed": [], "failed": [], "errors": [], "details": {}}
 
     for input_file, group_cases in groups.items():
         logger.info("\n" + "=" * 70)
@@ -145,6 +145,7 @@ def run_all(
             logger.error("Failed to open file %s: %s", input_file, e)
             for case in group_cases:
                 results["errors"].append(case["id"])
+                results["details"][case["id"]] = f"File open failed: {e}"
             continue
 
         # Start MsgBox dismisser for this batch, with try/finally for cleanup
@@ -157,9 +158,23 @@ def run_all(
                         results["passed"].append(case["id"])
                     else:
                         results["failed"].append(case["id"])
+                except DialogDismissedError as e:
+                    logger.error(
+                        "Dialog dismissed during %s: %s",
+                        case["id"], e.messages,
+                    )
+                    results["errors"].append(case["id"])
+                    results["details"][case["id"]] = (
+                        f"VB6 dialog: {'; '.join(e.messages)}"
+                    )
+                except TimeoutError as e:
+                    logger.error("Timeout running %s: %s", case["id"], e)
+                    results["errors"].append(case["id"])
+                    results["details"][case["id"]] = str(e)
                 except Exception as e:
                     logger.error("Error running %s: %s", case["id"], e, exc_info=True)
                     results["errors"].append(case["id"])
+                    results["details"][case["id"]] = str(e)
 
                 # Reopen the file between cases to reset VB6 state,
                 # but skip after the last case in the group

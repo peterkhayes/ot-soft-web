@@ -98,7 +98,7 @@ def main():
         )
     except KeyboardInterrupt:
         logging.info("Interrupted by user")
-        results = {"passed": [], "failed": [], "errors": ["interrupted"]}
+        results = {"passed": [], "failed": [], "errors": ["interrupted"], "details": {}}
     finally:
         driver.close()
 
@@ -110,15 +110,21 @@ def main():
     print(f"  Failed:  {len(results['failed'])}")
     print(f"  Errors:  {len(results['errors'])}")
 
+    details = results.get("details", {})
+
     if results["failed"]:
         print("\nFailed cases:")
         for case_id in results["failed"]:
-            print(f"  - {case_id}")
+            detail = details.get(case_id)
+            suffix = f" — {detail}" if detail else ""
+            print(f"  - {case_id}{suffix}")
 
     if results["errors"]:
         print("\nError cases:")
         for case_id in results["errors"]:
-            print(f"  - {case_id}")
+            detail = details.get(case_id)
+            suffix = f" — {detail}" if detail else ""
+            print(f"  - {case_id}{suffix}")
 
     total = len(results["passed"]) + len(results["failed"]) + len(results["errors"])
     if total > 0:
