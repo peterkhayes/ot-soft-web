@@ -1,0 +1,16 @@
+Results of Applying Recursive Constraint Demotion to AnttilaFinnishGenitivePlurals.txt
+
+
+3-16-2026, 10:52 a.m.
+
+OTSoft 2.7, release date 2/1/2026
+
+
+There's a problem with the constraint set.
+
+For input #22, /avantgardisti/, losing candidate [\a'.vant.gar.d\i`s.ti.en]
+has exactly the same violations as winning candidate [\a'.vant.g\a`r.dis.ti.en].
+
+
+Therefore, a grammar with just these constraints won't work.
+
