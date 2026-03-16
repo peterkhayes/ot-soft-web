@@ -123,7 +123,7 @@ class Handler(BaseHTTPRequestHandler):
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=600,
+                timeout=1800,
             )
             output = result.stdout + result.stderr
             logger.info("Run completed (exit code %d)", result.returncode)
