@@ -12,7 +12,7 @@ import re
 import shutil
 from collections import defaultdict
 
-from otsoft_driver import OTSoftDriver, DialogDismissedError
+from otsoft_driver import OTSoftDriver, DialogDismissedError, StepTimeoutError
 from file_collector import collect_output, get_apriori_dest, cleanup_output_dir
 
 logger = logging.getLogger(__name__)
@@ -166,7 +166,7 @@ def run_all(
                     results["details"][case["id"]] = (
                         f"VB6 dialog: {'; '.join(e.messages)}"
                     )
-                except TimeoutError as e:
+                except (TimeoutError, StepTimeoutError) as e:
                     logger.error("Timeout running %s: %s", case["id"], e)
                     results["errors"].append(case["id"])
                     results["details"][case["id"]] = str(e)

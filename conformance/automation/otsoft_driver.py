@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 # How long to wait for the app to become idle after launching
 LAUNCH_TIMEOUT = 10
+# How long to wait for a single GUI step (click, menu select, etc.)
+STEP_TIMEOUT = 15
 # How long to wait for algorithm completion (most finish in seconds)
 ALGORITHM_TIMEOUT = 60
 # Longer timeout for expensive algorithms (factorial typology)
@@ -36,6 +38,42 @@ class DialogDismissedError(Exception):
         self.messages = messages
         summary = "; ".join(messages)
         super().__init__(f"VB6 dialog(s) dismissed during operation: {summary}")
+
+
+class StepTimeoutError(TimeoutError):
+    """Raised when a GUI step (click, menu select, etc.) hangs."""
+    pass
+
+
+def _run_with_timeout(fn, *, label: str, timeout: float = STEP_TIMEOUT):
+    """
+    Run a blocking function in a thread with a timeout.
+
+    Raises StepTimeoutError if the function doesn't return in time.
+    This is needed because pywinauto calls are synchronous and can hang
+    indefinitely when a modal dialog blocks the target window.
+    """
+    result = [None]
+    error = [None]
+
+    def wrapper():
+        try:
+            result[0] = fn()
+        except Exception as e:
+            error[0] = e
+
+    thread = threading.Thread(target=wrapper, daemon=True)
+    thread.start()
+    thread.join(timeout=timeout)
+
+    if thread.is_alive():
+        raise StepTimeoutError(
+            f"{label} did not complete within {timeout}s — "
+            f"likely blocked by a modal dialog"
+        )
+    if error[0] is not None:
+        raise error[0]
+    return result[0]
 
 
 # Menu paths used in multiple places
@@ -272,19 +310,29 @@ class OTSoftDriver:
 
     def select_classical_ot(self):
         """Select the 'Classical OT' radio button."""
-        self.main_win.child_window(title="Classical OT").click()
+        _run_with_timeout(
+            lambda: self.main_win.child_window(title="Classical OT").click(),
+            label="select Classical OT",
+        )
         logger.info("Selected: Classical OT")
 
     def select_maximum_entropy(self):
         """Select the 'Maximum Entropy' radio button."""
-        self.main_win.child_window(title="Maximum Entropy").click()
+        _run_with_timeout(
+            lambda: self.main_win.child_window(title="Maximum Entropy").click(),
+            label="select Maximum Entropy",
+        )
         logger.info("Selected: Maximum Entropy")
 
     # ── Menu helpers ──────────────────────────────────────────────────
 
     def _click_menu(self, *path):
         """Click a sequence of menu items by their titles."""
-        self.main_win.menu_select("->".join(path))
+        menu_path = "->".join(path)
+        _run_with_timeout(
+            lambda: self.main_win.menu_select(menu_path),
+            label=f"menu select {path[-1]}",
+        )
 
     def _set_menu_checked(self, desired: bool, *path):
         """
@@ -348,9 +396,14 @@ class OTSoftDriver:
             cb = self.main_win.child_window(title=title)
             current = cb.get_check_state() == 1
             if current != desired:
-                cb.click()
+                _run_with_timeout(
+                    cb.click,
+                    label=f"checkbox '{title}'",
+                )
                 state_str = "checked" if desired else "unchecked"
                 logger.info("Set '%s' to %s", title, state_str)
+        except StepTimeoutError:
+            raise
         except Exception as e:
             logger.warning("Could not set checkbox '%s': %s", title, e)
 
@@ -391,7 +444,7 @@ class OTSoftDriver:
             class_name="ThunderRT6CommandButton", title_re=".*Rank.*"
         )
         logger.info("Clicking Rank button")
-        rank_btn.click()
+        _run_with_timeout(rank_btn.click, label="click Rank")
         self._poll_until(
             lambda: rank_btn.is_enabled() and self.main_win.is_enabled(),
             label="algorithm",
@@ -403,7 +456,7 @@ class OTSoftDriver:
             class_name="ThunderRT6CommandButton", title_re=".*[Ff]actorial.*"
         )
         logger.info("Clicking Factorial Typology button")
-        ft_btn.click()
+        _run_with_timeout(ft_btn.click, label="click Factorial Typology")
         self._poll_until(
             lambda: ft_btn.is_enabled() and self.main_win.is_enabled(),
             label="factorial typology",
@@ -437,20 +490,29 @@ class OTSoftDriver:
             class_name="ThunderRT6CommandButton", title_re=r"(?i).*(rank|compute weights).*"
         )
         logger.info("Clicking Rank button: %r", rank_btn.window_text())
-        rank_btn.click()
+        _run_with_timeout(rank_btn.click, label="click Rank (MaxEnt)")
         time.sleep(2)
 
         # Find the GLA form. In OTSoft 2.7 the title is
         # "OTSoft 2.7 - GLA-MaxEnt - <file>" (not "Gradual Learning Algorithm").
         gla_win = self.app.window(title_re=".*GLA.*")
-        gla_win.wait("ready", timeout=30)
+        _run_with_timeout(
+            lambda: gla_win.wait("ready", timeout=30),
+            label="wait for GLA window",
+            timeout=30,
+        )
 
         # Configure Gaussian prior BEFORE opening batch MaxEnt
         use_prior = params.get("use_prior", False)
         if use_prior:
             try:
-                gla_win.menu_select("&MaxEnt->Run MaxEnt with Gaussian prior")
+                _run_with_timeout(
+                    lambda: gla_win.menu_select("&MaxEnt->Run MaxEnt with Gaussian prior"),
+                    label="enable Gaussian prior",
+                )
                 logger.info("Enabled Gaussian prior in GLA menu")
+            except StepTimeoutError:
+                raise
             except Exception as e:
                 logger.warning("Could not set Gaussian prior: %s", e)
 
@@ -463,7 +525,10 @@ class OTSoftDriver:
                 )
 
         # Navigate: MaxEnt menu → "Run the batch version of MaxEnt"
-        gla_win.menu_select("&MaxEnt->Run the batch version of MaxEnt")
+        _run_with_timeout(
+            lambda: gla_win.menu_select("&MaxEnt->Run the batch version of MaxEnt"),
+            label="open batch MaxEnt",
+        )
         time.sleep(1)
 
         # Find the MyMaxEnt form. In OTSoft 2.7 the title is
@@ -471,7 +536,11 @@ class OTSoftDriver:
         # Use " - MaxEnt - " to distinguish it from the GLA window
         # ("OTSoft 2.7 - GLA-MaxEnt - <file>").
         maxent_win = self.app.window(title_re=r".* - MaxEnt - .*")
-        maxent_win.wait("ready", timeout=30)
+        _run_with_timeout(
+            lambda: maxent_win.wait("ready", timeout=30),
+            label="wait for MaxEnt window",
+            timeout=30,
+        )
 
         # Set parameters
         iterations = params.get("iterations", 5)
@@ -489,7 +558,7 @@ class OTSoftDriver:
 
         # Click Run and wait
         run_btn = maxent_win.child_window(title="Run maxent")
-        run_btn.click()
+        _run_with_timeout(run_btn.click, label="click Run maxent")
         logger.info("Clicked Run maxent")
 
         self._poll_until(lambda: run_btn.is_enabled(), label="MaxEnt")
