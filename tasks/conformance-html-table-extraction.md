@@ -15,17 +15,16 @@ depends_on: []
 
 ## Fix Applied
 
-### Rust HTML output changes (`rcd.rs`)
+### Rust HTML output changes (`rcd.rs`, `fred.rs`)
 - **Strata listing**: changed from `<ul>/<li>` to a 3-column `<table>` (Stratum / Constraint Name / Abbreviation), matching VB6.
-- **Ranking arguments**: changed from `<pre>` dump to a 2-column `<table>` (ranking | &nbsp;), matching VB6.
+- **Ranking arguments**: changed from `<pre>` dump to a 2-column `<table>` (ranking | &nbsp;), matching VB6. Added `ranking_strings()` helper on `FRedResult`.
 - **Necessity table**: added header row (Constraint / Status) and switched from abbreviations to full constraint names, matching VB6.
+- **Mini-tableau constraint sorting**: HTML mini-tableaux now sort constraints via `vb6_sort_constraint_slice`, matching the text formatter and VB6's `PrintTableaux.SortTheConstraints`.
 
 ### Conformance test changes (`conformance.rs`)
 1. **Split on `</table>` boundaries** instead of requiring matched `<table>...</table>` wrappers — VB6 omits opening `<table>` tags.
 2. **Split cells on `<td`/`<th` openings** instead of requiring matched open/close tags — VB6 omits `</td>` closing tags.
 3. **Added `&#9758;` and `&nbsp` entity decoding** (VB6 uses decimal entity and omits trailing semicolons).
 4. **Normalize CSS classes** to just "border" vs "no border" (cl4/cl8 → border; cl9/cl10/None → no border) since VB6 inconsistently applies background classes.
-5. **Canonicalize mini-tableau columns** by sorting constraint names alphabetically, since VB6 HTML and text outputs may order constraints differently within mini-tableaux.
-6. **Sort mini-tableaux** by content for order-independent comparison.
 
 Also removed `skip` entries from all 4 HTML test cases in `conformance/manifest.json`.

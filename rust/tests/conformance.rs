@@ -164,7 +164,7 @@ fn strip_sections(text: &str, ignore: &[String]) -> String {
 // ── HTML cell-grid extraction ───────────────────────────────────────────────
 
 /// A single cell in an extracted HTML tableau grid.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 struct HtmlCell {
     /// Text content with HTML tags and entities decoded, trimmed.
     text: String,
@@ -264,59 +264,8 @@ fn normalize_class(class: &Option<String>) -> Option<&'static str> {
     }
 }
 
-/// Reorder columns of a mini-tableau so constraints are in a canonical
-/// (sorted by name) order. Column 0 (the candidate label) stays fixed;
-/// the remaining columns are permuted so the header row's constraint
-/// names are sorted alphabetically, and all rows follow the same permutation.
-fn canonicalize_columns(table: &TableGrid) -> TableGrid {
-    if table.is_empty() || table[0].len() <= 1 {
-        return table.clone();
-    }
-    // Build sort order from header row (skip column 0 = candidate label)
-    let header = &table[0];
-    let mut col_indices: Vec<usize> = (1..header.len()).collect();
-    col_indices.sort_by(|&a, &b| header[a].text.cmp(&header[b].text));
-
-    table
-        .iter()
-        .map(|row| {
-            let mut new_row = vec![row[0].clone()];
-            for &ci in &col_indices {
-                let mut cell = row.get(ci).cloned().unwrap_or_else(|| HtmlCell {
-                    text: String::new(),
-                    class: None,
-                });
-                // Clear classes — border positions are meaningless after reordering
-                cell.class = None;
-                new_row.push(cell);
-            }
-            new_row
-        })
-        .collect()
-}
-
-/// Sort key for a table: concatenation of all cell texts in row order.
-/// Used to compare tables in an order-independent way, since VB6 may
-/// output mini-tableaux in a different order in HTML vs text.
-fn table_sort_key(table: &TableGrid) -> String {
-    let canonical = canonicalize_columns(table);
-    canonical
-        .iter()
-        .flat_map(|row| {
-            row.iter().map(|cell| {
-                cell.text.trim_end_matches(':').trim().to_string()
-            })
-        })
-        .collect::<Vec<_>>()
-        .join("|")
-}
-
 /// Compare two sets of HTML tableaux, returning a description of the first
 /// difference found, or `None` if they match.
-///
-/// Input tableaux (>3 rows) are compared in order. Mini-tableaux (exactly
-/// 3 rows: header + winner + loser) are sorted by content before comparing,
-/// since VB6 HTML and text outputs may order them differently.
 fn compare_html_tables(
     expected: &[TableGrid],
     actual: &[TableGrid],
@@ -330,33 +279,7 @@ fn compare_html_tables(
         ));
     }
 
-    // Partition into input tableaux (>3 rows) and mini-tableaux (<=3 rows)
-    let (exp_main, exp_mini): (Vec<_>, Vec<_>) =
-        expected.iter().cloned().partition(|t| t.len() > 3);
-    let (act_main, act_mini): (Vec<_>, Vec<_>) =
-        actual.iter().cloned().partition(|t| t.len() > 3);
-
-    if exp_main.len() != act_main.len() {
-        return Some(format!(
-            "{case_id}: main tableau count mismatch — expected {}, actual {}",
-            exp_main.len(),
-            act_main.len(),
-        ));
-    }
-
-    // Canonicalize column order and sort mini-tableaux by content for
-    // order-independent comparison (VB6 HTML may order both constraints
-    // within a mini-tableau and the mini-tableaux themselves differently).
-    let mut exp_mini: Vec<_> = exp_mini.into_iter().map(|t| canonicalize_columns(&t)).collect();
-    let mut act_mini: Vec<_> = act_mini.into_iter().map(|t| canonicalize_columns(&t)).collect();
-    exp_mini.sort_by(|a, b| table_sort_key(a).cmp(&table_sort_key(b)));
-    act_mini.sort_by(|a, b| table_sort_key(a).cmp(&table_sort_key(b)));
-
-    // Recombine: main tables first (in order), then sorted mini-tableaux
-    let exp_all: Vec<_> = exp_main.iter().chain(exp_mini.iter()).collect();
-    let act_all: Vec<_> = act_main.iter().chain(act_mini.iter()).collect();
-
-    for (t_idx, (exp_table, act_table)) in exp_all.iter().zip(act_all.iter()).enumerate() {
+    for (t_idx, (exp_table, act_table)) in expected.iter().zip(actual.iter()).enumerate() {
         if exp_table.len() != act_table.len() {
             return Some(format!(
                 "{case_id}: table {t_idx} row count — expected {}, actual {}",

@@ -1254,7 +1254,11 @@ impl RCDResult {
         let form = &tableau.forms[mini.form_index];
         let winner = &form.candidates[mini.winner_index];
         let loser = &form.candidates[mini.loser_index];
-        let included = &mini.included_constraints;
+        // Sort included constraints by stratum using VB6's unstable selection sort,
+        // matching VB6's PrintTableaux.Main which calls SortTheConstraints.
+        let mut sorted_constraints = mini.included_constraints.clone();
+        self.vb6_sort_constraint_slice(&mut sorted_constraints);
+        let included = &sorted_constraints;
         let num_included = included.len();
 
         let mut out = String::new();
