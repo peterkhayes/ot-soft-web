@@ -1,5 +1,5 @@
 ---
-status: open
+status: done
 type: bug
 priority: medium
 depends_on: []
@@ -7,13 +7,16 @@ depends_on: []
 
 # NHG download: add raw count columns
 
-## Description
+## Resolution
 
-BPH's VB6 NHG output includes "Input #" and "Gen. #" columns showing raw counts alongside the frequency/percentage columns. Our download file only shows "Input%" and "Gen%".
+Updated `NhgResult::format_output()` in `rust/src/nhg.rs` to match the VB6 format:
 
-The web UI may already show counts, but the download output file needs to include them to match VB6.
+- Changed column headers from `Input%` / `Gen%` to `Input Fr.` / `Gen Fr.` / `Input #` / `Gen. #`
+- Changed data from percentages (0-100) to fractions (0-1 with 3 decimal places)
+- Added raw input count (`cand.frequency`) and generated count (`gen_prop * test_trials`)
+- When a candidate has zero input frequency, `Input #` is blank (matching VB6 behavior)
 
-**Note:** This may have already been fixed since the comparison was made (2026-03-07). Verify current behavior before implementing.
+The web UI display (NhgPanel.tsx) is unaffected — it renders its own HTML table independently.
 
 ## Reference
 
@@ -22,4 +25,4 @@ The web UI may already show counts, but the download output file needs to includ
 
 ## Acceptance Criteria
 
-- [ ] Download output includes raw count columns matching VB6 format
+- [x] Download output includes raw count columns matching VB6 format

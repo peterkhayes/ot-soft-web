@@ -3,7 +3,6 @@
 ## Bugs
 
 - [Stochastic OT: investigate accuracy discrepancy with VB6](tasks/stochastic-ot-accuracy.md)
-- [NHG download: add raw count columns](tasks/nhg-raw-counts-download.md)
 
 ## UX
 

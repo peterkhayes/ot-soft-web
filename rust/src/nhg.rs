@@ -398,34 +398,41 @@ impl NhgResult {
                 .unwrap_or(0)
                 .max(2);
 
+            // VB6 format: "Input Fr. Gen Fr.  Input #     Gen. #"
             out.push_str(&format!(
-                "  {:<width$}  {:>9}  {:>9}\n",
-                "",
-                "Input%",
-                "Gen%",
+                "  {:<width$}  {:>10}  {:>10}  {:>8}  {:>8}\n",
+                "", "Input Fr.", "Gen Fr.", "Input #", "Gen. #",
                 width = max_cand_width
             ));
 
             for (cand_idx, cand) in form.candidates.iter().enumerate() {
-                let obs_pct = if total_freq > 0.0 {
-                    cand.frequency as f64 / total_freq * 100.0
+                let obs_prop = if total_freq > 0.0 {
+                    cand.frequency as f64 / total_freq
                 } else {
                     0.0
                 };
-                let gen_pct = self.test_probs
+                let gen_prop = self.test_probs
                     .get(form_idx)
                     .and_then(|f| f.get(cand_idx))
                     .copied()
-                    .unwrap_or(0.0)
-                    * 100.0;
+                    .unwrap_or(0.0);
+                let gen_count = (gen_prop * self.test_trials as f64).round() as usize;
 
                 let marker = if cand.frequency > 0 { ">" } else { " " };
+                // VB6: blank Input # when candidate has zero input frequency
+                let input_count_str = if cand.frequency > 0 {
+                    format!("{:>8}", cand.frequency)
+                } else {
+                    "        ".to_string()
+                };
                 out.push_str(&format!(
-                    "  {}{:<width$}  {:>8.1}%  {:>8.1}%\n",
+                    "  {}{:<width$}  {:>10.3}  {:>10.3}  {}  {:>8}\n",
                     marker,
                     cand.form,
-                    obs_pct,
-                    gen_pct,
+                    obs_prop,
+                    gen_prop,
+                    input_count_str,
+                    gen_count,
                     width = max_cand_width
                 ));
             }
