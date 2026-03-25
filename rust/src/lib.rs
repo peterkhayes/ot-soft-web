@@ -353,7 +353,7 @@ pub fn format_rcd_output(
     } else {
         tableau.run_rcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts);
     Ok(result.format_output_with_options(&tableau, filename, "Recursive Constraint Demotion", &apriori, true))
 }
 
@@ -451,7 +451,7 @@ pub fn format_rcd_html_output(
     } else {
         tableau.run_rcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts);
     Ok(result.format_html_output_full(&tableau, filename, "Recursive Constraint Demotion", axis_mode, &apriori))
 }
 
@@ -466,7 +466,7 @@ pub fn format_bcd_html_output(
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
-    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts);
     Ok(result.format_html_output_with_options(&tableau, filename, "Biased Constraint Demotion", axis_mode))
 }
 
@@ -487,7 +487,7 @@ pub fn format_lfcd_html_output(
     } else {
         tableau.run_lfcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts);
     Ok(result.format_html_output_full(
         &tableau,
         filename,
@@ -507,7 +507,7 @@ pub fn format_bcd_output(
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
-    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts);
     Ok(result.format_output_with_algorithm(&tableau, filename, "Biased Constraint Demotion"))
 }
 
@@ -540,7 +540,7 @@ pub fn format_lfcd_output(
     } else {
         tableau.run_lfcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts);
     Ok(result.format_output_with_options(
         &tableau,
         filename,

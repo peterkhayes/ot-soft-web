@@ -216,20 +216,13 @@ impl RCDResult {
 
     /// Override FRed options after the initial computation.
     ///
-    /// Called by format functions to apply user-specified argumentation options:
-    /// - `include_fred`: if false, suppress FRed output and mini-tableaux
-    /// - `use_mib`: use Most Informative Basis instead of Skeletal Basis
-    /// - `verbose`: include verbose recursion tree in FRed output
-    /// - `include_mini_tableaux`: if false, suppress mini-tableaux
+    /// Called by format functions to apply user-specified argumentation options.
     pub(crate) fn apply_fred_options(
         &mut self,
         tableau: &Tableau,
-        include_fred: bool,
-        use_mib: bool,
-        verbose: bool,
-        include_mini_tableaux: bool,
+        opts: &crate::FredOptions,
     ) {
-        if !include_fred {
+        if !opts.include_fred {
             self.fred_result = None;
             self.mini_tableaux = Vec::new();
             return;
@@ -237,11 +230,11 @@ impl RCDResult {
 
         // Re-run FRed if options differ from the default (SB, no verbose).
         // Default was computed in compute_extra_analyses as run_fred(false).
-        if use_mib || verbose {
-            self.fred_result = Some(tableau.run_fred_verbose(use_mib, verbose));
+        if opts.use_mib || opts.show_details {
+            self.fred_result = Some(tableau.run_fred_verbose(opts.use_mib, opts.show_details));
         }
 
-        if !include_mini_tableaux {
+        if !opts.include_mini_tableaux {
             self.mini_tableaux = Vec::new();
         }
     }
