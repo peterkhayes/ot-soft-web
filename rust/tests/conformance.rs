@@ -239,19 +239,13 @@ fn extract_html_tables(html: &str) -> Vec<TableGrid> {
 /// Decode the most common HTML entities to plain text.
 fn decode_html_entities(s: &str) -> String {
     s.replace("&nbsp;", " ")
+     .replace("&nbsp", " ")  // VB6 sometimes omits the trailing semicolon
      .replace("&amp;", "&")
      .replace("&lt;", "<")
      .replace("&gt;", ">")
      .replace("&quot;", "\"")
      .replace("&#x261E;", "☞")
      .replace("&#9758;", "☞")
-}
-
-/// Returns true if the table contains at least one cell with a shading class.
-/// This filters out plain listing tables (strata, status, ranking arguments)
-/// and keeps only OT tableaux which have cl4/cl8/cl9/cl10 shading.
-fn table_has_shading(table: &TableGrid) -> bool {
-    table.iter().any(|row| row.iter().any(|cell| cell.class.is_some()))
 }
 
 /// Normalize a cell's CSS class for comparison.
@@ -601,17 +595,8 @@ fn conformance_tests() {
 
         let diff_msg = if case.format == OutputFormat::Html {
             // HTML conformance: compare extracted cell grids semantically.
-            // Filter to only tables with shading classes (actual OT tableaux),
-            // since VB6 and Rust render non-tableau data (strata listings,
-            // ranking arguments) with different HTML structures.
-            let expected_tables: Vec<_> = extract_html_tables(&golden_text)
-                .into_iter()
-                .filter(table_has_shading)
-                .collect();
-            let actual_tables: Vec<_> = extract_html_tables(&rust_output)
-                .into_iter()
-                .filter(table_has_shading)
-                .collect();
+            let expected_tables = extract_html_tables(&golden_text);
+            let actual_tables = extract_html_tables(&rust_output);
             compare_html_tables(&expected_tables, &actual_tables, &case.id)
         } else {
             // Text conformance: normalized byte comparison

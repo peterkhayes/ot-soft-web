@@ -445,6 +445,31 @@ impl FRedResult {
 }
 
 impl FRedResult {
+    /// Return the ranking argument strings in VB6 output order
+    /// (WCount==1 first, then WCount>1).
+    pub(crate) fn ranking_strings(&self) -> Vec<String> {
+        let mut result = Vec::new();
+        for erc in &self.valhalla {
+            if w_count(erc) == 1 {
+                result.push(format!(
+                    "{} >> {}",
+                    self.constraint_set_string(erc, 'W'),
+                    self.constraint_set_string(erc, 'L'),
+                ));
+            }
+        }
+        for erc in &self.valhalla {
+            if w_count(erc) > 1 {
+                result.push(format!(
+                    "{} >> {}",
+                    self.constraint_set_string(erc, 'W'),
+                    self.constraint_set_string(erc, 'L'),
+                ));
+            }
+        }
+        result
+    }
+
     /// Format Section 4 of the RCD output: "Ranking Arguments, based on FRed".
     pub(crate) fn format_section_fred(&self, section_num: usize) -> String {
         let mut out = String::new();

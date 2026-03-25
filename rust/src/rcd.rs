@@ -843,21 +843,30 @@ impl RCDResult {
         } else {
             out.push_str("<p class=\"failure\">No ranking was found.</p>\n");
         }
+        out.push_str("<table>\n");
+        out.push_str("  <tr><td><b>Stratum</b></td><td><b>Constraint Name</b></td><td><b>Abbreviation</b></td></tr>\n");
         for stratum in 1..=self.num_strata {
-            out.push_str(&format!("<p><strong>Stratum #{stratum}</strong></p>\n<ul>\n"));
+            let mut first_in_stratum = true;
             for (c_idx, &c_stratum) in self.constraint_strata.iter().enumerate() {
                 if c_stratum == stratum {
                     if let Some(constraint) = tableau.get_constraint(c_idx) {
+                        let stratum_label = if first_in_stratum {
+                            format!("Stratum #{stratum}")
+                        } else {
+                            "&nbsp;".to_string()
+                        };
                         out.push_str(&format!(
-                            "  <li>{} ({})</li>\n",
+                            "  <tr><td>{}</td><td>{}</td><td>{}</td></tr>\n",
+                            stratum_label,
                             html_escape(&constraint.full_name()),
                             html_escape(&constraint.abbrev()),
                         ));
+                        first_in_stratum = false;
                     }
                 }
             }
-            out.push_str("</ul>\n");
         }
+        out.push_str("</table>\n");
 
         // Section: A Priori Rankings (only when a priori data is present)
         if !apriori.is_empty() {
@@ -925,6 +934,7 @@ impl RCDResult {
                 section,
             ));
             out.push_str("<table class=\"necessity-table\">\n<tbody>\n");
+            out.push_str("  <tr><td><b>Constraint</b></td><td><b>Status</b></td></tr>\n");
             // VB6 groups by category: Necessary, UnnecessaryButFaithfulness, CompletelyUnnecessary
             let category_order = [
                 ConstraintNecessity::Necessary,
@@ -945,7 +955,7 @@ impl RCDResult {
                     };
                     out.push_str(&format!(
                         "  <tr><td>{}</td><td>{}</td></tr>\n",
-                        html_escape(&constraint.abbrev()),
+                        html_escape(&constraint.full_name()),
                         html_escape(status),
                     ));
                 }
@@ -977,10 +987,53 @@ impl RCDResult {
                 "<h2>{}. Ranking Arguments, based on the Fusional Reduction Algorithm</h2>\n",
                 section,
             ));
+
+            let basis_name = if fred.use_skeletal_basis() {
+                "Skeletal Basis"
+            } else {
+                "Most Informative Basis"
+            };
+            let purpose = if fred.use_skeletal_basis() {
+                "keep each final ranking argument as pithy as possible"
+            } else {
+                "minimize the set of final ranking arguments"
+            };
             out.push_str(&format!(
-                "<pre>{}</pre>\n",
-                html_escape(&fred.format_section_fred(section))
+                "<p>This run sought to obtain the {basis_name}, intended to {purpose}.</p>\n"
             ));
+
+            if fred.failure() {
+                out.push_str(
+                    "<p>The constraints cannot be ranked to yield the desired outcomes.</p>\n",
+                );
+            }
+
+            if !fred.detail_text.is_empty() {
+                let basis_label = if fred.use_skeletal_basis() {
+                    "Skeletal Basis"
+                } else {
+                    "Most Informative Basis"
+                };
+                out.push_str(&format!(
+                    "<pre>{}</pre>\n<p>Ranking argumentation: Final result</p>\n\
+                     <p>The following set of ERCs forms the {} for the ERC set as a whole, \
+                     and thus encapsulates the available ranking information.</p>\n",
+                    html_escape(&fred.detail_text),
+                    html_escape(basis_label),
+                ));
+            }
+
+            out.push_str("<p>The final rankings obtained are as follows:</p>\n");
+
+            // VB6 renders rankings as a 2-column table (ranking | &nbsp;)
+            out.push_str("<table>\n");
+            for ranking in fred.ranking_strings() {
+                out.push_str(&format!(
+                    "  <tr><td>{}</td><td>&nbsp;</td></tr>\n",
+                    html_escape(&ranking)
+                ));
+            }
+            out.push_str("</table>\n");
         }
 
         // Section: Mini-Tableaux
