@@ -410,7 +410,8 @@ impl GlaResult {
                 .to_string()
                 .to_lowercase()
         ));
-        out.push_str("OTSoft 2.7, release date 2/1/2026\n\n\n");
+        out.push_str(crate::VERSION_STRING);
+        out.push_str("\n\n\n");
 
         // Parameters
         out.push_str("Parameters:\n");

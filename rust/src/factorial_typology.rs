@@ -439,7 +439,8 @@ impl FactorialTypologyResult {
                 .to_string()
                 .to_lowercase()
         ));
-        out.push_str("OTSoft 2.7, release date 2/1/2026\n\n");
+        out.push_str(crate::VERSION_STRING);
+        out.push_str("\n\n");
         out.push_str(&format!("Source file:  {}\n\n\n", filename));
 
         // ── 1. Constraints ────────────────────────────────────────────────────

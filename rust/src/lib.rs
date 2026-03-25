@@ -18,6 +18,9 @@
 
 use wasm_bindgen::prelude::*;
 
+/// Version string matching the original VB6 application.
+pub(crate) const VERSION_STRING: &str = "OTSoft 2.7, release date 2/1/2026";
+
 /// Options for the Noisy Harmonic Grammar algorithm.
 #[wasm_bindgen]
 pub struct NhgOptions {
@@ -326,11 +329,10 @@ pub fn parse_tableau(text: &str) -> Result<Tableau, String> {
 #[wasm_bindgen]
 pub fn run_rcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
     let tableau = Tableau::parse(text)?;
-    if apriori_text.trim().is_empty() {
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
+    if apriori.is_empty() {
         Ok(tableau.run_rcd())
     } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
         Ok(tableau.run_rcd_with_apriori(&apriori))
     }
 }
@@ -345,18 +347,13 @@ pub fn format_rcd_output(
     fred_opts: &FredOptions,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let mut result = if apriori.is_empty() {
         tableau.run_rcd()
     } else {
         tableau.run_rcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_output_with_options(&tableau, filename, "Recursive Constraint Demotion", &apriori, true))
 }
 
@@ -367,11 +364,10 @@ pub fn format_rcd_output(
 #[wasm_bindgen]
 pub fn run_fred(text: &str, apriori_text: &str, use_mib: bool) -> Result<FRedResult, String> {
     let tableau = Tableau::parse(text)?;
-    if apriori_text.trim().is_empty() {
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
+    if apriori.is_empty() {
         Ok(tableau.run_fred(use_mib))
     } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
         Ok(tableau.run_fred_with_apriori(use_mib, &apriori))
     }
 }
@@ -380,11 +376,10 @@ pub fn run_fred(text: &str, apriori_text: &str, use_mib: bool) -> Result<FRedRes
 #[wasm_bindgen]
 pub fn format_fred_output(text: &str, _filename: &str, apriori_text: &str, use_mib: bool) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let result = if apriori_text.trim().is_empty() {
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
+    let result = if apriori.is_empty() {
         tableau.run_fred(use_mib)
     } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
         tableau.run_fred_with_apriori(use_mib, &apriori)
     };
     Ok(result.format_section_fred(4))
@@ -450,18 +445,13 @@ pub fn format_rcd_html_output(
     axis_mode: AxisMode,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let mut result = if apriori.is_empty() {
         tableau.run_rcd()
     } else {
         tableau.run_rcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_html_output_full(&tableau, filename, "Recursive Constraint Demotion", axis_mode, &apriori))
 }
 
@@ -476,7 +466,7 @@ pub fn format_bcd_html_output(
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
-    result.apply_fred_options(&tableau, &[], fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_html_output_with_options(&tableau, filename, "Biased Constraint Demotion", axis_mode))
 }
 
@@ -491,18 +481,13 @@ pub fn format_lfcd_html_output(
     axis_mode: AxisMode,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let mut result = if apriori.is_empty() {
         tableau.run_lfcd()
     } else {
         tableau.run_lfcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_html_output_full(
         &tableau,
         filename,
@@ -522,7 +507,7 @@ pub fn format_bcd_output(
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
-    result.apply_fred_options(&tableau, &[], fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_output_with_algorithm(&tableau, filename, "Biased Constraint Demotion"))
 }
 
@@ -531,11 +516,10 @@ pub fn format_bcd_output(
 #[wasm_bindgen]
 pub fn run_lfcd(text: &str, apriori_text: &str) -> Result<RCDResult, String> {
     let tableau = Tableau::parse(text)?;
-    if apriori_text.trim().is_empty() {
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
+    if apriori.is_empty() {
         Ok(tableau.run_lfcd())
     } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        let apriori = apriori::parse_apriori(apriori_text, &abbrevs)?;
         Ok(tableau.run_lfcd_with_apriori(&apriori))
     }
 }
@@ -550,18 +534,13 @@ pub fn format_lfcd_output(
     fred_opts: &FredOptions,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let mut result = if apriori.is_empty() {
         tableau.run_lfcd()
     } else {
         tableau.run_lfcd_with_apriori(&apriori)
     };
-    result.apply_fred_options(&tableau, &apriori, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
+    result.apply_fred_options(&tableau, fred_opts.include_fred, fred_opts.use_mib, fred_opts.show_details, fred_opts.include_mini_tableaux);
     Ok(result.format_output_with_options(
         &tableau,
         filename,
@@ -583,12 +562,7 @@ pub fn format_sorted_input_file(
     algorithm: &str,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let result = match algorithm {
         "rcd" => {
             if apriori.is_empty() { tableau.run_rcd() } else { tableau.run_rcd_with_apriori(&apriori) }
@@ -642,13 +616,17 @@ pub fn format_gla_multiple_runs_output(
     Ok(tableau.format_collate_runs_output(run_count as usize, &sched, &apriori, opts))
 }
 
-pub(crate) fn parse_gla_apriori(tableau: &Tableau, opts: &GlaOptions) -> Result<Vec<Vec<bool>>, String> {
-    let text = opts.apriori_text();
-    if text.trim().is_empty() {
-        return Ok(vec![]);
+/// Parse an a priori rankings file. Returns an empty Vec if the text is blank.
+pub(crate) fn parse_apriori_text(tableau: &Tableau, apriori_text: &str) -> Result<Vec<Vec<bool>>, String> {
+    if apriori_text.trim().is_empty() {
+        return Ok(Vec::new());
     }
     let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-    apriori::parse_apriori(&text, &abbrevs)
+    apriori::parse_apriori(apriori_text, &abbrevs)
+}
+
+pub(crate) fn parse_gla_apriori(tableau: &Tableau, opts: &GlaOptions) -> Result<Vec<Vec<bool>>, String> {
+    parse_apriori_text(tableau, &opts.apriori_text())
 }
 
 pub(crate) fn build_gla_schedule(opts: &GlaOptions) -> Result<schedule::LearningSchedule, String> {
@@ -679,12 +657,7 @@ pub fn validate_learning_schedule(text: &str) -> Result<String, String> {
 #[wasm_bindgen]
 pub fn run_factorial_typology(text: &str, apriori_text: &str) -> Result<FactorialTypologyResult, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     Ok(tableau.run_factorial_typology(&apriori))
 }
 
@@ -698,12 +671,7 @@ pub fn format_factorial_typology_output(
     opts: &FtOptions,
 ) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let result = tableau.run_factorial_typology(&apriori);
     let mut out = result.format_output(&tableau, filename, &apriori, opts.include_full_listing);
     if opts.include_full_listing {
@@ -723,12 +691,7 @@ pub fn format_factorial_typology_output(
 #[wasm_bindgen]
 pub fn format_ft_sum(text: &str, apriori_text: &str) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let result = tableau.run_factorial_typology(&apriori);
     Ok(result.format_ftsum(&tableau))
 }
@@ -742,12 +705,7 @@ pub fn format_ft_sum(text: &str, apriori_text: &str) -> Result<String, String> {
 #[wasm_bindgen]
 pub fn format_compact_sum_output(text: &str, apriori_text: &str) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let result = tableau.run_factorial_typology(&apriori);
     Ok(result.format_compact_sum(&tableau))
 }
@@ -825,12 +783,7 @@ pub fn gla_hasse_dot(text: &str, ranking_values: Vec<f64>) -> Result<String, Str
 #[wasm_bindgen]
 pub fn fred_hasse_dot(text: &str, apriori_text: &str, use_mib: bool) -> Result<String, String> {
     let tableau = Tableau::parse(text)?;
-    let apriori = if apriori_text.trim().is_empty() {
-        Vec::new()
-    } else {
-        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-        apriori::parse_apriori(apriori_text, &abbrevs)?
-    };
+    let apriori = parse_apriori_text(&tableau, apriori_text)?;
     let fred_result = if apriori.is_empty() {
         tableau.run_fred(use_mib)
     } else {

@@ -9,6 +9,9 @@ use crate::tableau::Tableau;
 use crate::fred::FRedResult;
 use crate::AxisMode;
 
+/// Broken bar (¦, U+00A6) — used by VB6 as the separator in ranked constraint lists.
+const BROKEN_BAR: char = '\u{00A6}';
+
 // ── HTML output constants ────────────────────────────────────────────────────
 
 /// Embedded CSS for the HTML tableau document.
@@ -221,7 +224,6 @@ impl RCDResult {
     pub(crate) fn apply_fred_options(
         &mut self,
         tableau: &Tableau,
-        _apriori: &[Vec<bool>],
         include_fred: bool,
         use_mib: bool,
         verbose: bool,
@@ -399,7 +401,8 @@ impl RCDResult {
         // Date and version (current date/time and version)
         let now = chrono::Local::now();
         output.push_str(&format!("{}\n\n", now.format("%-m-%-d-%Y, %-I:%M %p").to_string().to_lowercase()));
-        output.push_str("OTSoft 2.7, release date 2/1/2026\n");
+        output.push_str(crate::VERSION_STRING);
+        output.push('\n');
         output.push_str("\n\n");
 
         if self.tie_warning {
@@ -481,8 +484,6 @@ impl RCDResult {
 
             // Build constraint header with stratum separators
             // Use broken bar character (U+00A6) for within-stratum, | for between-strata
-            let sep_char = '\u{00A6}'; // Broken bar (¦)
-
             let mut header = String::new();
 
             // Calculate max candidate width for alignment
@@ -509,7 +510,7 @@ impl RCDResult {
                     if c_stratum != prev_stratum {
                         header.push('|');
                     } else {
-                        header.push(sep_char);
+                        header.push(BROKEN_BAR);
                     }
                 }
 
@@ -553,7 +554,7 @@ impl RCDResult {
                         if c_stratum != prev_stratum {
                             output.push('|');
                         } else {
-                            output.push(sep_char);
+                            output.push(BROKEN_BAR);
                         }
                     }
 
@@ -699,7 +700,7 @@ impl RCDResult {
         self.vb6_sort_constraint_slice(&mut sorted_constraints);
 
         // Build header with only included constraints
-        let sep_char = '\u{00A6}'; // Broken bar (¦)
+
         let max_cand_width = winner.form.len().max(loser.form.len()).max(2);
 
         let mut header = String::new();
@@ -718,7 +719,7 @@ impl RCDResult {
                 if c_stratum != prev_stratum {
                     header.push('|');
                 } else {
-                    header.push(sep_char);
+                    header.push(BROKEN_BAR);
                 }
             }
 
@@ -741,7 +742,7 @@ impl RCDResult {
                 if c_stratum != prev_stratum {
                     output.push('|');
                 } else {
-                    output.push(sep_char);
+                    output.push(BROKEN_BAR);
                 }
             }
 
@@ -764,7 +765,7 @@ impl RCDResult {
                 if c_stratum != prev_stratum {
                     output.push('|');
                 } else {
-                    output.push(sep_char);
+                    output.push(BROKEN_BAR);
                 }
             }
 
@@ -806,7 +807,8 @@ impl RCDResult {
         out.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
         out.push_str("<meta charset=\"UTF-8\">\n");
         out.push_str(&format!(
-            "<title>OTSoft 2.7 {}</title>\n",
+            "<title>{} {}</title>\n",
+            crate::VERSION_STRING,
             html_escape(filename)
         ));
         out.push_str(HTML_STYLE);
@@ -821,7 +823,7 @@ impl RCDResult {
         let now = chrono::Local::now();
         let timestamp = now.format("%-m-%-d-%Y, %-I:%M %p").to_string().to_lowercase();
         out.push_str(&format!("<p>{}</p>\n", html_escape(&timestamp)));
-        out.push_str("<p>OTSoft 2.7, release date 2/1/2026</p>\n");
+        out.push_str(&format!("<p>{}</p>\n", crate::VERSION_STRING));
 
         if self.tie_warning {
             out.push_str(
