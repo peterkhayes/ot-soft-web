@@ -35,6 +35,6 @@ Each test case has:
 ## Comparison Strategies
 
 - **Text**: Normalizes dates/versions, collapses whitespace, rounds floats to 4 decimal places, collapses 3+ blank lines to 2.
-- **HTML**: Extracts semantic cell grids (text content + CSS shading class) from `<table>` elements, ignoring structural HTML differences.
+- **HTML**: Extracts semantic cell grids by splitting on `</table>` boundaries and `<td`/`<th` openings (handles VB6's malformed HTML). Filters to shaded tables only, normalizes CSS classes to border/no-border, and compares mini-tableaux in sorted order with canonicalized column positions.
 
 Tests skip gracefully when golden files are missing.

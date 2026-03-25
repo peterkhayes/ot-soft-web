@@ -381,7 +381,6 @@
     {
       "id": "TinyIllustrativeFile_rcd_defaults_html",
       "description": "RCD with default settings — HTML tableaux (semantic cell comparison)",
-      "skip": "VB6 golden HTML uses bare <tr>/<td> without <table> wrappers; extract_html_tables finds 0 tables. See tasks/conformance-html-table-extraction.md",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "rcd",
@@ -397,7 +396,6 @@
     {
       "id": "TinyIllustrativeFile_bcd_defaults_html",
       "description": "BCD with default settings — HTML tableaux (semantic cell comparison)",
-      "skip": "VB6 golden HTML uses bare <tr>/<td> without <table> wrappers; extract_html_tables finds 0 tables. See tasks/conformance-html-table-extraction.md",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "bcd",
@@ -414,7 +412,6 @@
     {
       "id": "TinyIllustrativeFile_lfcd_defaults_html",
       "description": "LFCD with default settings — HTML tableaux (semantic cell comparison)",
-      "skip": "VB6 golden HTML uses bare <tr>/<td> without <table> wrappers; extract_html_tables finds 0 tables. See tasks/conformance-html-table-extraction.md",
       "input_file": "examples/TinyIllustrativeFile.txt",
       "apriori_file": null,
       "algorithm": "lfcd",
@@ -430,7 +427,6 @@
     {
       "id": "ilokano_rcd_defaults_html",
       "description": "RCD with default settings — HTML tableaux (Ilokano, semantic cell comparison)",
-      "skip": "VB6 golden HTML uses bare <tr>/<td> without <table> wrappers; extract_html_tables finds 0 tables. See tasks/conformance-html-table-extraction.md",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "rcd",

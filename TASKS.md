@@ -21,6 +21,5 @@
 
 - [Collect remaining VB6 golden files](tasks/golden-files.md)
 - [Edge case test examples](tasks/edge-case-examples.md)
-- [Conformance: HTML table extraction for VB6 golden files](tasks/conformance-html-table-extraction.md)
 - [Conformance: Ilokano constraint ordering within strata](tasks/conformance-ilokano-constraint-order.md)
 - [Collect golden files for BasicRCD_FT and Anttila examples](tasks/collect-basicrcd-anttila-golden.md)
