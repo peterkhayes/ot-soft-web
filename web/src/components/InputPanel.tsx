@@ -97,6 +97,7 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            aria-label="Drop a file here to replace the current file"
           >
             <svg
               className="file-loaded-icon"
@@ -121,6 +122,7 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            aria-label="Choose a file or drag and drop"
           >
             <svg
               className="upload-icon"

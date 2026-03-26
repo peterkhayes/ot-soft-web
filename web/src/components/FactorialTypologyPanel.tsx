@@ -11,6 +11,7 @@ import {
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import type { ResultState } from '../types.ts'
 import { makeOutputFilename } from '../utils.ts'
 import { type FtDefaults, ftDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
@@ -53,17 +54,7 @@ interface FtResultData {
   nonImplicators: { input: string; candidate: string }[]
 }
 
-interface FtResultState {
-  data: FtResultData
-  error?: undefined
-}
-
-interface FtErrorState {
-  error: string
-  data?: undefined
-}
-
-type FtState = FtResultState | FtErrorState
+type FtState = ResultState<{ data: FtResultData }>
 
 type FtParams = FtDefaults
 

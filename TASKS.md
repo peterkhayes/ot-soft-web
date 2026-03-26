@@ -34,8 +34,8 @@
 - ~~Use useLocalStorage hook consistently in App.tsx~~
 - ~~Extract responsive breakpoint constants~~ (already done)
 - [Break up GlaPanel.tsx](tasks/cq-gla-panel-split.md)
-- [Standardize result state types with a generic](tasks/cq-generic-result-state.md)
-- [Add aria-labels to interactive SVG elements](tasks/cq-aria-labels.md)
+- ~~Standardize result state types with a generic~~
+- ~~Add aria-labels to interactive SVG elements~~
 
 ## Testing
 

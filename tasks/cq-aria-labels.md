@@ -1,3 +1,7 @@
+---
+status: done
+---
+
 # Add aria-labels to interactive SVG elements
 
 Several interactive elements lack accessibility attributes:

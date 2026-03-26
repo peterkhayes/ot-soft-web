@@ -13,6 +13,7 @@ web/
 │   ├── main.tsx            # Entry point
 │   ├── App.tsx             # Layout, WASM init, framework routing
 │   ├── constants.ts        # TINY_EXAMPLE tableau
+│   ├── types.ts            # Shared types (ResultState<T> generic)
 │   ├── utils.ts            # Shared helpers (makeOutputFilename, isAtDefaults)
 │   ├── contexts/
 │   │   ├── downloadContext.ts     # Injectable text download (DownloadProvider, useDownload)

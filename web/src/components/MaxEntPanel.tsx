@@ -5,6 +5,7 @@ import { format_maxent_output, MaxEntOptions, MaxEntRunner } from '../../pkg/ot_
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type MaxEntDefaults, maxentDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
@@ -31,15 +32,9 @@ interface MaxEntResultState {
   logProb: number
   history?: string
   outputProbHistory?: string
-  error?: undefined
 }
 
-interface MaxEntErrorState {
-  error: string
-  weights?: undefined
-}
-
-type MaxEntState = MaxEntResultState | MaxEntErrorState
+type MaxEntState = ResultState<MaxEntResultState>
 
 type MaxEntParams = MaxEntDefaults
 

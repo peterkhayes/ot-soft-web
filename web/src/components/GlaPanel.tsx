@@ -13,6 +13,7 @@ import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type GlaDefaults, glaDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
@@ -40,15 +41,9 @@ interface GlaResultState {
   history?: string
   fullHistory?: string
   candidateProbHistory?: string
-  error?: undefined
 }
 
-interface GlaErrorState {
-  error: string
-  values?: undefined
-}
-
-type GlaState = GlaResultState | GlaErrorState
+type GlaState = ResultState<GlaResultState>
 
 type GlaParams = GlaDefaults
 

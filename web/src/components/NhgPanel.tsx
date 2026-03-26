@@ -6,6 +6,7 @@ import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type NhgDefaults, nhgDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
@@ -36,15 +37,9 @@ interface NhgResultState {
   zeroPredictionWarning: boolean
   history?: string
   fullHistory?: string
-  error?: undefined
 }
 
-interface NhgErrorState {
-  error: string
-  weights?: undefined
-}
-
-type NhgState = NhgResultState | NhgErrorState
+type NhgState = ResultState<NhgResultState>
 
 type NhgParams = NhgDefaults
 

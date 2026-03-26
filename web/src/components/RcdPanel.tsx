@@ -18,6 +18,7 @@ import {
 } from '../../pkg/ot_soft.js'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
+import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type RcdDefaults, rcdDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
@@ -40,18 +41,9 @@ interface RcdResultState {
   strata: StratumData[]
   tieWarning: boolean
   hasseDot?: string
-  error?: undefined
 }
 
-interface RcdErrorState {
-  error: string
-  success?: undefined
-  strata?: undefined
-  tieWarning?: undefined
-  hasseDot?: undefined
-}
-
-type RcdState = RcdResultState | RcdErrorState
+type RcdState = ResultState<RcdResultState>
 
 type Algorithm = 'rcd' | 'bcd' | 'bcd-specific' | 'lfcd'
 
@@ -236,6 +228,7 @@ function RcdPanel({
           value={algorithm}
           onChange={(e) => setParams({ algorithm: e.target.value as Algorithm })}
           title={ALGORITHM_DESCRIPTIONS[algorithm]}
+          aria-label="Algorithm"
         >
           <option value="rcd">RCD</option>
           <option value="bcd">BCD</option>
