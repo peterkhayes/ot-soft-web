@@ -22,6 +22,7 @@ function RunButton({ isLoading, onClick, label, disabled }: RunButtonProps) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
         >
           <path d="M5 22h14" />
           <path d="M5 2h14" />
@@ -35,6 +36,7 @@ function RunButton({ isLoading, onClick, label, disabled }: RunButtonProps) {
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden="true"
         >
           <polygon points="5 3 19 12 5 21 5 3" />
         </svg>

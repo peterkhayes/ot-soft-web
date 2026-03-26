@@ -104,6 +104,7 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
+              aria-hidden="true"
             >
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
@@ -127,6 +128,7 @@ function InputPanel({ onTableauLoaded, onParseError, onReset, loadedFilename }: 
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
+              aria-hidden="true"
             >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>

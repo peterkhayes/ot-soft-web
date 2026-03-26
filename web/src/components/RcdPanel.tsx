@@ -325,6 +325,7 @@ function RcdPanel({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M5 22h14" />
               <path d="M5 2h14" />
@@ -338,6 +339,7 @@ function RcdPanel({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
@@ -362,6 +364,7 @@ function RcdPanel({
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            aria-hidden="true"
           >
             <polyline points="1 4 1 10 7 10"></polyline>
             <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>

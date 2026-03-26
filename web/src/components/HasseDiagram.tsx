@@ -99,13 +99,14 @@ function HasseDiagram({ dotString, downloadName = 'HasseDiagram' }: HasseDiagram
       <div className="hasse-header">
         <h3 className="hasse-title">Hasse Diagram</h3>
         <div className="hasse-actions">
-          <button className="hasse-export-button" onClick={handleDownloadSvg} disabled={!svgEl}>
+          <button className="hasse-export-button" onClick={handleDownloadSvg} disabled={!svgEl} aria-label="Download SVG">
             <svg
               className="button-icon"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -113,13 +114,14 @@ function HasseDiagram({ dotString, downloadName = 'HasseDiagram' }: HasseDiagram
             </svg>
             SVG
           </button>
-          <button className="hasse-export-button" onClick={handleDownloadPng} disabled={!svgEl}>
+          <button className="hasse-export-button" onClick={handleDownloadPng} disabled={!svgEl} aria-label="Download PNG">
             <svg
               className="button-icon"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>

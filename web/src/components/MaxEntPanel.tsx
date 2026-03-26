@@ -309,6 +309,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            aria-hidden="true"
           >
             <polyline points="1 4 1 10 7 10"></polyline>
             <path d="M3.51 15a9 9 0 1 0 .49-4.99"></path>
