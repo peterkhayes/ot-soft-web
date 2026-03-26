@@ -18,49 +18,18 @@ import {
 } from '../../pkg/ot_soft.js'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
-import { type RcdDefaults, rcdDefaults } from '../wasmDefaults.ts'
+import { rcdDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
-import HasseDiagram from './HasseDiagram.tsx'
-import TextFileEditor from './TextFileEditor.tsx'
+import RcdOptions from './rcd/RcdOptions.tsx'
+import RcdResults from './rcd/RcdResults.tsx'
+import { ALGORITHM_LABELS, type RcdParams, type RcdState } from './rcd/types.ts'
 
 interface RcdPanelProps {
   tableau: Tableau
   tableauText: string
   inputFilename: string | null
   axisMode?: AxisMode
-}
-
-interface StratumData {
-  constraints: { abbrev: string; fullName: string }[]
-}
-
-interface RcdResultState {
-  success: boolean
-  strata: StratumData[]
-  tieWarning: boolean
-  hasseDot?: string
-}
-
-type RcdState = ResultState<RcdResultState>
-
-type Algorithm = 'rcd' | 'bcd' | 'bcd-specific' | 'lfcd'
-
-type RcdParams = RcdDefaults
-
-const ALGORITHM_LABELS: Record<Algorithm, string> = {
-  rcd: 'RCD',
-  bcd: 'BCD',
-  'bcd-specific': 'BCD (Specific)',
-  lfcd: 'LFCD',
-}
-
-const ALGORITHM_DESCRIPTIONS: Record<Algorithm, string> = {
-  rcd: 'Recursive Constraint Demotion',
-  bcd: 'Biased Constraint Demotion',
-  'bcd-specific': 'Biased Constraint Demotion (favors specific faithfulness)',
-  lfcd: 'Low Faithfulness Constraint Demotion',
 }
 
 function RcdPanel({
@@ -95,7 +64,7 @@ function RcdPanel({
         const numStrata = result.num_strata()
         const constraintCount = tableau.constraint_count()
 
-        const strata: StratumData[] = []
+        const strata: { constraints: { abbrev: string; fullName: string }[] }[] = []
         for (let s = 0; s < numStrata; s++) {
           strata.push({ constraints: [] })
         }
@@ -135,14 +104,19 @@ function RcdPanel({
     }, 0)
   }
 
+  function buildFredOpts(): FredOptions {
+    const fredOpts = new FredOptions()
+    fredOpts.include_fred = includeFred
+    fredOpts.use_mib = useMib
+    fredOpts.show_details = showDetails
+    fredOpts.include_mini_tableaux = includeMiniTableaux
+    return fredOpts
+  }
+
   function handleDownload() {
     try {
       const apriori = supportsApriori ? aprioriText : ''
-      const fredOpts = new FredOptions()
-      fredOpts.include_fred = includeFred
-      fredOpts.use_mib = useMib
-      fredOpts.show_details = showDetails
-      fredOpts.include_mini_tableaux = includeMiniTableaux
+      const fredOpts = buildFredOpts()
       const formattedOutput =
         algorithm === 'rcd'
           ? format_rcd_output(tableauText, inputFilename || 'tableau.txt', apriori, fredOpts)
@@ -165,11 +139,7 @@ function RcdPanel({
   function handleDownloadHtml() {
     try {
       const apriori = supportsApriori ? aprioriText : ''
-      const fredOpts = new FredOptions()
-      fredOpts.include_fred = includeFred
-      fredOpts.use_mib = useMib
-      fredOpts.show_details = showDetails
-      fredOpts.include_mini_tableaux = includeMiniTableaux
+      const fredOpts = buildFredOpts()
       const htmlContent =
         algorithm === 'rcd'
           ? format_rcd_html_output(
@@ -221,87 +191,14 @@ function RcdPanel({
         <span className="panel-number">04</span>
       </div>
 
-      <div className="nhg-options">
-        <div className="nhg-options-label">Algorithm</div>
-        <select
-          className="algorithm-select"
-          value={algorithm}
-          onChange={(e) => setParams({ algorithm: e.target.value as Algorithm })}
-          title={ALGORITHM_DESCRIPTIONS[algorithm]}
-          aria-label="Algorithm"
-        >
-          <option value="rcd">RCD</option>
-          <option value="bcd">BCD</option>
-          <option value="bcd-specific">BCD (Specific)</option>
-          <option value="lfcd">LFCD</option>
-        </select>
-      </div>
-
-      <div className="nhg-options">
-        <div className="nhg-options-label">Ranking argumentation</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={includeFred}
-            onChange={(e) => setParams({ includeFred: e.target.checked })}
-          />
-          Include ranking arguments
-        </label>
-        {includeFred && (
-          <>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={useMib}
-                onChange={(e) => setParams({ useMib: e.target.checked })}
-              />
-              Use Most Informative Basis
-            </label>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={showDetails}
-                onChange={(e) => setParams({ showDetails: e.target.checked })}
-              />
-              Show details of argumentation
-            </label>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={includeMiniTableaux}
-                onChange={(e) => setParams({ includeMiniTableaux: e.target.checked })}
-              />
-              Include illustrative mini-tableaux
-            </label>
-          </>
-        )}
-      </div>
-
-      {supportsApriori && (
-        <div className="nhg-options">
-          <div className="nhg-options-label">A priori rankings</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={showApriori}
-              onChange={(e) => {
-                setShowApriori(e.target.checked)
-                if (!e.target.checked) setAprioriText('')
-              }}
-            />
-            Use a priori rankings
-          </label>
-          {showApriori && (
-            <TextFileEditor
-              value={aprioriText}
-              onChange={setAprioriText}
-              hint="Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
-              placeholder="Load from file or paste content here…"
-              testId="rcd-apriori-file-input"
-            />
-          )}
-        </div>
-      )}
+      <RcdOptions
+        params={params}
+        setParams={setParams}
+        aprioriText={aprioriText}
+        setAprioriText={setAprioriText}
+        showApriori={showApriori}
+        setShowApriori={setShowApriori}
+      />
 
       <div className="action-bar">
         <button
@@ -343,7 +240,9 @@ function RcdPanel({
           <>
             <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
             <DownloadButton onClick={handleDownloadHtml}>Download HTML</DownloadButton>
-            <DownloadButton onClick={handleDownloadSortedInput}>Download Sorted Input</DownloadButton>
+            <DownloadButton onClick={handleDownloadSortedInput}>
+              Download Sorted Input
+            </DownloadButton>
           </>
         )}
         <button
@@ -370,41 +269,10 @@ function RcdPanel({
         (rcdResult.error ? (
           <div className="rcd-status failure">Error running algorithm: {rcdResult.error}</div>
         ) : (
-          <div className="rcd-results">
-            <div className={`rcd-status ${rcdResult.success ? 'success' : 'failure'}`}>
-              {rcdResult.success
-                ? 'A ranking was found that generates the correct outputs'
-                : 'Failed to find a valid ranking'}
-            </div>
-
-            {rcdResult.tieWarning && (
-              <div className="rcd-status warning">
-                Caution: BCD selected arbitrarily among tied faithfulness constraint subsets. Try
-                changing the order of faithfulness constraints in the input file to see whether this
-                results in a different ranking.
-              </div>
-            )}
-
-            {rcdResult.strata!.map((stratum, s) => (
-              <div className="stratum" key={s}>
-                <div className="stratum-header">Stratum {s + 1}</div>
-                <div className="constraint-list">
-                  {stratum.constraints.map((constraint, i) => (
-                    <div className="constraint-item" key={i}>
-                      <span className="abbrev">{constraint.abbrev}</span>
-                      <span className="full-name">({constraint.fullName})</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {rcdResult.hasseDot && (
-              <HasseDiagram
-                dotString={rcdResult.hasseDot}
-                downloadName={`${inputFilename ? inputFilename.replace(/\.[^.]+$/, '') : 'tableau'}Hasse`}
-              />
-            )}
-          </div>
+          <RcdResults
+            result={rcdResult as import('./rcd/types.ts').RcdResultState}
+            inputFilename={inputFilename}
+          />
         ))}
     </section>
   )

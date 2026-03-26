@@ -11,52 +11,20 @@ import {
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import type { ResultState } from '../types.ts'
 import { makeOutputFilename } from '../utils.ts'
-import { type FtDefaults, ftDefaults } from '../wasmDefaults.ts'
+import { ftDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
+import FtOptionsComponent from './ft/FtOptions.tsx'
+import FtResults from './ft/FtResults.tsx'
+import type { FtParams, FtResultData, FtState, FtTOrderEntry, FtWinnersRow } from './ft/types.ts'
 import RunButton from './RunButton.tsx'
 import RunnerProgressBar from './RunnerProgressBar.tsx'
-import TextFileEditor from './TextFileEditor.tsx'
 
 interface FactorialTypologyPanelProps {
   tableau: Tableau
   tableauText: string
   inputFilename: string | null
 }
-
-interface FtCandidate {
-  form: string
-  isWinner: boolean
-  derivable: boolean
-}
-
-interface FtWinnersRow {
-  formInput: string
-  candidates: FtCandidate[]
-}
-
-interface FtTOrderEntry {
-  implicatorInput: string
-  implicatorCandidate: string
-  implicatedInput: string
-  implicatedCandidate: string
-}
-
-interface FtResultData {
-  patternCount: number
-  constraintCount: number
-  formInputs: string[]
-  patterns: { candidates: string[]; isWinner: boolean[] }[]
-  winners: FtWinnersRow[]
-  torder: FtTOrderEntry[]
-  alwaysWinners: { input: string; candidate: string }[]
-  nonImplicators: { input: string; candidate: string }[]
-}
-
-type FtState = ResultState<{ data: FtResultData }>
-
-type FtParams = FtDefaults
 
 function FactorialTypologyPanel({
   tableau,
@@ -179,7 +147,7 @@ function FactorialTypologyPanel({
         : null
   const isLoading = runnerState.status === 'running'
 
-  const successResult = result && !result.error ? result.data : null
+  const successResult: FtResultData | null = result && !result.error ? (result.data ?? null) : null
 
   function handleDownload() {
     try {
@@ -221,59 +189,14 @@ function FactorialTypologyPanel({
         <span className="panel-number">05</span>
       </div>
 
-      <div className="nhg-options">
-        <div className="nhg-options-label">Output options</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={includeFullListing}
-            onChange={(e) => setParams({ includeFullListing: e.target.checked })}
-          />
-          Include rankings in results
-        </label>
-
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={includeFtsum}
-            onChange={(e) => setParams({ includeFtsum: e.target.checked })}
-          />
-          Generate FTSum file
-        </label>
-
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={includeCompactSum}
-            onChange={(e) => setParams({ includeCompactSum: e.target.checked })}
-          />
-          Generate CompactSum file
-        </label>
-      </div>
-
-      <div className="nhg-options">
-        <div className="nhg-options-label">A priori rankings</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={showApriori}
-            onChange={(e) => {
-              setShowApriori(e.target.checked)
-              if (!e.target.checked) setAprioriText('')
-            }}
-          />
-          Use a priori rankings
-        </label>
-        {showApriori && (
-          <TextFileEditor
-            value={aprioriText}
-            onChange={setAprioriText}
-            hint="Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
-            placeholder="Load from file or paste content here…"
-            testId="ft-apriori-file-input"
-          />
-        )}
-      </div>
+      <FtOptionsComponent
+        params={params}
+        setParams={setParams}
+        aprioriText={aprioriText}
+        setAprioriText={setAprioriText}
+        showApriori={showApriori}
+        setShowApriori={setShowApriori}
+      />
 
       <div className="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run Factorial Typology" />
@@ -296,145 +219,7 @@ function FactorialTypologyPanel({
         <div className="rcd-status failure">Error running Factorial Typology: {result.error}</div>
       )}
 
-      {successResult && (
-        <div className="ft-results">
-          {/* Summary */}
-          <div className="ft-summary">
-            <span className="ft-summary-count">{successResult.patternCount}</span> output{' '}
-            {successResult.patternCount === 1 ? 'pattern' : 'patterns'} found
-          </div>
-
-          {successResult.patternCount > 0 && (
-            <>
-              {/* Patterns table */}
-              <div className="ft-section">
-                <div className="ft-section-header">Output Patterns</div>
-                <p className="ft-section-note">
-                  Forms marked as winners in the input are marked with ›.
-                </p>
-                <div className="ft-patterns-scroll">
-                  <table className="ft-patterns-table">
-                    <thead>
-                      <tr>
-                        <th className="ft-input-col">Input</th>
-                        {successResult.patterns.map((_, pi) => (
-                          <th key={pi} className="ft-pattern-col">
-                            Output #{pi + 1}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {successResult.formInputs.map((input, fi) => (
-                        <tr key={fi}>
-                          <td className="ft-input-cell">/{input}/</td>
-                          {successResult.patterns.map((pattern, pi) => (
-                            <td
-                              key={pi}
-                              className={`ft-pattern-cell${pattern.isWinner[fi] ? ' ft-pattern-cell--winner' : ''}`}
-                            >
-                              {pattern.isWinner[fi] && <span className="ft-winner-marker">›</span>}
-                              {pattern.candidates[fi]}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* List of winners */}
-              <div className="ft-section">
-                <div className="ft-section-header">List of Winners</div>
-                <p className="ft-section-note">
-                  For each candidate, whether there is at least one ranking that derives it.
-                </p>
-                <div className="ft-winners">
-                  {successResult.winners.map((row, fi) => (
-                    <div className="ft-winners-row" key={fi}>
-                      <div className="ft-winners-input">/{row.formInput}/</div>
-                      <div className="ft-winners-candidates">
-                        {row.candidates.map((cand, ci) => (
-                          <div className="ft-winners-candidate" key={ci}>
-                            {cand.isWinner && <span className="ft-winner-marker">›</span>}
-                            <span className="ft-cand-form">{cand.form}</span>
-                            <span
-                              className={`ft-derivable-badge${cand.derivable ? ' ft-derivable-badge--yes' : ' ft-derivable-badge--no'}`}
-                            >
-                              {cand.derivable ? 'derivable' : 'not derivable'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* T-Order */}
-              <div className="ft-section">
-                <div className="ft-section-header">T-Order</div>
-                <p className="ft-section-note">
-                  The set of implications in the factorial typology.
-                </p>
-
-                {successResult.alwaysWinners.length > 0 && (
-                  <div className="ft-torder-note">
-                    <strong>No competition:</strong> the following forms have only one derivable
-                    output and are not listed in the t-order.
-                    <div className="ft-always-winners">
-                      {successResult.alwaysWinners.map((aw, i) => (
-                        <span className="ft-always-winner-item" key={i}>
-                          /{aw.input}/ → [{aw.candidate}]
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {successResult.torder.length === 0 ? (
-                  <div className="ft-torder-empty">No t-order implications were found.</div>
-                ) : (
-                  <table className="ft-torder-table">
-                    <thead>
-                      <tr>
-                        <th>If this input</th>
-                        <th>has this output</th>
-                        <th>then this input</th>
-                        <th>has this output</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {successResult.torder.map((entry, i) => (
-                        <tr key={i}>
-                          <td className="ft-torder-input">/{entry.implicatorInput}/</td>
-                          <td className="ft-torder-cand">[{entry.implicatorCandidate}]</td>
-                          <td className="ft-torder-input">/{entry.implicatedInput}/</td>
-                          <td className="ft-torder-cand">[{entry.implicatedCandidate}]</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-
-                {successResult.nonImplicators.length > 0 && (
-                  <div className="ft-torder-note ft-torder-note--below">
-                    <strong>Nothing implied by:</strong>
-                    <div className="ft-always-winners">
-                      {successResult.nonImplicators.map((ni, i) => (
-                        <span className="ft-always-winner-item" key={i}>
-                          /{ni.input}/ → [{ni.candidate}]
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {successResult && <FtResults result={successResult} />}
     </section>
   )
 }

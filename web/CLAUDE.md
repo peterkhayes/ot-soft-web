@@ -36,7 +36,29 @@ web/
 │       │   ├── GlaOptionsGrid.tsx        # Learning schedule, multiple runs, output options
 │       │   ├── GlaAprioriOptions.tsx     # A priori rankings
 │       │   └── GlaResults.tsx            # Result display (values, forms, Hasse, pairwise, active)
-│       ├── FactorialTypologyPanel.tsx  # Factorial Typology (Classical OT)
+│       ├── NhgPanel.tsx         # Noisy Harmonic Grammar (orchestrator)
+│       ├── nhg/                 # NHG sub-components
+│       │   ├── types.ts         # Shared types (NhgResultState, NhgParams, SetNhgParams)
+│       │   ├── NhgParameterInputs.tsx   # Cycles, plasticity, test trials
+│       │   ├── NhgNoiseOptions.tsx      # Noise variant checkboxes
+│       │   ├── NhgScheduleOptions.tsx   # Learning schedule + output options
+│       │   └── NhgResults.tsx           # Weights, forms matchup
+│       ├── RcdPanel.tsx         # Classical OT — RCD / BCD / LFCD (orchestrator)
+│       ├── rcd/                 # RCD sub-components
+│       │   ├── types.ts         # Shared types, algorithm labels/descriptions
+│       │   ├── RcdOptions.tsx   # Algorithm selector, ranking argumentation, a priori
+│       │   └── RcdResults.tsx   # Strata display, Hasse diagram
+│       ├── MaxEntPanel.tsx      # Maximum Entropy (orchestrator)
+│       ├── maxent/              # MaxEnt sub-components
+│       │   ├── types.ts         # Shared types (MaxEntResultState, MaxEntParams)
+│       │   ├── MaxEntParameterInputs.tsx  # Iterations, weight bounds
+│       │   ├── MaxEntOptions.tsx          # Prior, output options
+│       │   └── MaxEntResults.tsx          # Weights, predicted probabilities
+│       ├── FactorialTypologyPanel.tsx  # Factorial Typology (orchestrator)
+│       ├── ft/                  # Factorial Typology sub-components
+│       │   ├── types.ts         # Shared types (FtResultData, FtParams)
+│       │   ├── FtOptions.tsx    # Output options, a priori rankings
+│       │   └── FtResults.tsx    # Patterns table, winners, t-order
 │       └── HasseDiagram.tsx     # Hasse diagram viewer (lazy-loads @viz-js/viz, SVG + PNG export)
 ├── tests/
 │   ├── setup.ts            # Suite-wide beforeEach (localStorage.clear)

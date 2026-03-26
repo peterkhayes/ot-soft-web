@@ -2,17 +2,19 @@ import { useCallback, useState } from 'react'
 
 import type { Tableau } from '../../pkg/ot_soft.js'
 import { format_nhg_output, NhgOptions, NhgRunner } from '../../pkg/ot_soft.js'
-import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
-import { type NhgDefaults, nhgDefaults } from '../wasmDefaults.ts'
+import { nhgDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
+import NhgNoiseOptions from './nhg/NhgNoiseOptions.tsx'
+import NhgParameterInputs from './nhg/NhgParameterInputs.tsx'
+import NhgResults from './nhg/NhgResults.tsx'
+import NhgScheduleOptions from './nhg/NhgScheduleOptions.tsx'
+import type { NhgParams, NhgResultState, NhgState } from './nhg/types.ts'
 import RunButton from './RunButton.tsx'
 import RunnerProgressBar from './RunnerProgressBar.tsx'
-import TextFileEditor from './TextFileEditor.tsx'
 
 interface NhgPanelProps {
   tableau: Tableau
@@ -20,50 +22,8 @@ interface NhgPanelProps {
   inputFilename: string | null
 }
 
-interface NhgResultState {
-  weights: { fullName: string; abbrev: string; weight: number }[]
-  forms: {
-    input: string
-    totalFreq: number
-    candidates: {
-      form: string
-      frequency: number
-      obsPct: number
-      genCount: number
-      genPct: number
-    }[]
-  }[]
-  logLikelihood: number
-  zeroPredictionWarning: boolean
-  history?: string
-  fullHistory?: string
-}
-
-type NhgState = ResultState<NhgResultState>
-
-type NhgParams = NhgDefaults
-
 function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
   const [params, setParams] = useLocalStorage<NhgParams>('otsoft:params:nhg', nhgDefaults())
-  const {
-    cycles,
-    initialPlasticity,
-    finalPlasticity,
-    testTrials,
-    noiseByCell,
-    postMultNoise,
-    noiseForZeroCells,
-    lateNoise,
-    exponentialNhg,
-    demiGaussians,
-    negativeWeightsOk,
-    resolveTiesBySkipping,
-    exactProportions,
-    generateHistory,
-    generateFullHistory,
-    useCustomSchedule,
-    customSchedule,
-  } = params
 
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const download = useDownload()
@@ -72,44 +32,26 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
   // phase available in useMemo, so we build it lazily on demand to avoid leaking abandoned instances.
   const buildOpts = useCallback((): NhgOptions => {
     const opts = new NhgOptions()
-    opts.cycles = cycles
-    opts.initial_plasticity = initialPlasticity
-    opts.final_plasticity = finalPlasticity
-    opts.test_trials = testTrials
-    opts.noise_by_cell = noiseByCell
-    opts.post_mult_noise = postMultNoise
-    opts.noise_for_zero_cells = noiseForZeroCells
-    opts.late_noise = lateNoise
-    opts.exponential_nhg = exponentialNhg
-    opts.demi_gaussians = demiGaussians
-    opts.negative_weights_ok = negativeWeightsOk
-    opts.resolve_ties_by_skipping = resolveTiesBySkipping
-    opts.exact_proportions = exactProportions
-    opts.generate_history = generateHistory
-    opts.generate_full_history = generateFullHistory
-    if (useCustomSchedule) {
-      opts.learning_schedule = customSchedule
+    opts.cycles = params.cycles
+    opts.initial_plasticity = params.initialPlasticity
+    opts.final_plasticity = params.finalPlasticity
+    opts.test_trials = params.testTrials
+    opts.noise_by_cell = params.noiseByCell
+    opts.post_mult_noise = params.postMultNoise
+    opts.noise_for_zero_cells = params.noiseForZeroCells
+    opts.late_noise = params.lateNoise
+    opts.exponential_nhg = params.exponentialNhg
+    opts.demi_gaussians = params.demiGaussians
+    opts.negative_weights_ok = params.negativeWeightsOk
+    opts.resolve_ties_by_skipping = params.resolveTiesBySkipping
+    opts.exact_proportions = params.exactProportions
+    opts.generate_history = params.generateHistory
+    opts.generate_full_history = params.generateFullHistory
+    if (params.useCustomSchedule) {
+      opts.learning_schedule = params.customSchedule
     }
     return opts
-  }, [
-    cycles,
-    initialPlasticity,
-    finalPlasticity,
-    testTrials,
-    noiseByCell,
-    postMultNoise,
-    noiseForZeroCells,
-    lateNoise,
-    exponentialNhg,
-    demiGaussians,
-    negativeWeightsOk,
-    resolveTiesBySkipping,
-    exactProportions,
-    generateHistory,
-    generateFullHistory,
-    useCustomSchedule,
-    customSchedule,
-  ])
+  }, [params])
 
   const createRunner = useCallback(() => {
     setScheduleError(null)
@@ -211,203 +153,14 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         <span className="panel-number">04</span>
       </div>
 
-      <div className="maxent-params">
-        <label className="param-label">
-          Cycles
-          <input
-            type="number"
-            className="param-input"
-            value={cycles}
-            min={1}
-            max={10000000}
-            onChange={(e) => setParams({ cycles: Math.max(1, parseInt(e.target.value) || 1) })}
-          />
-        </label>
-        <label className="param-label">
-          Initial plasticity
-          <input
-            type="number"
-            className="param-input"
-            value={initialPlasticity}
-            min={0.0001}
-            step={0.1}
-            onChange={(e) =>
-              setParams({ initialPlasticity: Math.max(0.0001, parseFloat(e.target.value) || 2) })
-            }
-          />
-        </label>
-        <label className="param-label">
-          Final plasticity
-          <input
-            type="number"
-            className="param-input"
-            value={finalPlasticity}
-            min={0.000001}
-            step={0.001}
-            onChange={(e) =>
-              setParams({
-                finalPlasticity: Math.max(0.000001, parseFloat(e.target.value) || 0.002),
-              })
-            }
-          />
-        </label>
-        <label className="param-label">
-          Test trials
-          <input
-            type="number"
-            className="param-input"
-            value={testTrials}
-            min={1}
-            max={100000}
-            onChange={(e) =>
-              setParams({ testTrials: Math.max(1, parseInt(e.target.value) || 2000) })
-            }
-          />
-        </label>
-      </div>
-
-      <div className="nhg-options">
-        <div className="nhg-options-label">Noise variant options</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={noiseByCell}
-            onChange={(e) => setParams({ noiseByCell: e.target.checked })}
-          />
-          Apply noise by tableau cell, not by constraint
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={postMultNoise}
-            onChange={(e) => {
-              setParams(
-                e.target.checked
-                  ? { postMultNoise: true }
-                  : { postMultNoise: false, noiseForZeroCells: false },
-              )
-            }}
-          />
-          Apply noise after multiplication of weights by violations
-        </label>
-        {postMultNoise && (
-          <label className="nhg-checkbox nhg-checkbox-indent">
-            <input
-              type="checkbox"
-              checked={noiseForZeroCells}
-              onChange={(e) => setParams({ noiseForZeroCells: e.target.checked })}
-            />
-            Include noise even in cells with no violation
-          </label>
-        )}
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={lateNoise}
-            onChange={(e) => setParams({ lateNoise: e.target.checked })}
-          />
-          Add noise to candidates, after harmony calculation
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={exponentialNhg}
-            onChange={(e) => setParams({ exponentialNhg: e.target.checked })}
-          />
-          Employ Exponential NHG
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={demiGaussians}
-            onChange={(e) => setParams({ demiGaussians: e.target.checked })}
-          />
-          Use positive demi-Gaussians
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={negativeWeightsOk}
-            onChange={(e) => setParams({ negativeWeightsOk: e.target.checked })}
-          />
-          Allow constraint weights to go negative
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={resolveTiesBySkipping}
-            onChange={(e) => setParams({ resolveTiesBySkipping: e.target.checked })}
-          />
-          Resolve ties by skipping trial
-        </label>
-      </div>
-
-      <div className="options-two-col">
-        <div className="nhg-options">
-          <div className="nhg-options-label">Learning schedule</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={exactProportions}
-              onChange={(e) =>
-                setParams(
-                  e.target.checked
-                    ? { exactProportions: true, useCustomSchedule: false }
-                    : { exactProportions: false },
-                )
-              }
-            />
-            Present data in exact proportions
-          </label>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={useCustomSchedule}
-              onChange={(e) =>
-                setParams(
-                  e.target.checked
-                    ? { useCustomSchedule: true, exactProportions: false }
-                    : { useCustomSchedule: false },
-                )
-              }
-            />
-            Use custom learning schedule
-          </label>
-          {useCustomSchedule && (
-            <TextFileEditor
-              value={customSchedule}
-              onChange={(text) => {
-                setParams({ customSchedule: text })
-                setScheduleError(null)
-              }}
-              defaultValue={DEFAULT_SCHEDULE_TEMPLATE}
-              hint="Columns: Trials, PlastMark, PlastFaith, NoiseMark, NoiseFaith (tab or space separated)"
-              error={scheduleError}
-              testId="nhg-schedule-file-input"
-            />
-          )}
-        </div>
-
-        <div className="nhg-options">
-          <div className="nhg-options-label">Output options</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={generateHistory}
-              onChange={(e) => setParams({ generateHistory: e.target.checked })}
-            />
-            Generate history of weights
-          </label>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={generateFullHistory}
-              onChange={(e) => setParams({ generateFullHistory: e.target.checked })}
-            />
-            Generate full history (with input/output annotations)
-          </label>
-        </div>
-      </div>
+      <NhgParameterInputs params={params} setParams={setParams} />
+      <NhgNoiseOptions params={params} setParams={setParams} />
+      <NhgScheduleOptions
+        params={params}
+        setParams={setParams}
+        scheduleError={scheduleError}
+        setScheduleError={setScheduleError}
+      />
 
       <div className="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run Noisy HG" />
@@ -418,9 +171,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
           <DownloadButton onClick={handleDownloadHistory}>Download History</DownloadButton>
         )}
         {successResult?.fullHistory && (
-          <DownloadButton onClick={handleDownloadFullHistory}>
-            Download Full History
-          </DownloadButton>
+          <DownloadButton onClick={handleDownloadFullHistory}>Download Full History</DownloadButton>
         )}
         <button
           className="reset-button"
@@ -444,77 +195,7 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
 
       <RunnerProgressBar state={runnerState} />
       {result?.error && <div className="rcd-status failure">Error running NHG: {result.error}</div>}
-      {successResult && (
-        <div className="maxent-results">
-          <div className="maxent-weights">
-            <h3 className="results-subheader">Constraint Weights</h3>
-            <table className="weights-table">
-              <thead>
-                <tr>
-                  <th>Constraint</th>
-                  <th className="weight-col">Weight</th>
-                </tr>
-              </thead>
-              <tbody>
-                {successResult.weights.map((w, i) => (
-                  <tr key={i}>
-                    <td>
-                      <span className="abbrev">{w.abbrev}</span>
-                      <span className="full-name"> ({w.fullName})</span>
-                    </td>
-                    <td className="weight-col weight-value">{w.weight.toFixed(3)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="log-prob">
-              Log likelihood of data: {successResult.logLikelihood.toFixed(4)}
-            </div>
-            {successResult.zeroPredictionWarning && (
-              <div className="warning">
-                Caution: at least one candidate with positive frequency was assigned zero
-                probability; since zero has no log this was approximated as .001.
-              </div>
-            )}
-          </div>
-
-          <div className="maxent-tableaux">
-            <h3 className="results-subheader">Matchup to Input Frequencies</h3>
-            {successResult.forms.map((form, fi) => (
-              <div className="maxent-form" key={fi}>
-                <div className="form-label">
-                  /{form.input}/ <span className="form-freq">({form.totalFreq} cases)</span>
-                </div>
-                <table className="predictions-table">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th className="pct-col">Count</th>
-                      <th className="pct-col">Obs%</th>
-                      <th className="pct-col">Gen</th>
-                      <th className="pct-col">Gen%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {form.candidates.map((cand, ci) => (
-                      <tr key={ci} className={cand.obsPct > 0 ? 'winner-row' : ''}>
-                        <td className="cand-form">
-                          {cand.obsPct > 0 && <span className="winner-marker">▶</span>}
-                          {cand.form}
-                        </td>
-                        <td className="pct-col">{cand.frequency}</td>
-                        <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
-                        <td className="pct-col">{cand.genCount}</td>
-                        <td className="pct-col">{cand.genPct.toFixed(1)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {successResult && <NhgResults result={successResult} />}
     </section>
   )
 }

@@ -5,10 +5,13 @@ import { format_maxent_output, MaxEntOptions, MaxEntRunner } from '../../pkg/ot_
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
-import { type MaxEntDefaults, maxentDefaults } from '../wasmDefaults.ts'
+import { maxentDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
+import MaxEntOptionsComponent from './maxent/MaxEntOptions.tsx'
+import MaxEntParameterInputs from './maxent/MaxEntParameterInputs.tsx'
+import MaxEntResults from './maxent/MaxEntResults.tsx'
+import type { MaxEntParams, MaxEntResultState, MaxEntState } from './maxent/types.ts'
 import RunButton from './RunButton.tsx'
 import RunnerProgressBar from './RunnerProgressBar.tsx'
 
@@ -17,26 +20,6 @@ interface MaxEntPanelProps {
   tableauText: string
   inputFilename: string | null
 }
-
-interface MaxEntResultState {
-  weights: { abbrev: string; fullName: string; weight: number }[]
-  forms: {
-    input: string
-    candidates: {
-      form: string
-      obsPct: number
-      predPct: number
-      violations: number[]
-    }[]
-  }[]
-  logProb: number
-  history?: string
-  outputProbHistory?: string
-}
-
-type MaxEntState = ResultState<MaxEntResultState>
-
-type MaxEntParams = MaxEntDefaults
 
 function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) {
   const [params, setParams] = useLocalStorage<MaxEntParams>(
@@ -188,97 +171,8 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         <span className="panel-number">04</span>
       </div>
 
-      <div className="maxent-params">
-        <label className="param-label">
-          Iterations
-          <input
-            type="number"
-            className="param-input"
-            value={iterations}
-            min={1}
-            max={100000}
-            onChange={(e) => setParams({ iterations: Math.max(1, parseInt(e.target.value) || 1) })}
-          />
-        </label>
-        <label className="param-label">
-          Weight min
-          <input
-            type="number"
-            className="param-input"
-            value={weightMin}
-            step={0.1}
-            onChange={(e) => setParams({ weightMin: parseFloat(e.target.value) || 0 })}
-          />
-        </label>
-        <label className="param-label">
-          Weight max
-          <input
-            type="number"
-            className="param-input"
-            value={weightMax}
-            min={0.1}
-            step={1}
-            onChange={(e) =>
-              setParams({ weightMax: Math.max(0.1, parseFloat(e.target.value) || 50) })
-            }
-          />
-        </label>
-      </div>
-
-      <div className="nhg-options">
-        <div className="nhg-options-label">Prior</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={usePrior}
-            onChange={(e) => setParams({ usePrior: e.target.checked })}
-          />
-          Gaussian prior (L2 regularization)
-        </label>
-        {usePrior && (
-          <label className="param-label" style={{ marginLeft: '1.5rem' }}>
-            σ²
-            <input
-              type="number"
-              className="param-input"
-              value={sigmaSquared}
-              min={0.0001}
-              step={0.1}
-              onChange={(e) =>
-                setParams({ sigmaSquared: Math.max(0.0001, parseFloat(e.target.value) || 1) })
-              }
-            />
-          </label>
-        )}
-      </div>
-
-      <div className="nhg-options">
-        <div className="nhg-options-label">Output options</div>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={sortByWeight}
-            onChange={(e) => setParams({ sortByWeight: e.target.checked })}
-          />
-          Sort constraints by weight
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={generateHistory}
-            onChange={(e) => setParams({ generateHistory: e.target.checked })}
-          />
-          Generate history of weights
-        </label>
-        <label className="nhg-checkbox">
-          <input
-            type="checkbox"
-            checked={generateOutputProbHistory}
-            onChange={(e) => setParams({ generateOutputProbHistory: e.target.checked })}
-          />
-          Generate history of output probabilities
-        </label>
-      </div>
+      <MaxEntParameterInputs params={params} setParams={setParams} />
+      <MaxEntOptionsComponent params={params} setParams={setParams} />
 
       <div className="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run MaxEnt" />
@@ -318,73 +212,7 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
         <div className="rcd-status failure">Error running MaxEnt: {result.error}</div>
       )}
       {successResult && (
-        <div className="maxent-results">
-          <div className="maxent-weights">
-            <h3 className="results-subheader">Constraint Weights</h3>
-            <table className="weights-table">
-              <thead>
-                <tr>
-                  <th>Constraint</th>
-                  <th className="weight-col">Weight</th>
-                </tr>
-              </thead>
-              <tbody>
-                {successResult.weights.map((w, i) => (
-                  <tr key={i}>
-                    <td>
-                      <span className="abbrev">{w.abbrev}</span>
-                      <span className="full-name"> ({w.fullName})</span>
-                    </td>
-                    <td className="weight-col weight-value">{w.weight.toFixed(3)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="log-prob">
-              Log probability of data: {successResult.logProb.toFixed(4)}
-            </div>
-          </div>
-
-          <div className="maxent-tableaux">
-            <h3 className="results-subheader">Predicted Probabilities</h3>
-            {successResult.forms.map((form, fi) => (
-              <div className="maxent-form" key={fi}>
-                <div className="form-label">/{form.input}/</div>
-                <table className="predictions-table">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th className="pct-col">Obs%</th>
-                      <th className="pct-col">Pred%</th>
-                      {constraintAbbrevs.map((abbrev, ci) => (
-                        <th key={ci} className="viol-col">
-                          {abbrev}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {form.candidates.map((cand, ci) => (
-                      <tr key={ci} className={cand.obsPct > 0 ? 'winner-row' : ''}>
-                        <td className="cand-form">
-                          {cand.obsPct > 0 && <span className="winner-marker">▶</span>}
-                          {cand.form}
-                        </td>
-                        <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
-                        <td className="pct-col">{cand.predPct.toFixed(1)}%</td>
-                        {cand.violations.map((v, vi) => (
-                          <td key={vi} className="viol-col">
-                            {v > 0 ? v : ''}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
-        </div>
+        <MaxEntResults result={successResult} constraintAbbrevs={constraintAbbrevs} />
       )}
     </section>
   )

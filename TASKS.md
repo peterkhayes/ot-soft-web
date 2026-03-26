@@ -3,6 +3,7 @@
 ## Bugs
 
 - [Stochastic OT: investigate accuracy discrepancy with VB6](tasks/stochastic-ot-accuracy.md)
+- [Fix RCD HTML tableaux download test](tasks/fix-rcd-html-title-test.md)
 
 ## UX
 
@@ -36,6 +37,10 @@
 - ~~Break up GlaPanel.tsx~~
 - ~~Standardize result state types with a generic~~
 - ~~Add aria-labels to interactive SVG elements~~
+- ~~Break up NhgPanel.tsx~~
+- ~~Break up FactorialTypologyPanel.tsx~~
+- ~~Break up RcdPanel.tsx~~
+- ~~Break up MaxEntPanel.tsx~~
 
 ## Testing
 
