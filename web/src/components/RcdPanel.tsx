@@ -20,6 +20,7 @@ import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type RcdDefaults, rcdDefaults } from '../wasmDefaults.ts'
+import DownloadButton from './DownloadButton.tsx'
 import HasseDiagram from './HasseDiagram.tsx'
 import TextFileEditor from './TextFileEditor.tsx'
 
@@ -345,48 +346,9 @@ function RcdPanel({
         </button>
         {rcdResult && !rcdResult.error && (
           <>
-            <button className="download-button" onClick={handleDownload}>
-              <svg
-                className="button-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Download Results
-            </button>
-            <button className="download-button" onClick={handleDownloadHtml}>
-              <svg
-                className="button-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Download HTML
-            </button>
-            <button className="download-button" onClick={handleDownloadSortedInput}>
-              <svg
-                className="button-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Download Sorted Input
-            </button>
+            <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
+            <DownloadButton onClick={handleDownloadHtml}>Download HTML</DownloadButton>
+            <DownloadButton onClick={handleDownloadSortedInput}>Download Sorted Input</DownloadButton>
           </>
         )}
         <button

@@ -13,6 +13,7 @@ import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { makeOutputFilename } from '../utils.ts'
 import { type FtDefaults, ftDefaults } from '../wasmDefaults.ts'
+import DownloadButton from './DownloadButton.tsx'
 import RunButton from './RunButton.tsx'
 import RunnerProgressBar from './RunnerProgressBar.tsx'
 import TextFileEditor from './TextFileEditor.tsx'
@@ -287,54 +288,15 @@ function FactorialTypologyPanel({
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run Factorial Typology" />
 
         {successResult && (
-          <button className="download-button" onClick={handleDownload}>
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Download Results
-          </button>
+          <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
         )}
 
         {successResult && includeFtsum && (
-          <button className="download-button" onClick={handleDownloadFtsum}>
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Download FTSum
-          </button>
+          <DownloadButton onClick={handleDownloadFtsum}>Download FTSum</DownloadButton>
         )}
 
         {successResult && includeCompactSum && (
-          <button className="download-button" onClick={handleDownloadCompactSum}>
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Download CompactSum
-          </button>
+          <DownloadButton onClick={handleDownloadCompactSum}>Download CompactSum</DownloadButton>
         )}
       </div>
 

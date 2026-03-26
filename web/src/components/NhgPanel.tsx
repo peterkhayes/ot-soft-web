@@ -8,6 +8,7 @@ import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { type NhgDefaults, nhgDefaults } from '../wasmDefaults.ts'
+import DownloadButton from './DownloadButton.tsx'
 import RunButton from './RunButton.tsx'
 import RunnerProgressBar from './RunnerProgressBar.tsx'
 import TextFileEditor from './TextFileEditor.tsx'
@@ -416,52 +417,15 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
       <div className="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run Noisy HG" />
         {result && !result.error && (
-          <button className="download-button" onClick={handleDownload}>
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Download Results
-          </button>
+          <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
         )}
         {successResult?.history && (
-          <button className="download-button" onClick={handleDownloadHistory}>
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Download History
-          </button>
+          <DownloadButton onClick={handleDownloadHistory}>Download History</DownloadButton>
         )}
         {successResult?.fullHistory && (
-          <button className="download-button" onClick={handleDownloadFullHistory}>
-            <svg
-              className="button-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
+          <DownloadButton onClick={handleDownloadFullHistory}>
             Download Full History
-          </button>
+          </DownloadButton>
         )}
         <button
           className="reset-button"
