@@ -1,3 +1,7 @@
+---
+status: done
+---
+
 # Break up GlaPanel.tsx
 
 At 778 lines, `GlaPanel.tsx` handles too many concerns:

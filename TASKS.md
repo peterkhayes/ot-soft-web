@@ -33,7 +33,7 @@
 - ~~Extract shared DownloadButton component~~
 - ~~Use useLocalStorage hook consistently in App.tsx~~
 - ~~Extract responsive breakpoint constants~~ (already done)
-- [Break up GlaPanel.tsx](tasks/cq-gla-panel-split.md)
+- ~~Break up GlaPanel.tsx~~
 - ~~Standardize result state types with a generic~~
 - ~~Add aria-labels to interactive SVG elements~~
 

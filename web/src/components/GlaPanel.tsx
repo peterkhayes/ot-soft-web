@@ -9,18 +9,20 @@ import {
   GlaOptions,
   GlaRunner,
 } from '../../pkg/ot_soft.js'
-import { DEFAULT_SCHEDULE_TEMPLATE } from '../constants.ts'
 import { useDownload } from '../contexts/downloadContext.ts'
 import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
-import type { ResultState } from '../types.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
-import { type GlaDefaults, glaDefaults } from '../wasmDefaults.ts'
+import { glaDefaults } from '../wasmDefaults.ts'
 import DownloadButton from './DownloadButton.tsx'
-import HasseDiagram from './HasseDiagram.tsx'
+import GlaAprioriOptions from './gla/GlaAprioriOptions.tsx'
+import GlaFrameworkOptions from './gla/GlaFrameworkOptions.tsx'
+import GlaOptionsGrid from './gla/GlaOptionsGrid.tsx'
+import GlaParameterInputs from './gla/GlaParameterInputs.tsx'
+import GlaResults from './gla/GlaResults.tsx'
+import type { GlaParams, GlaResultState, GlaState } from './gla/types.ts'
 import RunButton from './RunButton.tsx'
 import RunnerProgressBar from './RunnerProgressBar.tsx'
-import TextFileEditor from './TextFileEditor.tsx'
 
 interface GlaPanelProps {
   tableau: Tableau
@@ -28,48 +30,9 @@ interface GlaPanelProps {
   inputFilename: string | null
 }
 
-interface GlaResultState {
-  values: { fullName: string; abbrev: string; value: number; active: boolean }[]
-  forms: {
-    input: string
-    candidates: { form: string; obsPct: number; genPct: number }[]
-  }[]
-  logLikelihood: number
-  maxentMode: boolean
-  hasseDot?: string
-  pairwiseData?: { headers: string[]; matrix: string[][] }
-  history?: string
-  fullHistory?: string
-  candidateProbHistory?: string
-}
-
-type GlaState = ResultState<GlaResultState>
-
-type GlaParams = GlaDefaults
-
 function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   const [params, setParams] = useLocalStorage<GlaParams>('otsoft:params:gla', glaDefaults())
-  const {
-    maxentMode,
-    cycles,
-    initialPlasticity,
-    finalPlasticity,
-    testTrials,
-    negativeWeightsOk,
-    gaussianPrior,
-    sigma,
-    magriUpdateRule,
-    exactProportions,
-    showApriori,
-    aprioriText,
-    aprioriGap,
-    generateHistory,
-    generateFullHistory,
-    generateCandidateProbHistory,
-    useCustomSchedule,
-    customSchedule,
-    multipleRunsCount,
-  } = params
+  const { maxentMode, multipleRunsCount } = params
 
   const [scheduleError, setScheduleError] = useState<string | null>(null)
   const download = useDownload()
@@ -78,46 +41,28 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   // phase available in useMemo, so we build it lazily on demand to avoid leaking abandoned instances.
   const buildOpts = useCallback((): GlaOptions => {
     const opts = new GlaOptions()
-    opts.maxent_mode = maxentMode
-    opts.cycles = cycles
-    opts.initial_plasticity = initialPlasticity
-    opts.final_plasticity = finalPlasticity
-    opts.test_trials = maxentMode ? 0 : testTrials
-    opts.negative_weights_ok = negativeWeightsOk
-    opts.gaussian_prior = maxentMode && gaussianPrior
-    opts.sigma = sigma
-    opts.magri_update_rule = !maxentMode && magriUpdateRule
-    opts.exact_proportions = exactProportions
-    if (!maxentMode && aprioriText.trim()) {
-      opts.apriori_text = aprioriText
-      opts.apriori_gap = aprioriGap
+    opts.maxent_mode = params.maxentMode
+    opts.cycles = params.cycles
+    opts.initial_plasticity = params.initialPlasticity
+    opts.final_plasticity = params.finalPlasticity
+    opts.test_trials = params.maxentMode ? 0 : params.testTrials
+    opts.negative_weights_ok = params.negativeWeightsOk
+    opts.gaussian_prior = params.maxentMode && params.gaussianPrior
+    opts.sigma = params.sigma
+    opts.magri_update_rule = !params.maxentMode && params.magriUpdateRule
+    opts.exact_proportions = params.exactProportions
+    if (!params.maxentMode && params.aprioriText.trim()) {
+      opts.apriori_text = params.aprioriText
+      opts.apriori_gap = params.aprioriGap
     }
-    opts.generate_history = generateHistory
-    opts.generate_full_history = generateFullHistory
-    opts.generate_candidate_prob_history = maxentMode && generateCandidateProbHistory
-    if (useCustomSchedule) {
-      opts.learning_schedule = customSchedule
+    opts.generate_history = params.generateHistory
+    opts.generate_full_history = params.generateFullHistory
+    opts.generate_candidate_prob_history = params.maxentMode && params.generateCandidateProbHistory
+    if (params.useCustomSchedule) {
+      opts.learning_schedule = params.customSchedule
     }
     return opts
-  }, [
-    maxentMode,
-    cycles,
-    initialPlasticity,
-    finalPlasticity,
-    testTrials,
-    negativeWeightsOk,
-    gaussianPrior,
-    sigma,
-    magriUpdateRule,
-    exactProportions,
-    aprioriText,
-    aprioriGap,
-    generateHistory,
-    generateFullHistory,
-    generateCandidateProbHistory,
-    useCustomSchedule,
-    customSchedule,
-  ])
+  }, [params])
 
   const createRunner = useCallback(() => {
     setScheduleError(null)
@@ -243,7 +188,6 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
   const atDefaults = isAtDefaults(params, glaDefaults())
   const successResult: GlaResultState | null =
     result && !result.error ? (result as GlaResultState) : null
-  const valueLabel = successResult?.maxentMode ? 'Weight' : 'Ranking Value'
 
   function handleDownloadHistory() {
     if (successResult?.history) {
@@ -273,263 +217,15 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
         <span className="panel-number">04</span>
       </div>
 
-      <div className="nhg-options">
-        <div className="nhg-options-label">Framework</div>
-        <label className="nhg-checkbox">
-          <input
-            type="radio"
-            name="gla-mode"
-            checked={!maxentMode}
-            onChange={() => setParams({ maxentMode: false })}
-          />
-          Stochastic OT (ranking values)
-        </label>
-        {!maxentMode && (
-          <label className="nhg-checkbox nhg-checkbox-indent">
-            <input
-              type="checkbox"
-              checked={magriUpdateRule}
-              onChange={(e) => setParams({ magriUpdateRule: e.target.checked })}
-            />
-            Use the Magri update rule
-          </label>
-        )}
-        <label className="nhg-checkbox">
-          <input
-            type="radio"
-            name="gla-mode"
-            checked={maxentMode}
-            onChange={() => setParams({ maxentMode: true })}
-          />
-          Online MaxEnt (weights)
-        </label>
-        {maxentMode && (
-          <>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={negativeWeightsOk}
-                onChange={(e) => setParams({ negativeWeightsOk: e.target.checked })}
-              />
-              Allow constraint weights to go negative
-            </label>
-            <label className="nhg-checkbox nhg-checkbox-indent">
-              <input
-                type="checkbox"
-                checked={gaussianPrior}
-                onChange={(e) => setParams({ gaussianPrior: e.target.checked })}
-              />
-              Gaussian prior (L2 regularization)
-            </label>
-            {gaussianPrior && (
-              <label className="param-label" style={{ marginLeft: '3rem' }}>
-                σ
-                <input
-                  type="number"
-                  className="param-input"
-                  value={sigma}
-                  min={0.0001}
-                  step={0.1}
-                  onChange={(e) =>
-                    setParams({ sigma: Math.max(0.0001, parseFloat(e.target.value) || 1) })
-                  }
-                />
-              </label>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="maxent-params">
-        <label className="param-label">
-          Cycles
-          <input
-            type="number"
-            className="param-input"
-            value={cycles}
-            min={1}
-            max={10000000}
-            onChange={(e) => setParams({ cycles: Math.max(1, parseInt(e.target.value) || 1) })}
-          />
-        </label>
-        <label className="param-label">
-          Initial plasticity
-          <input
-            type="number"
-            className="param-input"
-            value={initialPlasticity}
-            min={0.0001}
-            step={0.1}
-            onChange={(e) =>
-              setParams({ initialPlasticity: Math.max(0.0001, parseFloat(e.target.value) || 2) })
-            }
-          />
-        </label>
-        <label className="param-label">
-          Final plasticity
-          <input
-            type="number"
-            className="param-input"
-            value={finalPlasticity}
-            min={0.000001}
-            step={0.001}
-            onChange={(e) =>
-              setParams({
-                finalPlasticity: Math.max(0.000001, parseFloat(e.target.value) || 0.001),
-              })
-            }
-          />
-        </label>
-        {!maxentMode && (
-          <label className="param-label">
-            Test trials
-            <input
-              type="number"
-              className="param-input"
-              value={testTrials}
-              min={1}
-              max={100000}
-              onChange={(e) =>
-                setParams({ testTrials: Math.max(1, parseInt(e.target.value) || 10000) })
-              }
-            />
-          </label>
-        )}
-      </div>
-
-      <div className="options-three-col">
-        <div className="nhg-options">
-          <div className="nhg-options-label">Learning schedule</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={exactProportions}
-              onChange={(e) =>
-                setParams(
-                  e.target.checked
-                    ? { exactProportions: true, useCustomSchedule: false }
-                    : { exactProportions: false },
-                )
-              }
-            />
-            Present data in exact proportions
-          </label>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={useCustomSchedule}
-              onChange={(e) =>
-                setParams(
-                  e.target.checked
-                    ? { useCustomSchedule: true, exactProportions: false }
-                    : { useCustomSchedule: false },
-                )
-              }
-            />
-            Use custom learning schedule
-          </label>
-          {useCustomSchedule && (
-            <TextFileEditor
-              value={customSchedule}
-              onChange={(text) => {
-                setParams({ customSchedule: text })
-                setScheduleError(null)
-              }}
-              defaultValue={DEFAULT_SCHEDULE_TEMPLATE}
-              hint="Columns: Trials, PlastMark, PlastFaith, NoiseMark, NoiseFaith (tab or space separated)"
-              error={scheduleError}
-              testId="gla-schedule-file-input"
-            />
-          )}
-        </div>
-
-        <div className="nhg-options">
-          <div className="nhg-options-label">Multiple runs</div>
-          <input
-            type="number"
-            className="param-input"
-            aria-label="Number of runs"
-            value={multipleRunsCount}
-            min={1}
-            onChange={(e) =>
-              setParams({ multipleRunsCount: Math.max(1, parseInt(e.target.value) || 1) })
-            }
-          />
-        </div>
-
-        <div className="nhg-options">
-          <div className="nhg-options-label">Output options</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={generateHistory}
-              onChange={(e) => setParams({ generateHistory: e.target.checked })}
-            />
-            Generate history of {maxentMode ? 'weights' : 'ranking values'}
-          </label>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={generateFullHistory}
-              onChange={(e) => setParams({ generateFullHistory: e.target.checked })}
-            />
-            Generate full history (with input/output annotations)
-          </label>
-          {maxentMode && (
-            <label className="nhg-checkbox">
-              <input
-                type="checkbox"
-                checked={generateCandidateProbHistory}
-                onChange={(e) => setParams({ generateCandidateProbHistory: e.target.checked })}
-              />
-              Generate history of candidate probabilities
-            </label>
-          )}
-        </div>
-      </div>
-
-      {!maxentMode && (
-        <div className="nhg-options">
-          <div className="nhg-options-label">A priori rankings</div>
-          <label className="nhg-checkbox">
-            <input
-              type="checkbox"
-              checked={showApriori}
-              onChange={(e) => {
-                setParams({ showApriori: e.target.checked })
-                if (!e.target.checked) setParams({ aprioriText: '' })
-              }}
-            />
-            Use a priori rankings
-          </label>
-          {showApriori && (
-            <>
-              <TextFileEditor
-                value={aprioriText}
-                onChange={(text) => setParams({ aprioriText: text })}
-                hint="Tab-delimited constraint × constraint matrix (abbreviations must match current tableau)."
-                placeholder="Load from file or paste content here…"
-                testId="gla-apriori-file-input"
-              />
-              {aprioriText.trim() && (
-                <label className="param-label" style={{ marginTop: '0.5rem' }}>
-                  Constraints ranked a priori must differ by
-                  <input
-                    type="number"
-                    className="param-input"
-                    value={aprioriGap}
-                    min={0.001}
-                    step={1}
-                    onChange={(e) =>
-                      setParams({ aprioriGap: Math.max(0.001, parseFloat(e.target.value) || 20) })
-                    }
-                  />
-                </label>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      <GlaFrameworkOptions params={params} setParams={setParams} />
+      <GlaParameterInputs params={params} setParams={setParams} />
+      <GlaOptionsGrid
+        params={params}
+        setParams={setParams}
+        scheduleError={scheduleError}
+        setScheduleError={setScheduleError}
+      />
+      {!maxentMode && <GlaAprioriOptions params={params} setParams={setParams} />}
 
       <div className="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run GLA" />
@@ -591,133 +287,7 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       <RunnerProgressBar state={runnerState} />
       <RunnerProgressBar state={multipleRunsState} />
       {result?.error && <div className="rcd-status failure">Error running GLA: {result.error}</div>}
-      {successResult && (
-        <div className="maxent-results">
-          <div className="maxent-weights">
-            <h3 className="results-subheader">Constraint {valueLabel}s</h3>
-            <table className="weights-table">
-              <thead>
-                <tr>
-                  <th>Constraint</th>
-                  <th className="weight-col">{valueLabel}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {successResult.values.map((v, i) => (
-                  <tr key={i}>
-                    <td>
-                      <span className="abbrev">{v.abbrev}</span>
-                      <span className="full-name"> ({v.fullName})</span>
-                    </td>
-                    <td className="weight-col weight-value">{v.value.toFixed(3)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="log-prob">
-              Log likelihood of data: {successResult.logLikelihood.toFixed(4)}
-            </div>
-          </div>
-
-          <div className="maxent-tableaux">
-            <h3 className="results-subheader">Matchup to Input Frequencies</h3>
-            {successResult.forms.map((form, fi) => (
-              <div className="maxent-form" key={fi}>
-                <div className="form-label">/{form.input}/</div>
-                <table className="predictions-table">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th className="pct-col">Obs%</th>
-                      <th className="pct-col">{successResult.maxentMode ? 'Prob%' : 'Gen%'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {form.candidates.map((cand, ci) => (
-                      <tr key={ci} className={cand.obsPct > 0 ? 'winner-row' : ''}>
-                        <td className="cand-form">
-                          {cand.obsPct > 0 && <span className="winner-marker">▶</span>}
-                          {cand.form}
-                        </td>
-                        <td className="pct-col">{cand.obsPct.toFixed(1)}%</td>
-                        <td className="pct-col">{cand.genPct.toFixed(1)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
-          {successResult.hasseDot && (
-            <HasseDiagram
-              dotString={successResult.hasseDot}
-              downloadName={`${inputFilename ? inputFilename.replace(/\.[^.]+$/, '') : 'tableau'}Hasse`}
-            />
-          )}
-          {successResult.pairwiseData && (
-            <div className="pairwise-probabilities">
-              <h3 className="results-subheader">Pairwise Ranking Probabilities</h3>
-              <p className="pairwise-note">
-                The computed ranking values imply the pairwise ranking probabilities given below. In
-                the table, the probability given is that of the row constraint outranking the column
-                constraint.
-              </p>
-              <div className="table-scroll-wrapper">
-                <table className="pairwise-table">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      {successResult.pairwiseData.headers.slice(1).map((h) => (
-                        <th key={h}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {successResult.pairwiseData.matrix.map((row, i) => (
-                      <tr key={i}>
-                        <th>{successResult.pairwiseData!.headers[i]}</th>
-                        {row.map((cell, j) => (
-                          <td key={j} className={cell === '' ? 'pairwise-empty' : ''}>
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          <div className="maxent-weights">
-            <h3 className="results-subheader">Active Constraints</h3>
-            <p className="active-constraints-note">
-              A constraint is active if it causes the winning candidate to defeat a rival in at
-              least one competition.
-            </p>
-            <table className="weights-table">
-              <thead>
-                <tr>
-                  <th>Constraint</th>
-                  <th className="weight-col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...successResult.values]
-                  .sort((a, b) => b.value - a.value)
-                  .map((v, i) => (
-                    <tr key={i}>
-                      <td>
-                        <span className="abbrev">{v.abbrev}</span>
-                        <span className="full-name"> ({v.fullName})</span>
-                      </td>
-                      <td className="weight-col">{v.active ? 'Active' : 'Inactive'}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {successResult && <GlaResults result={successResult} inputFilename={inputFilename} />}
     </section>
   )
 }

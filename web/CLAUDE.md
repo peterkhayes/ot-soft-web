@@ -28,7 +28,14 @@ web/
 │       ├── RcdPanel.tsx         # Classical OT — RCD / BCD / LFCD (includes FRed Hasse diagram)
 │       ├── MaxEntPanel.tsx      # Maximum Entropy
 │       ├── NhgPanel.tsx         # Noisy Harmonic Grammar
-│       ├── GlaPanel.tsx         # Stochastic OT / GLA
+│       ├── GlaPanel.tsx         # Stochastic OT / GLA (orchestrator)
+│       ├── gla/                 # GLA sub-components
+│       │   ├── types.ts         # Shared types (GlaResultState, GlaParams, SetGlaParams)
+│       │   ├── GlaFrameworkOptions.tsx   # Framework radio (Stochastic OT / MaxEnt)
+│       │   ├── GlaParameterInputs.tsx    # Cycles, plasticity, test trials
+│       │   ├── GlaOptionsGrid.tsx        # Learning schedule, multiple runs, output options
+│       │   ├── GlaAprioriOptions.tsx     # A priori rankings
+│       │   └── GlaResults.tsx            # Result display (values, forms, Hasse, pairwise, active)
 │       ├── FactorialTypologyPanel.tsx  # Factorial Typology (Classical OT)
 │       └── HasseDiagram.tsx     # Hasse diagram viewer (lazy-loads @viz-js/viz, SVG + PNG export)
 ├── tests/
