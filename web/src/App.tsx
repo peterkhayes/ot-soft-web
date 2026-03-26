@@ -13,6 +13,7 @@ import MaxEntPanel from './components/MaxEntPanel.tsx'
 import NhgPanel from './components/NhgPanel.tsx'
 import RcdPanel from './components/RcdPanel.tsx'
 import TableauPanel from './components/TableauPanel.tsx'
+import { useLocalStorageValue } from './hooks/useLocalStorage.ts'
 
 const NOT_IMPLEMENTED: Record<string, string> = {}
 
@@ -92,54 +93,25 @@ function App() {
   const [currentInputFilename, setCurrentInputFilename] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const VALID_FRAMEWORKS = new Set<Framework>(['classical-ot', 'maxent', 'stochastic-ot', 'nhg'])
-  const [framework, setFrameworkRaw] = useState<Framework>(() => {
-    try {
-      const stored = localStorage.getItem('otsoft:framework')
-      if (stored && VALID_FRAMEWORKS.has(stored as Framework)) return stored as Framework
-    } catch {}
-    return 'maxent'
-  })
-  function setFramework(fw: Framework) {
-    try {
-      localStorage.setItem('otsoft:framework', fw)
-    } catch {}
-    setFrameworkRaw(fw)
-  }
+  const [framework, setFramework] = useLocalStorageValue<Framework>(
+    'otsoft:framework',
+    'maxent',
+    (v) => VALID_FRAMEWORKS.has(v as Framework),
+  )
   const VALID_AXIS_MODES = new Set([
     AxisMode.SwitchAll,
     AxisMode.SwitchWhereNeeded,
     AxisMode.NeverSwitch,
   ])
-  const [axisMode, setAxisModeRaw] = useState<AxisMode>(() => {
-    try {
-      const stored = localStorage.getItem('otsoft:params:tableau-axis')
-      if (stored !== null) {
-        const num = Number(stored)
-        if (VALID_AXIS_MODES.has(num as AxisMode)) return num as AxisMode
-      }
-    } catch {}
-    return AxisMode.SwitchAll
-  })
-  function setAxisMode(mode: AxisMode) {
-    try {
-      localStorage.setItem('otsoft:params:tableau-axis', String(mode))
-    } catch {}
-    setAxisModeRaw(mode)
-  }
-
-  const [sortByHarmony, setSortByHarmonyRaw] = useState(() => {
-    try {
-      const stored = localStorage.getItem('otsoft:params:sort-by-harmony')
-      if (stored !== null) return stored === 'true'
-    } catch {}
-    return true // VB6 default: checked
-  })
-  function setSortByHarmony(v: boolean) {
-    try {
-      localStorage.setItem('otsoft:params:sort-by-harmony', String(v))
-    } catch {}
-    setSortByHarmonyRaw(v)
-  }
+  const [axisMode, setAxisMode] = useLocalStorageValue<AxisMode>(
+    'otsoft:params:tableau-axis',
+    AxisMode.SwitchAll,
+    (v) => VALID_AXIS_MODES.has(v as AxisMode),
+  )
+  const [sortByHarmony, setSortByHarmony] = useLocalStorageValue(
+    'otsoft:params:sort-by-harmony',
+    true, // VB6 default: checked
+  )
 
   // Compute sorted tableau when sort-by-harmony is enabled.
   // Uses RCD to determine constraint ranking order, matching VB6 default behavior.

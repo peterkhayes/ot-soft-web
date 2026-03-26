@@ -1,5 +1,38 @@
 import { useState } from 'react'
 
+/** Persist a single scalar value to localStorage with an optional validator. */
+export function useLocalStorageValue<T>(
+  key: string,
+  defaultValue: T,
+  isValid?: (v: unknown) => boolean,
+): [T, (v: T) => void] {
+  function read(): T {
+    try {
+      const raw = localStorage.getItem(key)
+      if (raw === null) return defaultValue
+      const parsed = JSON.parse(raw) as unknown
+      if (typeof parsed !== typeof defaultValue) return defaultValue
+      if (isValid && !isValid(parsed)) return defaultValue
+      return parsed as T
+    } catch {
+      return defaultValue
+    }
+  }
+
+  const [value, setValue] = useState<T>(read)
+
+  function set(v: T) {
+    setValue(v)
+    try {
+      localStorage.setItem(key, JSON.stringify(v))
+    } catch {
+      /* quota exceeded */
+    }
+  }
+
+  return [value, set]
+}
+
 export function useLocalStorage<T extends object>(
   key: string,
   defaults: T,
