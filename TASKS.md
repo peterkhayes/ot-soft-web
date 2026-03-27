@@ -3,7 +3,7 @@
 ## Bugs
 
 - [Stochastic OT: investigate accuracy discrepancy with VB6](tasks/stochastic-ot-accuracy.md)
-- [Fix RCD HTML tableaux download test](tasks/fix-rcd-html-title-test.md)
+- ~~Fix RCD HTML tableaux download test~~
 
 ## UX
 

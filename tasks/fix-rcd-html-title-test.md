@@ -1,5 +1,5 @@
 ---
-status: open
+status: done
 ---
 
 # Fix RCD HTML tableaux download test
