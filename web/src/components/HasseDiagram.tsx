@@ -99,7 +99,12 @@ function HasseDiagram({ dotString, downloadName = 'HasseDiagram' }: HasseDiagram
       <div className="hasse-header">
         <h3 className="hasse-title">Hasse Diagram</h3>
         <div className="hasse-actions">
-          <button className="hasse-export-button" onClick={handleDownloadSvg} disabled={!svgEl} aria-label="Download SVG">
+          <button
+            className="hasse-export-button"
+            onClick={handleDownloadSvg}
+            disabled={!svgEl}
+            aria-label="Download SVG"
+          >
             <svg
               className="button-icon"
               viewBox="0 0 24 24"
@@ -114,7 +119,12 @@ function HasseDiagram({ dotString, downloadName = 'HasseDiagram' }: HasseDiagram
             </svg>
             SVG
           </button>
-          <button className="hasse-export-button" onClick={handleDownloadPng} disabled={!svgEl} aria-label="Download PNG">
+          <button
+            className="hasse-export-button"
+            onClick={handleDownloadPng}
+            disabled={!svgEl}
+            aria-label="Download PNG"
+          >
             <svg
               className="button-icon"
               viewBox="0 0 24 24"

@@ -386,143 +386,148 @@ impl RCDResult {
         show_apriori_section: bool,
     ) -> String {
         let mut output = String::new();
-
-        // Header
-        output.push_str(&format!("Results of Applying {} to {}\n", algorithm_name, filename));
-        output.push_str("\n\n");
-
-        // Date and version (current date/time and version)
-        let now = chrono::Local::now();
-        output.push_str(&format!("{}\n\n", now.format("%-m-%-d-%Y, %-I:%M %p").to_string().to_lowercase()));
-        output.push_str(crate::VERSION_STRING);
-        output.push('\n');
-        output.push_str("\n\n");
-
-        if self.tie_warning {
-            output.push_str("Caution: The BCD algorithm has selected arbitrarily among tied Faithfulness constraint subsets.\n");
-            output.push_str("You may wish to try changing the order of the Faithfulness constraints in the input file,\n");
-            output.push_str("to see whether this results in a different ranking.\n\n\n");
-        }
-
-        // Auto-incrementing section counter (matches VB6 gLevel1HeadingNumber)
         let mut section = 0usize;
 
-        // Section: Result
-        section += 1;
-        output.push_str(&format!("{}. Result\n\n", section));
+        self.fmt_text_header(&mut output, algorithm_name, filename);
+        self.fmt_text_result(&mut output, &mut section, tableau);
 
-        if self.success {
-            output.push_str("A ranking was found that generates the correct outputs.\n\n");
-        } else {
-            output.push_str("No ranking was found.\n\n");
+        if show_apriori_section && !apriori.is_empty() {
+            Self::fmt_text_apriori(&mut output, &mut section, tableau, apriori);
         }
 
-        // List strata
-        for stratum in 1..=self.num_strata {
-            output.push_str(&format!("   Stratum #{}\n", stratum));
+        self.fmt_text_tableaux(&mut output, &mut section, tableau);
 
+        if !self.constraint_necessity.is_empty() {
+            self.fmt_text_necessity(&mut output, &mut section, tableau, apriori);
+        }
+
+        if let Some(ref fred) = self.fred_result {
+            section += 1;
+            output.push_str(&fred.format_section_fred(section));
+        }
+
+        if !self.mini_tableaux.is_empty() {
+            self.fmt_text_mini_tableaux(&mut output, &mut section, tableau);
+        }
+
+        // Normalize trailing newlines to match VB6 output (exactly one trailing blank line)
+        let trimmed = output.trim_end_matches('\n');
+        format!("{}\n\n", trimmed)
+    }
+
+    fn fmt_text_header(&self, out: &mut String, algorithm_name: &str, filename: &str) {
+        out.push_str(&format!("Results of Applying {} to {}\n", algorithm_name, filename));
+        out.push_str("\n\n");
+
+        let now = chrono::Local::now();
+        out.push_str(&format!("{}\n\n", now.format("%-m-%-d-%Y, %-I:%M %p").to_string().to_lowercase()));
+        out.push_str(crate::VERSION_STRING);
+        out.push('\n');
+        out.push_str("\n\n");
+
+        if self.tie_warning {
+            out.push_str("Caution: The BCD algorithm has selected arbitrarily among tied Faithfulness constraint subsets.\n");
+            out.push_str("You may wish to try changing the order of the Faithfulness constraints in the input file,\n");
+            out.push_str("to see whether this results in a different ranking.\n\n\n");
+        }
+    }
+
+    fn fmt_text_result(&self, out: &mut String, section: &mut usize, tableau: &Tableau) {
+        *section += 1;
+        out.push_str(&format!("{}. Result\n\n", section));
+
+        if self.success {
+            out.push_str("A ranking was found that generates the correct outputs.\n\n");
+        } else {
+            out.push_str("No ranking was found.\n\n");
+        }
+
+        for stratum in 1..=self.num_strata {
+            out.push_str(&format!("   Stratum #{}\n", stratum));
             for (c_idx, &c_stratum) in self.constraint_strata.iter().enumerate() {
                 if c_stratum == stratum {
                     if let Some(constraint) = tableau.get_constraint(c_idx) {
-                        let full_name = constraint.full_name();
-                        let abbrev = constraint.abbrev();
-                        // Format: left-align full name in ~42 chars, then abbreviation
-                        output.push_str(&format!("      {:<42}{}\n", full_name, abbrev));
+                        out.push_str(&format!("      {:<42}{}\n", constraint.full_name(), constraint.abbrev()));
                     }
                 }
             }
         }
-        output.push('\n');
+        out.push('\n');
+    }
 
-        // Section: A Priori Rankings (only for algorithms that show it, e.g. RCD but not LFCD)
-        if show_apriori_section && !apriori.is_empty() {
-            section += 1;
-            output.push_str(&format!("{}. A Priori Rankings\n\n", section));
-            output.push_str("In the following table, \"yes\" means that the constraint of the indicated row \n");
-            output.push_str("was marked a priori to dominate the constraint in the given column.\n\n");
+    fn fmt_text_apriori(out: &mut String, section: &mut usize, tableau: &Tableau, apriori: &[Vec<bool>]) {
+        *section += 1;
+        out.push_str(&format!("{}. A Priori Rankings\n\n", section));
+        out.push_str("In the following table, \"yes\" means that the constraint of the indicated row \n");
+        out.push_str("was marked a priori to dominate the constraint in the given column.\n\n");
 
-            let nc = tableau.constraints.len();
-            let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let nc = tableau.constraints.len();
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        let col_widths: Vec<usize> = abbrevs.iter().map(|a| a.len().max(3)).collect();
+        let row_label_width = abbrevs.iter().map(|a| a.len()).max().unwrap_or(0);
 
-            // Compute column widths (max of header abbreviation and "yes")
-            let col_widths: Vec<usize> = abbrevs.iter().map(|a| a.len().max(3)).collect();
-            let row_label_width = abbrevs.iter().map(|a| a.len()).max().unwrap_or(0);
-
-            // Header row: row label padding, then column abbreviations centered
-            output.push_str(&format!("{:width$}", "", width = row_label_width));
-            for (j, abbrev) in abbrevs.iter().enumerate() {
-                output.push_str(&format!("  {:^width$}", abbrev, width = col_widths[j]));
-            }
-            output.push('\n');
-
-            // Data rows
-            for i in 0..nc {
-                output.push_str(&format!("{:<width$}", abbrevs[i], width = row_label_width));
-                for j in 0..nc {
-                    let cell = if apriori[i][j] { "yes" } else { "" };
-                    output.push_str(&format!("  {:^width$}", cell, width = col_widths[j]));
-                }
-                output.push('\n');
-            }
-            output.push_str("\n\n");
+        // Header row
+        out.push_str(&format!("{:width$}", "", width = row_label_width));
+        for (j, abbrev) in abbrevs.iter().enumerate() {
+            out.push_str(&format!("  {:^width$}", abbrev, width = col_widths[j]));
         }
+        out.push('\n');
 
-        // Section: Tableaux
-        section += 1;
-        output.push_str(&format!("{}. Tableaux\n\n", section));
+        // Data rows
+        for i in 0..nc {
+            out.push_str(&format!("{:<width$}", abbrevs[i], width = row_label_width));
+            for j in 0..nc {
+                let cell = if apriori[i][j] { "yes" } else { "" };
+                out.push_str(&format!("  {:^width$}", cell, width = col_widths[j]));
+            }
+            out.push('\n');
+        }
+        out.push_str("\n\n");
+    }
+
+    fn fmt_text_tableaux(&self, out: &mut String, section: &mut usize, tableau: &Tableau) {
+        *section += 1;
+        out.push_str(&format!("{}. Tableaux\n\n", section));
+
+        let sorted = self.sorted_constraint_indices(tableau.constraints.len());
 
         for form in &tableau.forms {
-            output.push('\n');
-            output.push_str(&format!("/{}/: \n", form.input));
+            out.push('\n');
+            out.push_str(&format!("/{}/: \n", form.input));
 
-            // Build constraint header with stratum separators
-            // Use broken bar character (U+00A6) for within-stratum, | for between-strata
-            let mut header = String::new();
-
-            // Calculate max candidate width for alignment
             let max_cand_width = form.candidates.iter()
                 .map(|c| c.form.len())
                 .max()
                 .unwrap_or(0)
-                .max(2); // At least 2 chars for marker + space
+                .max(2);
 
-            // Add initial spacing
+            // Build constraint header with stratum separators
+            let mut header = String::new();
             for _ in 0..max_cand_width + 2 {
                 header.push(' ');
             }
-
-            // Sort constraints by stratum (matches VB6 SortTheConstraints)
-            let sorted = self.sorted_constraint_indices(tableau.constraints.len());
-
             for (pos, &c_idx) in sorted.iter().enumerate() {
-                let c_stratum = self.constraint_strata[c_idx];
-
-                // Add separator before this constraint
                 if pos > 0 {
                     let prev_stratum = self.constraint_strata[sorted[pos - 1]];
-                    if c_stratum != prev_stratum {
+                    if self.constraint_strata[c_idx] != prev_stratum {
                         header.push('|');
                     } else {
                         header.push(BROKEN_BAR);
                     }
                 }
-
                 header.push_str(&tableau.constraints[c_idx].abbrev());
             }
-            output.push_str(&header);
-            output.push('\n');
+            out.push_str(&header);
+            out.push('\n');
 
-            // Find winner and sort candidates (winner first, rivals by harmony)
             let winner_idx = form.candidates.iter().position(|c| c.frequency > 0);
             let sorted_cands = self.sorted_candidate_indices(form, &sorted);
 
-            // Output each candidate (in sorted order)
             for &orig_cand_idx in &sorted_cands {
                 let candidate = &form.candidates[orig_cand_idx];
                 let is_winner = Some(orig_cand_idx) == winner_idx;
                 let marker = if is_winner { ">" } else { " " };
 
-                // Find position (in sorted order) of the first fatal violation for this loser
                 let first_fatal_idx = if !is_winner {
                     winner_idx.and_then(|wi| {
                         let winner = &form.candidates[wi];
@@ -532,115 +537,95 @@ impl RCDResult {
                     None
                 };
 
-                // Candidate surface form (right-aligned to match expected output)
-                output.push_str(&format!("{}{:<width$} ", marker, candidate.form, width = max_cand_width));
+                out.push_str(&format!("{}{:<width$} ", marker, candidate.form, width = max_cand_width));
 
-                // Violations with stratum separators (in sorted constraint order)
                 for (pos, &c_idx) in sorted.iter().enumerate() {
                     let viols = candidate.violations[c_idx];
-                    let c_stratum = self.constraint_strata[c_idx];
                     let col_width = tableau.constraints[c_idx].abbrev().len();
 
-                    // Add separator
                     if pos > 0 {
                         let prev_stratum = self.constraint_strata[sorted[pos - 1]];
-                        if c_stratum != prev_stratum {
-                            output.push('|');
+                        if self.constraint_strata[c_idx] != prev_stratum {
+                            out.push('|');
                         } else {
-                            output.push(BROKEN_BAR);
+                            out.push(BROKEN_BAR);
                         }
                     }
 
-                    // Mark violation as fatal only if it's the FIRST fatal violation
                     let is_fatal = first_fatal_idx == Some(pos);
-                    output.push_str(&format_violation(col_width, viols, is_fatal));
+                    out.push_str(&format_violation(col_width, viols, is_fatal));
                 }
-                output.push('\n');
+                out.push('\n');
             }
-            output.push('\n');
+            out.push('\n');
         }
-        output.push('\n');
+        out.push('\n');
+    }
 
-        // Section: Status of Proposed Constraints
-        if !self.constraint_necessity.is_empty() {
-            section += 1;
-            output.push_str(&format!("{}. Status of Proposed Constraints:  Necessary or Unnecessary\n\n", section));
+    fn fmt_text_necessity(&self, out: &mut String, section: &mut usize, tableau: &Tableau, apriori: &[Vec<bool>]) {
+        *section += 1;
+        out.push_str(&format!("{}. Status of Proposed Constraints:  Necessary or Unnecessary\n\n", section));
 
-            let max_abbrev_width = tableau.constraints.iter()
-                .map(|c| c.abbrev().len())
-                .max()
-                .unwrap_or(0);
+        let max_abbrev_width = tableau.constraints.iter()
+            .map(|c| c.abbrev().len())
+            .max()
+            .unwrap_or(0);
 
-            // VB6 outputs constraints grouped by category in three passes:
-            // 1. Necessary, 2. UnnecessaryButFaithfulness, 3. CompletelyUnnecessary
-            let category_order = [
-                ConstraintNecessity::Necessary,
-                ConstraintNecessity::UnnecessaryButShownForFaithfulness,
-                ConstraintNecessity::CompletelyUnnecessary,
-            ];
-            for category in &category_order {
-                for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
-                    if necessity != category {
-                        continue;
-                    }
-                    let constraint = &tableau.constraints[c_idx];
-                    let status = match necessity {
-                        ConstraintNecessity::Necessary => "Necessary",
-                        ConstraintNecessity::UnnecessaryButShownForFaithfulness =>
-                            "Not necessary (but included to show Faithfulness violations\n              of a winning candidate)",
-                        ConstraintNecessity::CompletelyUnnecessary => "Not necessary",
-                    };
-                    output.push_str(&format!(
-                        "   {:<width$}  {}\n",
-                        constraint.abbrev(),
-                        status,
-                        width = max_abbrev_width,
-                    ));
+        let category_order = [
+            ConstraintNecessity::Necessary,
+            ConstraintNecessity::UnnecessaryButShownForFaithfulness,
+            ConstraintNecessity::CompletelyUnnecessary,
+        ];
+        for category in &category_order {
+            for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
+                if necessity != category {
+                    continue;
                 }
+                let constraint = &tableau.constraints[c_idx];
+                let status = match necessity {
+                    ConstraintNecessity::Necessary => "Necessary",
+                    ConstraintNecessity::UnnecessaryButShownForFaithfulness =>
+                        "Not necessary (but included to show Faithfulness violations\n              of a winning candidate)",
+                    ConstraintNecessity::CompletelyUnnecessary => "Not necessary",
+                };
+                out.push_str(&format!(
+                    "   {:<width$}  {}\n",
+                    constraint.abbrev(),
+                    status,
+                    width = max_abbrev_width,
+                ));
             }
+        }
 
-            // Check if mass deletion is possible (only relevant when >=2 deletable constraints)
-            let num_deletable = self.constraint_necessity.iter()
-                .filter(|n| **n != ConstraintNecessity::Necessary)
-                .count();
-            if num_deletable >= 2 {
-                let mass_deletion_possible = self.check_mass_deletion(tableau, apriori);
-                if mass_deletion_possible {
-                    output.push_str("\nA check has determined that the grammar will still work even if the \n");
-                    output.push_str("constraints marked above as unnecessary are removed en masse.\n\n\n");
-                } else {
-                    output.push_str("\n\nA check has determined that, although the grammar will still work with the\n");
-                    output.push_str("removal of ANY ONE of the constraints marked above as unnecessary, the\n");
-                    output.push_str("grammar will NOT work if they are removed en masse.\n\n\n");
-                }
+        let num_deletable = self.constraint_necessity.iter()
+            .filter(|n| **n != ConstraintNecessity::Necessary)
+            .count();
+        if num_deletable >= 2 {
+            let mass_deletion_possible = self.check_mass_deletion(tableau, apriori);
+            if mass_deletion_possible {
+                out.push_str("\nA check has determined that the grammar will still work even if the \n");
+                out.push_str("constraints marked above as unnecessary are removed en masse.\n\n\n");
             } else {
-                output.push_str("\n\n");
+                out.push_str("\n\nA check has determined that, although the grammar will still work with the\n");
+                out.push_str("removal of ANY ONE of the constraints marked above as unnecessary, the\n");
+                out.push_str("grammar will NOT work if they are removed en masse.\n\n\n");
             }
+        } else {
+            out.push_str("\n\n");
         }
+    }
 
-        // Section: Ranking Arguments (FRed)
-        if let Some(ref fred) = self.fred_result {
-            section += 1;
-            output.push_str(&fred.format_section_fred(section));
+    fn fmt_text_mini_tableaux(&self, out: &mut String, section: &mut usize, tableau: &Tableau) {
+        *section += 1;
+        out.push_str(&format!("{}. Mini-Tableaux\n\n", section));
+        out.push_str("The following small tableaux may be useful in presenting ranking arguments. \n");
+        out.push_str("They include all winner-rival comparisons in which there is just one \n");
+        out.push_str("winner-preferring constraint and at least one loser-preferring constraint.  \n");
+        out.push_str("Constraints not violated by either candidate are omitted.\n\n");
+
+        for mini in &self.mini_tableaux {
+            self.format_mini_tableau(tableau, mini, out);
         }
-
-        // Section: Mini-Tableaux
-        if !self.mini_tableaux.is_empty() {
-            section += 1;
-            output.push_str(&format!("{}. Mini-Tableaux\n\n", section));
-            output.push_str("The following small tableaux may be useful in presenting ranking arguments. \n");
-            output.push_str("They include all winner-rival comparisons in which there is just one \n");
-            output.push_str("winner-preferring constraint and at least one loser-preferring constraint.  \n");
-            output.push_str("Constraints not violated by either candidate are omitted.\n\n");
-
-            for mini in &self.mini_tableaux {
-                self.format_mini_tableau(tableau, mini, &mut output);
-            }
-        }
-
-        // Normalize trailing newlines to match VB6 output (exactly one trailing blank line)
-        let trimmed = output.trim_end_matches('\n');
-        format!("{}\n\n", trimmed)
     }
 
     /// Check if mass deletion of unnecessary constraints still allows RCD to succeed
@@ -795,8 +780,34 @@ impl RCDResult {
         apriori: &[Vec<bool>],
     ) -> String {
         let mut out = String::new();
+        let mut section = 0usize;
 
-        // DOCTYPE, head, CSS
+        self.fmt_html_header(&mut out, algorithm_name, filename);
+        self.fmt_html_result(&mut out, &mut section, tableau);
+
+        if !apriori.is_empty() {
+            Self::fmt_html_apriori(&mut out, &mut section, tableau, apriori);
+        }
+
+        self.fmt_html_tableaux(&mut out, &mut section, tableau, axis_mode);
+
+        if !self.constraint_necessity.is_empty() {
+            self.fmt_html_necessity(&mut out, &mut section, tableau, apriori);
+        }
+
+        if let Some(ref fred) = self.fred_result {
+            Self::fmt_html_fred(&mut out, &mut section, fred);
+        }
+
+        if !self.mini_tableaux.is_empty() {
+            self.fmt_html_mini_tableaux(&mut out, &mut section, tableau);
+        }
+
+        out.push_str("</body>\n</html>\n");
+        out
+    }
+
+    fn fmt_html_header(&self, out: &mut String, algorithm_name: &str, filename: &str) {
         out.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
         out.push_str("<meta charset=\"UTF-8\">\n");
         out.push_str(&format!(
@@ -807,7 +818,6 @@ impl RCDResult {
         out.push_str(HTML_STYLE);
         out.push_str("\n</head>\n<body>\n");
 
-        // Document header
         out.push_str(&format!(
             "<h1>Results of Applying {} to {}</h1>\n",
             html_escape(algorithm_name),
@@ -826,12 +836,10 @@ impl RCDResult {
                  this results in a different ranking.</p>\n",
             );
         }
+    }
 
-        // Auto-incrementing section counter (matches VB6 gLevel1HeadingNumber)
-        let mut section = 0usize;
-
-        // Section: Result
-        section += 1;
+    fn fmt_html_result(&self, out: &mut String, section: &mut usize, tableau: &Tableau) {
+        *section += 1;
         out.push_str(&format!("<h2>{}. Result</h2>\n", section));
         if self.success {
             out.push_str("<p class=\"success\">A ranking was found that generates the correct outputs.</p>\n");
@@ -862,37 +870,36 @@ impl RCDResult {
             }
         }
         out.push_str("</table>\n");
+    }
 
-        // Section: A Priori Rankings (only when a priori data is present)
-        if !apriori.is_empty() {
-            section += 1;
-            out.push_str(&format!("<h2>{}. A Priori Rankings</h2>\n", section));
-            out.push_str(
-                "<p>In the following table, &quot;yes&quot; means that the constraint of the indicated row \
-                 was marked a priori to dominate the constraint in the given column.</p>\n",
-            );
-            let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
-            out.push_str("<table>\n  <tr>\n    <th></th>\n");
-            for abbrev in &abbrevs {
-                out.push_str(&format!("    <th>{}</th>\n", html_escape(abbrev)));
+    fn fmt_html_apriori(out: &mut String, section: &mut usize, tableau: &Tableau, apriori: &[Vec<bool>]) {
+        *section += 1;
+        out.push_str(&format!("<h2>{}. A Priori Rankings</h2>\n", section));
+        out.push_str(
+            "<p>In the following table, &quot;yes&quot; means that the constraint of the indicated row \
+             was marked a priori to dominate the constraint in the given column.</p>\n",
+        );
+        let abbrevs: Vec<String> = tableau.constraints.iter().map(|c| c.abbrev()).collect();
+        out.push_str("<table>\n  <tr>\n    <th></th>\n");
+        for abbrev in &abbrevs {
+            out.push_str(&format!("    <th>{}</th>\n", html_escape(abbrev)));
+        }
+        out.push_str("  </tr>\n");
+        for (i, row) in apriori.iter().enumerate() {
+            out.push_str(&format!("  <tr>\n    <th>{}</th>\n", html_escape(&abbrevs[i])));
+            for &dominates in row {
+                let cell = if dominates { "yes" } else { "" };
+                out.push_str(&format!("    <td>{}</td>\n", cell));
             }
             out.push_str("  </tr>\n");
-            for (i, row) in apriori.iter().enumerate() {
-                out.push_str(&format!("  <tr>\n    <th>{}</th>\n", html_escape(&abbrevs[i])));
-                for &dominates in row {
-                    let cell = if dominates { "yes" } else { "" };
-                    out.push_str(&format!("    <td>{}</td>\n", cell));
-                }
-                out.push_str("  </tr>\n");
-            }
-            out.push_str("</table>\n");
         }
+        out.push_str("</table>\n");
+    }
 
-        // Section: Tableaux as HTML tables
-        section += 1;
+    fn fmt_html_tableaux(&self, out: &mut String, section: &mut usize, tableau: &Tableau, axis_mode: AxisMode) {
+        *section += 1;
         out.push_str(&format!("<h2>{}. Tableaux</h2>\n", section));
 
-        // Precompute total constraint abbreviation length for "switch where needed" mode
         let total_constraint_length: usize = tableau.constraints.iter()
             .map(|c| c.abbrev().len() + 1)
             .sum();
@@ -920,134 +927,125 @@ impl RCDResult {
                 out.push_str(&self.format_html_form_table(tableau, form, winner_idx, &sorted));
             }
         }
+    }
 
-        // Section: Constraint necessity
-        if !self.constraint_necessity.is_empty() {
-            section += 1;
-            out.push_str(&format!(
-                "<h2>{}. Status of Proposed Constraints: Necessary or Unnecessary</h2>\n",
-                section,
-            ));
-            out.push_str("<table class=\"necessity-table\">\n<tbody>\n");
-            out.push_str("  <tr><td><b>Constraint</b></td><td><b>Status</b></td></tr>\n");
-            // VB6 groups by category: Necessary, UnnecessaryButFaithfulness, CompletelyUnnecessary
-            let category_order = [
-                ConstraintNecessity::Necessary,
-                ConstraintNecessity::UnnecessaryButShownForFaithfulness,
-                ConstraintNecessity::CompletelyUnnecessary,
-            ];
-            for category in &category_order {
-                for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
-                    if necessity != category {
-                        continue;
-                    }
-                    let constraint = &tableau.constraints[c_idx];
-                    let status = match necessity {
-                        ConstraintNecessity::Necessary => "Necessary",
-                        ConstraintNecessity::UnnecessaryButShownForFaithfulness =>
-                            "Not necessary (but included to show Faithfulness violations of a winning candidate)",
-                        ConstraintNecessity::CompletelyUnnecessary => "Not necessary",
-                    };
-                    out.push_str(&format!(
-                        "  <tr><td>{}</td><td>{}</td></tr>\n",
-                        html_escape(&constraint.full_name()),
-                        html_escape(status),
-                    ));
+    fn fmt_html_necessity(&self, out: &mut String, section: &mut usize, tableau: &Tableau, apriori: &[Vec<bool>]) {
+        *section += 1;
+        out.push_str(&format!(
+            "<h2>{}. Status of Proposed Constraints: Necessary or Unnecessary</h2>\n",
+            section,
+        ));
+        out.push_str("<table class=\"necessity-table\">\n<tbody>\n");
+        out.push_str("  <tr><td><b>Constraint</b></td><td><b>Status</b></td></tr>\n");
+        let category_order = [
+            ConstraintNecessity::Necessary,
+            ConstraintNecessity::UnnecessaryButShownForFaithfulness,
+            ConstraintNecessity::CompletelyUnnecessary,
+        ];
+        for category in &category_order {
+            for (c_idx, necessity) in self.constraint_necessity.iter().enumerate() {
+                if necessity != category {
+                    continue;
                 }
-            }
-            out.push_str("</tbody>\n</table>\n");
-            let num_deletable = self.constraint_necessity.iter()
-                .filter(|n| **n != ConstraintNecessity::Necessary)
-                .count();
-            if num_deletable >= 2 {
-                if self.check_mass_deletion(tableau, apriori) {
-                    out.push_str(
-                        "<p>A check has determined that the grammar will still work even if the \
-                         constraints marked above as unnecessary are removed en masse.</p>\n",
-                    );
-                } else {
-                    out.push_str(
-                        "<p>A check has determined that, although the grammar will still work with the \
-                         removal of ANY ONE of the constraints marked above as unnecessary, the \
-                         grammar will NOT work if they are removed en masse.</p>\n",
-                    );
-                }
+                let constraint = &tableau.constraints[c_idx];
+                let status = match necessity {
+                    ConstraintNecessity::Necessary => "Necessary",
+                    ConstraintNecessity::UnnecessaryButShownForFaithfulness =>
+                        "Not necessary (but included to show Faithfulness violations of a winning candidate)",
+                    ConstraintNecessity::CompletelyUnnecessary => "Not necessary",
+                };
+                out.push_str(&format!(
+                    "  <tr><td>{}</td><td>{}</td></tr>\n",
+                    html_escape(&constraint.full_name()),
+                    html_escape(status),
+                ));
             }
         }
+        out.push_str("</tbody>\n</table>\n");
+        let num_deletable = self.constraint_necessity.iter()
+            .filter(|n| **n != ConstraintNecessity::Necessary)
+            .count();
+        if num_deletable >= 2 {
+            if self.check_mass_deletion(tableau, apriori) {
+                out.push_str(
+                    "<p>A check has determined that the grammar will still work even if the \
+                     constraints marked above as unnecessary are removed en masse.</p>\n",
+                );
+            } else {
+                out.push_str(
+                    "<p>A check has determined that, although the grammar will still work with the \
+                     removal of ANY ONE of the constraints marked above as unnecessary, the \
+                     grammar will NOT work if they are removed en masse.</p>\n",
+                );
+            }
+        }
+    }
 
-        // Section: Ranking Arguments (FRed)
-        if let Some(ref fred) = self.fred_result {
-            section += 1;
-            out.push_str(&format!(
-                "<h2>{}. Ranking Arguments, based on the Fusional Reduction Algorithm</h2>\n",
-                section,
-            ));
+    fn fmt_html_fred(out: &mut String, section: &mut usize, fred: &FRedResult) {
+        *section += 1;
+        out.push_str(&format!(
+            "<h2>{}. Ranking Arguments, based on the Fusional Reduction Algorithm</h2>\n",
+            section,
+        ));
 
-            let basis_name = if fred.use_skeletal_basis() {
+        let basis_name = if fred.use_skeletal_basis() {
+            "Skeletal Basis"
+        } else {
+            "Most Informative Basis"
+        };
+        let purpose = if fred.use_skeletal_basis() {
+            "keep each final ranking argument as pithy as possible"
+        } else {
+            "minimize the set of final ranking arguments"
+        };
+        out.push_str(&format!(
+            "<p>This run sought to obtain the {basis_name}, intended to {purpose}.</p>\n"
+        ));
+
+        if fred.failure() {
+            out.push_str(
+                "<p>The constraints cannot be ranked to yield the desired outcomes.</p>\n",
+            );
+        }
+
+        if !fred.detail_text.is_empty() {
+            let basis_label = if fred.use_skeletal_basis() {
                 "Skeletal Basis"
             } else {
                 "Most Informative Basis"
             };
-            let purpose = if fred.use_skeletal_basis() {
-                "keep each final ranking argument as pithy as possible"
-            } else {
-                "minimize the set of final ranking arguments"
-            };
             out.push_str(&format!(
-                "<p>This run sought to obtain the {basis_name}, intended to {purpose}.</p>\n"
+                "<pre>{}</pre>\n<p>Ranking argumentation: Final result</p>\n\
+                 <p>The following set of ERCs forms the {} for the ERC set as a whole, \
+                 and thus encapsulates the available ranking information.</p>\n",
+                html_escape(&fred.detail_text),
+                html_escape(basis_label),
             ));
-
-            if fred.failure() {
-                out.push_str(
-                    "<p>The constraints cannot be ranked to yield the desired outcomes.</p>\n",
-                );
-            }
-
-            if !fred.detail_text.is_empty() {
-                let basis_label = if fred.use_skeletal_basis() {
-                    "Skeletal Basis"
-                } else {
-                    "Most Informative Basis"
-                };
-                out.push_str(&format!(
-                    "<pre>{}</pre>\n<p>Ranking argumentation: Final result</p>\n\
-                     <p>The following set of ERCs forms the {} for the ERC set as a whole, \
-                     and thus encapsulates the available ranking information.</p>\n",
-                    html_escape(&fred.detail_text),
-                    html_escape(basis_label),
-                ));
-            }
-
-            out.push_str("<p>The final rankings obtained are as follows:</p>\n");
-
-            // VB6 renders rankings as a 2-column table (ranking | &nbsp;)
-            out.push_str("<table>\n");
-            for ranking in fred.ranking_strings() {
-                out.push_str(&format!(
-                    "  <tr><td>{}</td><td>&nbsp;</td></tr>\n",
-                    html_escape(&ranking)
-                ));
-            }
-            out.push_str("</table>\n");
         }
 
-        // Section: Mini-Tableaux
-        if !self.mini_tableaux.is_empty() {
-            section += 1;
-            out.push_str(&format!("<h2>{}. Mini-Tableaux</h2>\n", section));
-            out.push_str(
-                "<p>The following small tableaux may be useful in presenting ranking arguments. \
-                 They include all winner-rival comparisons in which there is just one \
-                 winner-preferring constraint and at least one loser-preferring constraint. \
-                 Constraints not violated by either candidate are omitted.</p>\n",
-            );
-            for mini in &self.mini_tableaux {
-                out.push_str(&self.format_html_mini_tableau(tableau, mini));
-            }
+        out.push_str("<p>The final rankings obtained are as follows:</p>\n");
+        out.push_str("<table>\n");
+        for ranking in fred.ranking_strings() {
+            out.push_str(&format!(
+                "  <tr><td>{}</td><td>&nbsp;</td></tr>\n",
+                html_escape(&ranking)
+            ));
         }
+        out.push_str("</table>\n");
+    }
 
-        out.push_str("</body>\n</html>\n");
-        out
+    fn fmt_html_mini_tableaux(&self, out: &mut String, section: &mut usize, tableau: &Tableau) {
+        *section += 1;
+        out.push_str(&format!("<h2>{}. Mini-Tableaux</h2>\n", section));
+        out.push_str(
+            "<p>The following small tableaux may be useful in presenting ranking arguments. \
+             They include all winner-rival comparisons in which there is just one \
+             winner-preferring constraint and at least one loser-preferring constraint. \
+             Constraints not violated by either candidate are omitted.</p>\n",
+        );
+        for mini in &self.mini_tableaux {
+            out.push_str(&self.format_html_mini_tableau(tableau, mini));
+        }
     }
 
     /// Render a single input form as an HTML tableau table.

@@ -32,9 +32,7 @@ function GlaResults({ result, inputFilename }: GlaResultsProps) {
             ))}
           </tbody>
         </table>
-        <div className="log-prob">
-          Log likelihood of data: {result.logLikelihood.toFixed(4)}
-        </div>
+        <div className="log-prob">Log likelihood of data: {result.logLikelihood.toFixed(4)}</div>
       </div>
 
       <div className="maxent-tableaux">
@@ -78,8 +76,8 @@ function GlaResults({ result, inputFilename }: GlaResultsProps) {
         <div className="pairwise-probabilities">
           <h3 className="results-subheader">Pairwise Ranking Probabilities</h3>
           <p className="pairwise-note">
-            The computed ranking values imply the pairwise ranking probabilities given below. In
-            the table, the probability given is that of the row constraint outranking the column
+            The computed ranking values imply the pairwise ranking probabilities given below. In the
+            table, the probability given is that of the row constraint outranking the column
             constraint.
           </p>
           <div className="table-scroll-wrapper">
@@ -112,8 +110,8 @@ function GlaResults({ result, inputFilename }: GlaResultsProps) {
       <div className="maxent-weights">
         <h3 className="results-subheader">Active Constraints</h3>
         <p className="active-constraints-note">
-          A constraint is active if it causes the winning candidate to defeat a rival in at
-          least one competition.
+          A constraint is active if it causes the winning candidate to defeat a rival in at least
+          one competition.
         </p>
         <table className="weights-table">
           <thead>

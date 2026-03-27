@@ -31,6 +31,232 @@ fn is_superset_rival(winner_viols: &[i32], rival_viols: &[i32]) -> bool {
         .all(|(&w, &r)| w <= r)
 }
 
+/// Mark constraints as demotable if they prefer a loser in any still-informative pair.
+fn mark_loser_preferring(
+    tableau: &Tableau,
+    strata: &[usize],
+    still_informative: &[Vec<bool>],
+    demotable: &mut [bool],
+) {
+    for (form_idx, form) in tableau.forms.iter().enumerate() {
+        let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
+            Some(w) => w,
+            None => continue,
+        };
+        for (rival_idx, rival) in form.candidates.iter().enumerate() {
+            if rival.frequency > 0 || !still_informative[form_idx][rival_idx] {
+                continue;
+            }
+            for (c_idx, &stratum) in strata.iter().enumerate() {
+                if stratum == 0 && winner.violations[c_idx] > rival.violations[c_idx] {
+                    demotable[c_idx] = true;
+                }
+            }
+        }
+    }
+}
+
+/// Demote constraints that are a priori dominated by an unranked constraint.
+fn enforce_apriori_demotions(apriori: &[Vec<bool>], strata: &[usize], demotable: &mut [bool]) {
+    if apriori.is_empty() {
+        return;
+    }
+    let nc = strata.len();
+    for outer in 0..nc {
+        if strata[outer] == 0 {
+            for inner in 0..nc {
+                if apriori[outer][inner] {
+                    demotable[inner] = true;
+                }
+            }
+        }
+    }
+}
+
+/// Apply the four LFCD faithfulness heuristics: markedness, activeness, specificity, autonomy.
+fn apply_faithfulness_heuristics(
+    tableau: &Tableau,
+    strata: &[usize],
+    still_informative: &[Vec<bool>],
+    is_faithfulness: &[bool],
+    violation_subsets: &[Vec<bool>],
+    demotable: &mut [bool],
+) {
+    let nc = strata.len();
+
+    // Favor Markedness: if any non-demotable Markedness exists, shut out all Faithfulness
+    let there_is_rankable_markedness = (0..nc).any(|c_idx| {
+        strata[c_idx] == 0 && !demotable[c_idx] && !is_faithfulness[c_idx]
+    });
+
+    if there_is_rankable_markedness {
+        for c_idx in 0..nc {
+            if is_faithfulness[c_idx] {
+                demotable[c_idx] = true;
+            }
+        }
+        return;
+    }
+
+    // Favor Activeness: mark Faithfulness constraints as active if they prefer
+    // the winner for at least one still-informative, non-superset pair.
+    let mut active = vec![false; nc];
+    let mut at_least_one_faith_active = false;
+
+    for c_idx in 0..nc {
+        if strata[c_idx] != 0 || !is_faithfulness[c_idx] || demotable[c_idx] {
+            continue;
+        }
+        'find_active_pair: for (form_idx, form) in tableau.forms.iter().enumerate() {
+            let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
+                Some(w) => w,
+                None => continue,
+            };
+            for (rival_idx, rival) in form.candidates.iter().enumerate() {
+                if rival.frequency > 0 || !still_informative[form_idx][rival_idx] {
+                    continue;
+                }
+                if is_superset_rival(&winner.violations, &rival.violations) {
+                    continue;
+                }
+                if rival.violations[c_idx] > winner.violations[c_idx] {
+                    active[c_idx] = true;
+                    at_least_one_faith_active = true;
+                    break 'find_active_pair;
+                }
+            }
+        }
+    }
+
+    if !at_least_one_faith_active {
+        return;
+    }
+
+    // Demote inactive Faithfulness (since active ones are available)
+    for c_idx in 0..nc {
+        if strata[c_idx] == 0 && is_faithfulness[c_idx] && !demotable[c_idx] && !active[c_idx] {
+            demotable[c_idx] = true;
+        }
+    }
+
+    // Favor Specificity: demote a constraint if a more specific one exists
+    for c_idx in 0..nc {
+        if strata[c_idx] != 0 || demotable[c_idx] || !active[c_idx] || !is_faithfulness[c_idx] {
+            continue;
+        }
+        for inner in 0..nc {
+            if inner == c_idx || strata[inner] != 0 || !is_faithfulness[inner] || demotable[inner] {
+                continue;
+            }
+            if violation_subsets[inner][c_idx] {
+                demotable[c_idx] = true;
+                break;
+            }
+        }
+    }
+
+    // Favor Autonomy: prefer constraints with fewest helpers
+    apply_favor_autonomy(
+        tableau, strata, still_informative, is_faithfulness, violation_subsets, demotable,
+    );
+}
+
+/// Among remaining non-demotable Faithfulness constraints, prefer those that rule out
+/// a loser with the fewest "helpers" (other constraints also preferring the winner).
+fn apply_favor_autonomy(
+    tableau: &Tableau,
+    strata: &[usize],
+    still_informative: &[Vec<bool>],
+    is_faithfulness: &[bool],
+    violation_subsets: &[Vec<bool>],
+    demotable: &mut [bool],
+) {
+    let nc = strata.len();
+    let mut num_helpers = vec![usize::MAX; nc];
+
+    for (form_idx, form) in tableau.forms.iter().enumerate() {
+        let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
+            Some(w) => w,
+            None => continue,
+        };
+        for (rival_idx, rival) in form.candidates.iter().enumerate() {
+            if rival.frequency > 0 || !still_informative[form_idx][rival_idx] {
+                continue;
+            }
+            if is_superset_rival(&winner.violations, &rival.violations) {
+                continue;
+            }
+
+            for c_idx in 0..nc {
+                if strata[c_idx] != 0 || demotable[c_idx] || !is_faithfulness[c_idx] {
+                    continue;
+                }
+                if rival.violations[c_idx] <= winner.violations[c_idx] {
+                    continue;
+                }
+
+                let mut local_helpers = 0usize;
+                for inner in 0..nc {
+                    if inner == c_idx {
+                        continue;
+                    }
+                    if rival.violations[inner] > winner.violations[inner] {
+                        let is_superset_faith =
+                            violation_subsets[c_idx][inner] && is_faithfulness[inner];
+                        if !is_superset_faith {
+                            local_helpers += 1;
+                        }
+                    }
+                }
+
+                if local_helpers < num_helpers[c_idx] {
+                    num_helpers[c_idx] = local_helpers;
+                }
+            }
+        }
+    }
+
+    let lowest_helpers = (0..nc)
+        .filter(|&c| is_faithfulness[c] && !demotable[c] && strata[c] == 0)
+        .map(|c| num_helpers[c])
+        .min()
+        .unwrap_or(usize::MAX);
+
+    for c_idx in 0..nc {
+        if strata[c_idx] == 0 && !demotable[c_idx] && num_helpers[c_idx] > lowest_helpers {
+            demotable[c_idx] = true;
+        }
+    }
+}
+
+/// Mark pairs as no longer informative once a newly-ranked constraint prefers the winner.
+fn update_informativeness(
+    tableau: &Tableau,
+    strata: &[usize],
+    current_stratum: usize,
+    still_informative: &mut [Vec<bool>],
+) {
+    for (c_idx, &c_stratum) in strata.iter().enumerate() {
+        if c_stratum != current_stratum {
+            continue;
+        }
+        for (form_idx, form) in tableau.forms.iter().enumerate() {
+            let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
+                Some(w) => w,
+                None => continue,
+            };
+            for (rival_idx, rival) in form.candidates.iter().enumerate() {
+                if rival.frequency > 0 {
+                    continue;
+                }
+                if rival.violations[c_idx] > winner.violations[c_idx] {
+                    still_informative[form_idx][rival_idx] = false;
+                }
+            }
+        }
+    }
+}
+
 impl Tableau {
     /// Run Low Faithfulness Constraint Demotion to find a ranking.
     pub fn run_lfcd(&self) -> RCDResult {
@@ -44,25 +270,17 @@ impl Tableau {
     /// Reproduces VB6 LowFaithfulnessConstraintDemotion.bas:Main
     pub fn run_lfcd_with_apriori(&self, apriori: &[Vec<bool>]) -> RCDResult {
         let nc = self.constraints.len();
-
-        // Detect faithfulness constraints
         let is_faithfulness: Vec<bool> = self.constraints.iter()
             .map(|c| c.is_faithfulness())
             .collect();
-
-        // Precompute violation subsets for specificity and autonomy checks
         let violation_subsets = locate_violation_subsets(self);
 
-        // Initialize state
         let mut strata = vec![0usize; nc];
         let mut current_stratum = 0usize;
-
-        // still_informative[form_idx][rival_idx]: whether this pair is still relevant
         let mut still_informative: Vec<Vec<bool>> = self.forms.iter().map(|form| {
             form.candidates.iter().map(|_| true).collect()
         }).collect();
 
-        // Helper: count still-informative loser pairs
         let count_pairs = |si: &Vec<Vec<bool>>| -> usize {
             self.forms.iter().enumerate()
                 .map(|(fi, form)| {
@@ -75,7 +293,6 @@ impl Tableau {
 
         crate::ot_log!("Starting LFCD with {} pairs", count_pairs(&still_informative));
 
-        // Safety: at most nc+1 iterations
         loop {
             current_stratum += 1;
             if current_stratum > nc + 1 {
@@ -83,234 +300,18 @@ impl Tableau {
                 return RCDResult::new(strata, current_stratum - 1, false);
             }
 
-            // Per-stratum arrays (reset each iteration)
             let mut demotable = vec![false; nc];
-            let mut active = vec![false; nc];
-            // num_helpers initialized to usize::MAX as a sentinel for "not yet assessed"
-            let mut num_helpers = vec![usize::MAX; nc];
 
-            // ===== AVOID PREFERENCE FOR LOSERS =====
-            //
-            // A constraint is demotable if it prefers a loser over a winner in any
-            // still-informative pair.
-            for (form_idx, form) in self.forms.iter().enumerate() {
-                let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
-                    Some(w) => w,
-                    None => continue,
-                };
-                for (rival_idx, rival) in form.candidates.iter().enumerate() {
-                    if rival.frequency > 0 || !still_informative[form_idx][rival_idx] {
-                        continue;
-                    }
-                    for c_idx in 0..nc {
-                        if strata[c_idx] == 0
-                            && winner.violations[c_idx] > rival.violations[c_idx]
-                        {
-                            demotable[c_idx] = true;
-                        }
-                    }
-                }
-            }
+            mark_loser_preferring(self, &strata, &still_informative, &mut demotable);
+            enforce_apriori_demotions(apriori, &strata, &mut demotable);
+            apply_faithfulness_heuristics(
+                self, &strata, &still_informative, &is_faithfulness,
+                &violation_subsets, &mut demotable,
+            );
 
-            // ===== ENFORCE A PRIORI RANKINGS =====
-            //
-            // Any constraint that is a priori dominated by an unranked constraint
-            // cannot join the current stratum.
-            if !apriori.is_empty() {
-                for outer in 0..nc {
-                    if strata[outer] == 0 {
-                        for inner in 0..nc {
-                            if apriori[outer][inner] {
-                                demotable[inner] = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ===== FAVOR MARKEDNESS =====
-            //
-            // If any non-demotable Markedness constraint exists, install it and
-            // shut out all Faithfulness constraints for this stratum.
-            let there_is_rankable_markedness = (0..nc).any(|c_idx| {
-                strata[c_idx] == 0 && !demotable[c_idx] && !is_faithfulness[c_idx]
-            });
-
-            if there_is_rankable_markedness {
-                // Shut out all Faithfulness
-                for c_idx in 0..nc {
-                    if is_faithfulness[c_idx] {
-                        demotable[c_idx] = true;
-                    }
-                }
-                // Fall through to ReportStrata
-            } else {
-                // ===== FAVOR ACTIVENESS =====
-                //
-                // A Faithfulness constraint is "active" if it prefers the winner for at
-                // least one still-informative, non-superset pair.  Superset rivals are
-                // excluded because they carry no ranking information.
-                let mut at_least_one_faith_active = false;
-
-                for c_idx in 0..nc {
-                    if strata[c_idx] != 0 || !is_faithfulness[c_idx] || demotable[c_idx] {
-                        continue;
-                    }
-                    'find_active_pair: for (form_idx, form) in self.forms.iter().enumerate() {
-                        let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
-                            Some(w) => w,
-                            None => continue,
-                        };
-                        for (rival_idx, rival) in form.candidates.iter().enumerate() {
-                            if rival.frequency > 0 || !still_informative[form_idx][rival_idx] {
-                                continue;
-                            }
-                            if is_superset_rival(&winner.violations, &rival.violations) {
-                                continue;
-                            }
-                            if rival.violations[c_idx] > winner.violations[c_idx] {
-                                active[c_idx] = true;
-                                at_least_one_faith_active = true;
-                                break 'find_active_pair; // Only need one pair for proof
-                            }
-                        }
-                    }
-                }
-
-                if at_least_one_faith_active {
-                    // Demote inactive Faithfulness (since active ones are available)
-                    for c_idx in 0..nc {
-                        if strata[c_idx] == 0
-                            && is_faithfulness[c_idx]
-                            && !demotable[c_idx]
-                            && !active[c_idx]
-                        {
-                            demotable[c_idx] = true;
-                        }
-                    }
-
-                    // ===== FAVOR SPECIFICITY =====
-                    //
-                    // Block a Faithfulness constraint C if any other non-demotable
-                    // Faithfulness constraint InnerC has subset[InnerC][C] = true,
-                    // meaning InnerC's violations are a subset of C's (InnerC is more specific).
-                    for c_idx in 0..nc {
-                        if strata[c_idx] != 0
-                            || demotable[c_idx]
-                            || !active[c_idx]
-                            || !is_faithfulness[c_idx]
-                        {
-                            continue;
-                        }
-                        for inner in 0..nc {
-                            if inner == c_idx
-                                || strata[inner] != 0
-                                || !is_faithfulness[inner]
-                                || demotable[inner]
-                            {
-                                continue;
-                            }
-                            if violation_subsets[inner][c_idx] {
-                                demotable[c_idx] = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // ===== FAVOR AUTONOMY =====
-                    //
-                    // Among remaining non-demotable Faithfulness constraints, prefer those
-                    // that rule out a loser with the fewest "helpers" (other constraints
-                    // also preferring the winner for the same pair).
-                    //
-                    // A helper is excluded if it is a Faithfulness constraint whose
-                    // violations are a superset of the target constraint's (i.e., it is a
-                    // broader version of the same constraint).
-                    for (form_idx, form) in self.forms.iter().enumerate() {
-                        let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
-                            Some(w) => w,
-                            None => continue,
-                        };
-                        for (rival_idx, rival) in form.candidates.iter().enumerate() {
-                            if rival.frequency > 0 || !still_informative[form_idx][rival_idx] {
-                                continue;
-                            }
-                            if is_superset_rival(&winner.violations, &rival.violations) {
-                                continue;
-                            }
-
-                            for c_idx in 0..nc {
-                                if strata[c_idx] != 0
-                                    || demotable[c_idx]
-                                    || !is_faithfulness[c_idx]
-                                {
-                                    continue;
-                                }
-                                // Only process constraints that prefer winner for this pair
-                                if rival.violations[c_idx] <= winner.violations[c_idx] {
-                                    continue;
-                                }
-
-                                // Count helpers: other constraints that also prefer winner,
-                                // excluding "superset faithfulness" relatives of c_idx
-                                let mut local_helpers = 0usize;
-                                for inner in 0..nc {
-                                    if inner == c_idx {
-                                        continue;
-                                    }
-                                    if rival.violations[inner] > winner.violations[inner] {
-                                        // Superset faithfulness constraints don't count
-                                        let is_superset_faith =
-                                            violation_subsets[c_idx][inner]
-                                                && is_faithfulness[inner];
-                                        if !is_superset_faith {
-                                            local_helpers += 1;
-                                        }
-                                    }
-                                }
-
-                                // Record the minimum helpers seen for this constraint
-                                if local_helpers < num_helpers[c_idx] {
-                                    num_helpers[c_idx] = local_helpers;
-                                }
-                            }
-                        }
-                    }
-
-                    // Find the overall lowest helper count among non-demotable Faithfulness.
-                    // Unassessed constraints (num_helpers == usize::MAX) are excluded.
-                    let mut lowest_helpers = usize::MAX;
-                    for c_idx in 0..nc {
-                        if is_faithfulness[c_idx] && !demotable[c_idx] && strata[c_idx] == 0
-                            && num_helpers[c_idx] < lowest_helpers
-                        {
-                            lowest_helpers = num_helpers[c_idx];
-                        }
-                    }
-
-                    // Demote constraints with more helpers than the minimum
-                    for c_idx in 0..nc {
-                        if strata[c_idx] == 0
-                            && !demotable[c_idx]
-                            && num_helpers[c_idx] > lowest_helpers
-                        {
-                            demotable[c_idx] = true;
-                        }
-                    }
-                }
-                // else: no active Faithfulness — fall through to ReportStrata.
-                // Non-loser-favoring inactive Faithfulness remain non-demotable
-                // and will be assigned at ReportStrata (last-stratum case).
-            }
-
-            // ===== REPORT STRATA (termination check) =====
-            //
-            // Case I:   Some non-demotable, some demotable → assign non-demotable, continue
-            // Case II:  All demotable → failure
-            // Case III: None demotable → success (all go into current stratum)
+            // Assign non-demotable constraints to current stratum and check termination
             let mut some_are_non_demotable = false;
             let mut some_are_demotable = false;
-
             for c_idx in 0..nc {
                 if strata[c_idx] == 0 {
                     if !demotable[c_idx] {
@@ -326,13 +327,11 @@ impl Tableau {
                 current_stratum, count_pairs(&still_informative));
 
             if !some_are_demotable {
-                // Case III: success
                 crate::ot_log!("LFCD SUCCEEDED with {} strata", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, true);
-                result.compute_extra_analyses(self, apriori, false); // LFCD: VB6 does not feed apriori into FRed
+                result.compute_extra_analyses(self, apriori, false);
                 return result;
             } else if !some_are_non_demotable {
-                // Case II: failure — assign remaining to current stratum for diagnostics
                 crate::ot_log!("LFCD FAILED: all remaining constraints are demotable at stratum {}", current_stratum);
                 for s in strata.iter_mut() {
                     if *s == 0 {
@@ -342,30 +341,7 @@ impl Tableau {
                 return RCDResult::new(strata, current_stratum, false);
             }
 
-            // Case I: some non-demotable constraints were assigned; continue loop
-
-            // ===== UPDATE INFORMATIVENESS =====
-            //
-            // A pair is no longer informative once a ranked constraint prefers the winner.
-            for (c_idx, &c_stratum) in strata.iter().enumerate() {
-                if c_stratum != current_stratum {
-                    continue;
-                }
-                for (form_idx, form) in self.forms.iter().enumerate() {
-                    let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
-                        Some(w) => w,
-                        None => continue,
-                    };
-                    for (rival_idx, rival) in form.candidates.iter().enumerate() {
-                        if rival.frequency > 0 {
-                            continue;
-                        }
-                        if rival.violations[c_idx] > winner.violations[c_idx] {
-                            still_informative[form_idx][rival_idx] = false;
-                        }
-                    }
-                }
-            }
+            update_informativeness(self, &strata, current_stratum, &mut still_informative);
         }
     }
 }

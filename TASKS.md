@@ -27,7 +27,7 @@
 - ~~Extract broken-bar character into a named constant~~
 - ~~Remove unused _apriori parameter from apply_fred_options~~
 - ~~Extract apriori parsing helper in lib.rs~~
-- [Break up long formatting functions](tasks/cq-long-functions.md)
+- ~~Break up long formatting functions~~
 
 ### Web
 

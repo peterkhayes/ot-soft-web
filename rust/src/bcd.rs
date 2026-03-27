@@ -222,6 +222,193 @@ fn evaluate_faith_subsets(
     }
 }
 
+/// Identify demotable and active constraints for the current stratum.
+///
+/// A constraint is demotable if it prefers a loser; active if it prefers a winner.
+fn mark_demotable_and_active(
+    tableau: &Tableau,
+    strata: &[usize],
+    still_informative: &[Vec<bool>],
+) -> (Vec<bool>, Vec<bool>) {
+    let nc = strata.len();
+    let mut demotable = vec![false; nc];
+    let mut active = vec![false; nc];
+
+    for (form_idx, form) in tableau.forms.iter().enumerate() {
+        let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
+            Some(w) => w,
+            None => continue,
+        };
+        for (rival_idx, rival) in form.candidates.iter().enumerate() {
+            if rival.frequency > 0 || !still_informative[form_idx][rival_idx] {
+                continue;
+            }
+            for c_idx in 0..nc {
+                if strata[c_idx] != 0 {
+                    continue;
+                }
+                if winner.violations[c_idx] > rival.violations[c_idx] {
+                    demotable[c_idx] = true;
+                } else if winner.violations[c_idx] < rival.violations[c_idx] {
+                    active[c_idx] = true;
+                }
+            }
+        }
+    }
+
+    (demotable, active)
+}
+
+/// Apply the faithfulness delay and subset search to assign constraints to the current stratum.
+/// Returns the tie_flag for this iteration.
+#[allow(clippy::too_many_arguments)]
+fn rank_bcd_stratum(
+    tableau: &Tableau,
+    strata: &mut [usize],
+    current_stratum: usize,
+    demotable: &[bool],
+    active: &[bool],
+    is_faithfulness: &[bool],
+    violation_subsets: &[Vec<bool>],
+    specific_bcd: bool,
+    still_informative: &[Vec<bool>],
+) -> bool {
+    let nc = strata.len();
+    let mut tie_flag = false;
+
+    // Try to rank markedness constraints first (faithfulness delay)
+    let mut rankable_marked = false;
+    let mut faith_is_active = false;
+
+    for c_idx in 0..nc {
+        if strata[c_idx] == 0 && !demotable[c_idx] {
+            if is_faithfulness[c_idx] && active[c_idx] {
+                faith_is_active = true;
+            } else if !is_faithfulness[c_idx] {
+                rankable_marked = true;
+                strata[c_idx] = current_stratum;
+            }
+        }
+    }
+
+    if rankable_marked {
+        return tie_flag;
+    }
+
+    // No markedness could be ranked — must deal with faithfulness
+    if !faith_is_active {
+        // No active faithfulness — rank all remaining non-demotable (terminal case)
+        for c_idx in 0..nc {
+            if strata[c_idx] == 0 && !demotable[c_idx] {
+                strata[c_idx] = current_stratum;
+            }
+        }
+        return tie_flag;
+    }
+
+    // Favor specificity (if specific BCD)
+    let mut subsetted = vec![false; nc];
+    if specific_bcd {
+        for c_idx in 0..nc {
+            if strata[c_idx] != 0 || !is_faithfulness[c_idx] {
+                continue;
+            }
+            for inner in 0..nc {
+                if inner == c_idx || strata[inner] != 0 || !is_faithfulness[inner] {
+                    continue;
+                }
+                if violation_subsets[inner][c_idx] {
+                    subsetted[c_idx] = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Build rankable faithfulness list
+    let rankable_faith: Vec<usize> = (0..nc)
+        .filter(|&c_idx| {
+            strata[c_idx] == 0
+                && is_faithfulness[c_idx]
+                && !demotable[c_idx]
+                && active[c_idx]
+                && !subsetted[c_idx]
+        })
+        .collect();
+
+    if rankable_faith.is_empty() {
+        for c_idx in 0..nc {
+            if strata[c_idx] == 0 && !demotable[c_idx] {
+                strata[c_idx] = current_stratum;
+            }
+        }
+        return tie_flag;
+    }
+
+    // Find minimal faithfulness subset via exhaustive search
+    let ctx = BcdContext {
+        tableau,
+        is_faithfulness,
+        current_stratum,
+        strata,
+        still_informative,
+    };
+    let mut search = BcdSearchState {
+        current_subset: Vec::new(),
+        best_subset: Vec::new(),
+        best_mark_count: 0,
+        tie_flag: false,
+    };
+    for subset_size in 1..=rankable_faith.len() {
+        search.current_subset.clear();
+        evaluate_faith_subsets(&rankable_faith, subset_size, 0, &mut search, &ctx);
+        if search.best_mark_count > 0 {
+            break;
+        }
+    }
+    tie_flag = search.tie_flag;
+
+    if search.best_mark_count == 0 {
+        for &c_idx in &rankable_faith {
+            strata[c_idx] = current_stratum;
+        }
+    } else {
+        for &c_idx in &search.best_subset {
+            strata[c_idx] = current_stratum;
+        }
+    }
+
+    tie_flag
+}
+
+/// Mark pairs as no longer informative once a newly-ranked constraint prefers the winner.
+fn update_informativeness(
+    tableau: &Tableau,
+    strata: &[usize],
+    current_stratum: usize,
+    still_informative: &mut [Vec<bool>],
+) {
+    for (c_idx, &c_stratum) in strata.iter().enumerate() {
+        if c_stratum != current_stratum {
+            continue;
+        }
+        for (form_idx, form) in tableau.forms.iter().enumerate() {
+            let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
+                Some(w) => w,
+                None => continue,
+            };
+            for (rival_idx, rival) in form.candidates.iter().enumerate() {
+                if rival.frequency > 0 {
+                    continue;
+                }
+                if rival.violations[c_idx] > winner.violations[c_idx] {
+                    still_informative[form_idx][rival_idx] = false;
+                }
+            }
+        }
+    }
+}
+
 impl Tableau {
     /// Run Biased Constraint Demotion to find a ranking.
     ///
@@ -229,33 +416,23 @@ impl Tableau {
     /// (the mnuSpecificBCD option in VB6).
     pub fn run_bcd(&self, specific_bcd: bool) -> RCDResult {
         let nc = self.constraints.len();
-
-        // Detect faithfulness constraints
         let is_faithfulness: Vec<bool> = self.constraints.iter()
             .map(|c| c.is_faithfulness())
             .collect();
-
-        // Precompute violation subsets if using specific BCD
         let violation_subsets = if specific_bcd {
             locate_violation_subsets(self)
         } else {
             vec![]
         };
 
-        // Initialize state
         let mut strata = vec![0usize; nc];
         let mut current_stratum = 0usize;
-
-        // Build still_informative[form_idx][rival_idx]
         let mut still_informative: Vec<Vec<bool>> = self.forms.iter().map(|form| {
             form.candidates.iter().map(|_| true).collect()
         }).collect();
-
-        // Tie tracking
         let mut upper_tie_flag = false;
         let mut tie_flag = false;
 
-        // Helper: count still-informative loser pairs
         let count_pairs = |si: &Vec<Vec<bool>>| -> usize {
             self.forms.iter().enumerate()
                 .map(|(fi, form)| {
@@ -270,164 +447,20 @@ impl Tableau {
 
         loop {
             current_stratum += 1;
-
-            // Propagate tie flag
             if tie_flag {
                 upper_tie_flag = true;
             }
 
-            // Initialize demotable, active, subsetted
-            let mut demotable = vec![false; nc];
-            let mut active = vec![false; nc];
-            let mut subsetted = vec![false; nc];
+            let (demotable, active) = mark_demotable_and_active(self, &strata, &still_informative);
 
-            // Mark demotable and active constraints
-            for (form_idx, form) in self.forms.iter().enumerate() {
-                let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
-                    Some(w) => w,
-                    None => continue,
-                };
-                for (rival_idx, rival) in form.candidates.iter().enumerate() {
-                    if rival.frequency > 0 {
-                        continue;
-                    }
-                    if !still_informative[form_idx][rival_idx] {
-                        continue;
-                    }
-                    for c_idx in 0..nc {
-                        if strata[c_idx] != 0 {
-                            continue;
-                        }
-                        if winner.violations[c_idx] > rival.violations[c_idx] {
-                            demotable[c_idx] = true;
-                        } else if winner.violations[c_idx] < rival.violations[c_idx] {
-                            active[c_idx] = true;
-                        }
-                    }
-                }
-            }
+            tie_flag = rank_bcd_stratum(
+                self, &mut strata, current_stratum, &demotable, &active,
+                &is_faithfulness, &violation_subsets, specific_bcd, &still_informative,
+            );
 
-            // FAITHFULNESS DELAY: Try to rank markedness constraints first
-            let mut rankable_marked = false;
-            let mut faith_is_active = false;
-
-            for c_idx in 0..nc {
-                if strata[c_idx] == 0 && !demotable[c_idx] {
-                    if is_faithfulness[c_idx] && active[c_idx] {
-                        faith_is_active = true;
-                    } else if !is_faithfulness[c_idx] {
-                        // Non-demotable markedness: install in current stratum
-                        rankable_marked = true;
-                        strata[c_idx] = current_stratum;
-                    }
-                }
-            }
-
-            if !rankable_marked {
-                // No markedness could be ranked — must deal with faithfulness
-                if faith_is_active {
-                    // FAVOR SPECIFICITY (if specific BCD)
-                    if specific_bcd {
-                        for c_idx in 0..nc {
-                            if strata[c_idx] != 0 || !is_faithfulness[c_idx] {
-                                continue;
-                            }
-                            for inner in 0..nc {
-                                if inner == c_idx || strata[inner] != 0 || !is_faithfulness[inner] {
-                                    continue;
-                                }
-                                // If inner's violations are a subset of c_idx's,
-                                // then c_idx is subsetted (blocked by more specific inner)
-                                if violation_subsets[inner][c_idx] {
-                                    subsetted[c_idx] = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    // Build rankable faithfulness list
-                    let rankable_faith: Vec<usize> = (0..nc)
-                        .filter(|&c_idx| {
-                            strata[c_idx] == 0
-                                && is_faithfulness[c_idx]
-                                && !demotable[c_idx]
-                                && active[c_idx]
-                                && !subsetted[c_idx]
-                        })
-                        .collect();
-
-                    if rankable_faith.is_empty() {
-                        // Shouldn't happen since faith_is_active is true, but handle gracefully
-                        // Rank all remaining non-demotable
-                        for c_idx in 0..nc {
-                            if strata[c_idx] == 0 && !demotable[c_idx] {
-                                strata[c_idx] = current_stratum;
-                            }
-                        }
-                    } else {
-                        // FIND MINIMAL FAITHFULNESS SET
-                        let ctx = BcdContext {
-                            tableau: self,
-                            is_faithfulness: &is_faithfulness,
-                            current_stratum,
-                            strata: &strata,
-                            still_informative: &still_informative,
-                        };
-                        let mut search = BcdSearchState {
-                            current_subset: Vec::new(),
-                            best_subset: Vec::new(),
-                            best_mark_count: 0,
-                            tie_flag: false,
-                        };
-                        for subset_size in 1..=rankable_faith.len() {
-                            search.current_subset.clear();
-                            evaluate_faith_subsets(
-                                &rankable_faith,
-                                subset_size,
-                                0,
-                                &mut search,
-                                &ctx,
-                            );
-                            if search.best_mark_count > 0 {
-                                break;
-                            }
-                        }
-                        tie_flag = search.tie_flag;
-
-                        if search.best_mark_count == 0 {
-                            // No subset released any markedness; rank all rankable faith
-                            for &c_idx in &rankable_faith {
-                                strata[c_idx] = current_stratum;
-                            }
-                        } else {
-                            // Rank the best subset
-                            for &c_idx in &search.best_subset {
-                                strata[c_idx] = current_stratum;
-                            }
-                        }
-                    }
-                } else {
-                    // No active faithfulness — rank all remaining non-demotable (terminal case)
-                    for c_idx in 0..nc {
-                        if strata[c_idx] == 0 && !demotable[c_idx] {
-                            strata[c_idx] = current_stratum;
-                        }
-                    }
-                }
-            }
-
-            // CHECK TERMINATION
-            let mut unranked_remain = false;
-            let mut a_constraint_was_ranked = false;
-
-            for &c_stratum in &strata {
-                if c_stratum == 0 {
-                    unranked_remain = true;
-                } else if c_stratum == current_stratum {
-                    a_constraint_was_ranked = true;
-                }
-            }
+            // Check termination
+            let unranked_remain = strata.contains(&0);
+            let a_constraint_was_ranked = strata.contains(&current_stratum);
 
             crate::ot_log!("After stratum {}: {} pairs remaining",
                 current_stratum, count_pairs(&still_informative));
@@ -447,28 +480,8 @@ impl Tableau {
                 return result;
             }
 
-            // UPDATE INFORMATIVENESS
-            for (c_idx, &c_stratum) in strata.iter().enumerate() {
-                if c_stratum != current_stratum {
-                    continue;
-                }
-                for (form_idx, form) in self.forms.iter().enumerate() {
-                    let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
-                        Some(w) => w,
-                        None => continue,
-                    };
-                    for (rival_idx, rival) in form.candidates.iter().enumerate() {
-                        if rival.frequency > 0 {
-                            continue;
-                        }
-                        if rival.violations[c_idx] > winner.violations[c_idx] {
-                            still_informative[form_idx][rival_idx] = false;
-                        }
-                    }
-                }
-            }
+            update_informativeness(self, &strata, current_stratum, &mut still_informative);
 
-            // Safety check
             if current_stratum > nc {
                 crate::ot_log!("BCD FAILED: safety limit reached at stratum {}", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, false);

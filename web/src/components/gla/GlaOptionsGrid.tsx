@@ -9,7 +9,12 @@ interface GlaOptionsGridProps {
   setScheduleError: (err: string | null) => void
 }
 
-function GlaOptionsGrid({ params, setParams, scheduleError, setScheduleError }: GlaOptionsGridProps) {
+function GlaOptionsGrid({
+  params,
+  setParams,
+  scheduleError,
+  setScheduleError,
+}: GlaOptionsGridProps) {
   const {
     exactProportions,
     useCustomSchedule,
