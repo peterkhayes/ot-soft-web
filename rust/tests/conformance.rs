@@ -435,6 +435,9 @@ fn build_fred_options(params: &serde_json::Value) -> FredOptions {
     if let Some(v) = params.get("include_mini_tableaux").and_then(|v| v.as_bool()) {
         opts.include_mini_tableaux = v;
     }
+    if let Some(v) = params.get("diagnostics").and_then(|v| v.as_bool()) {
+        opts.diagnostics = v;
+    }
     opts
 }
 

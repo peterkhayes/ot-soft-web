@@ -152,7 +152,9 @@ test('RCD: download HTML tableaux', async () => {
   const html = normalizeOutput(downloads[0].content)
   // Verify it's a complete HTML document with styled tableaux
   expect(html).toContain('<!DOCTYPE html>')
-  expect(html).toContain('<title>OTSoft 2.7, release date 2/1/2026 TinyIllustrativeFile.txt</title>')
+  expect(html).toContain(
+    '<title>OTSoft 2.7, release date 2/1/2026 TinyIllustrativeFile.txt</title>',
+  )
   expect(html).toContain('<TIMESTAMP>')
   expect(html).toContain('1. Result')
   expect(html).toContain('A ranking was found that generates the correct outputs.')

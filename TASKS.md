@@ -11,7 +11,7 @@
 
 ## Features
 
-- [Diagnostics if ranking fails](tasks/diagnostics-ranking-fails.md)
+- ~~Diagnostics if ranking fails~~
 - [HTML shading customization](tasks/html-shading-options.md)
 - [Excel file parsing (.xlsx)](tasks/excel-parsing.md)
 - [Praat export](tasks/praat-export.md)

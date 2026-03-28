@@ -40,7 +40,7 @@ function RcdPanel({
 }: RcdPanelProps) {
   const [rcdResult, setRcdResult] = useState<RcdState | null>(null)
   const [params, setParams] = useLocalStorage<RcdParams>('otsoft:params:rcd', rcdDefaults())
-  const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux } = params
+  const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux, diagnostics } = params
   const [aprioriText, setAprioriText] = useState<string>('')
   const [showApriori, setShowApriori] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -110,6 +110,7 @@ function RcdPanel({
     fredOpts.use_mib = useMib
     fredOpts.show_details = showDetails
     fredOpts.include_mini_tableaux = includeMiniTableaux
+    fredOpts.diagnostics = diagnostics
     return fredOpts
   }
 

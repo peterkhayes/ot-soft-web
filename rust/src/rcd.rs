@@ -125,6 +125,21 @@ pub enum ConstraintNecessity {
     CompletelyUnnecessary,
 }
 
+/// A minimal-pair ranking argument: constraint `higher` must dominate `lower`,
+/// evidenced by (form_index, rival_index).
+struct MinimalPairEvidence {
+    form_idx: usize,
+    rival_idx: usize,
+}
+
+/// One form's filtered data for diagnostic tableaux.
+struct DiagnosticEntry {
+    form_idx: usize,
+    winner_idx: usize,
+    rival_indices: Vec<usize>,
+    constraint_indices: Vec<usize>,
+}
+
 /// A mini-tableau showing a simplified winner-loser comparison
 #[derive(Debug, Clone)]
 pub struct MiniTableau {
@@ -364,19 +379,20 @@ impl RCDResult {
 
     /// Generate formatted text output for the RCD analysis
     pub fn format_output(&self, tableau: &Tableau, filename: &str) -> String {
-        self.format_output_with_options(tableau, filename, "Recursive Constraint Demotion", &[], true)
+        self.format_output_with_options(tableau, filename, "Recursive Constraint Demotion", &[], true, false)
     }
 
     /// Generate formatted text output with a configurable algorithm name and a priori table.
     /// Does not include the A Priori Rankings section (used by BCD, which takes no a priori input).
-    pub(crate) fn format_output_with_algorithm(&self, tableau: &Tableau, filename: &str, algorithm_name: &str) -> String {
-        self.format_output_with_options(tableau, filename, algorithm_name, &[], false)
+    pub(crate) fn format_output_with_algorithm(&self, tableau: &Tableau, filename: &str, algorithm_name: &str, diagnostics: bool) -> String {
+        self.format_output_with_options(tableau, filename, algorithm_name, &[], false, diagnostics)
     }
 
     /// Generate formatted text output with full options.
     ///
     /// `show_apriori_section`: whether to include the "A Priori Rankings" section.
     /// RCD includes it; LFCD does not (VB6 behaviour).
+    /// `diagnostics`: whether to include diagnostic output when ranking fails.
     pub(crate) fn format_output_with_options(
         &self,
         tableau: &Tableau,
@@ -384,6 +400,7 @@ impl RCDResult {
         algorithm_name: &str,
         apriori: &[Vec<bool>],
         show_apriori_section: bool,
+        diagnostics: bool,
     ) -> String {
         let mut output = String::new();
         let mut section = 0usize;
@@ -408,6 +425,10 @@ impl RCDResult {
 
         if !self.mini_tableaux.is_empty() {
             self.fmt_text_mini_tableaux(&mut output, &mut section, tableau);
+        }
+
+        if !self.success && diagnostics {
+            self.fmt_text_diagnostics(&mut output, &mut section, tableau);
         }
 
         // Normalize trailing newlines to match VB6 output (exactly one trailing blank line)
@@ -756,7 +777,7 @@ impl RCDResult {
 
     /// Generate an HTML document containing styled tableaux for this RCD result.
     pub fn format_html_output(&self, tableau: &Tableau, filename: &str) -> String {
-        self.format_html_output_full(tableau, filename, "Recursive Constraint Demotion", AxisMode::default(), &[])
+        self.format_html_output_full(tableau, filename, "Recursive Constraint Demotion", AxisMode::default(), &[], false)
     }
 
     /// Generate an HTML document with configurable algorithm name and axis mode.
@@ -766,8 +787,9 @@ impl RCDResult {
         filename: &str,
         algorithm_name: &str,
         axis_mode: AxisMode,
+        diagnostics: bool,
     ) -> String {
-        self.format_html_output_full(tableau, filename, algorithm_name, axis_mode, &[])
+        self.format_html_output_full(tableau, filename, algorithm_name, axis_mode, &[], diagnostics)
     }
 
     /// Generate an HTML document with full options including a priori data.
@@ -778,6 +800,7 @@ impl RCDResult {
         algorithm_name: &str,
         axis_mode: AxisMode,
         apriori: &[Vec<bool>],
+        diagnostics: bool,
     ) -> String {
         let mut out = String::new();
         let mut section = 0usize;
@@ -801,6 +824,10 @@ impl RCDResult {
 
         if !self.mini_tableaux.is_empty() {
             self.fmt_html_mini_tableaux(&mut out, &mut section, tableau);
+        }
+
+        if !self.success && diagnostics {
+            self.fmt_html_diagnostics(&mut out, &mut section, tableau);
         }
 
         out.push_str("</body>\n</html>\n");
@@ -1308,6 +1335,543 @@ impl RCDResult {
         out.push_str("</table>\n\n");
         out
     }
+
+    // ── Diagnostics when ranking fails ───────────────────────────────────────
+
+    /// Search for contradictory minimal pairs and format as text.
+    /// Returns true if contradictions were found (matching VB6 `LookForMinimalPairs`).
+    #[allow(clippy::needless_range_loop)] // bidirectional indexing: evidence[outer][inner] AND evidence[inner][outer]
+    fn fmt_text_contradictions(
+        &self,
+        out: &mut String,
+        section: &mut usize,
+        tableau: &Tableau,
+    ) -> bool {
+        let evidence = Self::find_minimal_pair_evidence(tableau);
+        let nc = tableau.constraints.len();
+        let mut found = false;
+
+        for outer in 0..nc.saturating_sub(1) {
+            for inner in (outer + 1)..nc {
+                if evidence[outer][inner].is_empty() || evidence[inner][outer].is_empty() {
+                    continue;
+                }
+                // First contradiction: print header
+                if !found {
+                    *section += 1;
+                    out.push_str(&format!("\n\n{}. Contradiction Located\n\n", section));
+                    out.push_str("The problem can be localized in the form of one or more minimal pairs that cannot be consistently ranked.\n\n");
+                }
+                found = true;
+
+                out.push_str("The following is a contradiction:\n\n");
+
+                // outer >> inner
+                let c_outer = &tableau.constraints[outer];
+                let c_inner = &tableau.constraints[inner];
+                out.push_str(&format!(
+                    "The ranking {} >> {} is needed, because ",
+                    c_outer.full_name(), c_inner.full_name()
+                ));
+                for ev in &evidence[outer][inner] {
+                    Self::fmt_text_derivation(out, tableau, ev.form_idx, ev.rival_idx);
+                }
+
+                // inner >> outer
+                out.push_str(&format!(
+                    "\nThe ranking {} >> {} is needed, because ",
+                    c_inner.full_name(), c_outer.full_name()
+                ));
+                for ev in &evidence[inner][outer] {
+                    Self::fmt_text_derivation(out, tableau, ev.form_idx, ev.rival_idx);
+                }
+                out.push('\n');
+            }
+        }
+        found
+    }
+
+    /// Search for contradictory minimal pairs and format as HTML.
+    /// Returns true if contradictions were found.
+    #[allow(clippy::needless_range_loop)] // bidirectional indexing: evidence[outer][inner] AND evidence[inner][outer]
+    fn fmt_html_contradictions(
+        &self,
+        out: &mut String,
+        section: &mut usize,
+        tableau: &Tableau,
+    ) -> bool {
+        let evidence = Self::find_minimal_pair_evidence(tableau);
+        let nc = tableau.constraints.len();
+        let mut found = false;
+
+        for outer in 0..nc.saturating_sub(1) {
+            for inner in (outer + 1)..nc {
+                if evidence[outer][inner].is_empty() || evidence[inner][outer].is_empty() {
+                    continue;
+                }
+                if !found {
+                    *section += 1;
+                    out.push_str(&format!("<h2>{}. Contradiction Located</h2>\n", section));
+                    out.push_str("<p>The problem can be localized in the form of one or more minimal pairs that cannot be consistently ranked.</p>\n");
+                }
+                found = true;
+
+                out.push_str("<p>The following is a contradiction:</p>\n");
+
+                let c_outer = &tableau.constraints[outer];
+                let c_inner = &tableau.constraints[inner];
+
+                out.push_str(&format!(
+                    "<p>The ranking {} &gt;&gt; {} is needed, because ",
+                    html_escape(&c_outer.full_name()),
+                    html_escape(&c_inner.full_name()),
+                ));
+                for ev in &evidence[outer][inner] {
+                    Self::fmt_html_derivation(out, tableau, ev.form_idx, ev.rival_idx);
+                    // Mini-tableau for this evidence
+                    self.fmt_html_contradiction_mini_tableau(out, tableau, ev.form_idx, ev.rival_idx, outer, inner);
+                }
+                out.push_str("</p>\n");
+
+                out.push_str(&format!(
+                    "<p>The ranking {} &gt;&gt; {} is needed, because ",
+                    html_escape(&c_inner.full_name()),
+                    html_escape(&c_outer.full_name()),
+                ));
+                for ev in &evidence[inner][outer] {
+                    Self::fmt_html_derivation(out, tableau, ev.form_idx, ev.rival_idx);
+                    self.fmt_html_contradiction_mini_tableau(out, tableau, ev.form_idx, ev.rival_idx, inner, outer);
+                }
+                out.push_str("</p>\n");
+            }
+        }
+        found
+    }
+
+    /// Find all minimal-pair ranking arguments.
+    ///
+    /// Returns `evidence[higher][lower]` = list of (form, rival) pairs that prove
+    /// constraint `higher` must dominate constraint `lower` via a true minimal pair.
+    /// Matches VB6 `LookForMinimalPairs` logic.
+    #[allow(clippy::needless_range_loop)] // bidirectional indexing into evidence[higher][lower]
+    fn find_minimal_pair_evidence(tableau: &Tableau) -> Vec<Vec<Vec<MinimalPairEvidence>>> {
+        let nc = tableau.constraints.len();
+        let mut evidence: Vec<Vec<Vec<MinimalPairEvidence>>> =
+            (0..nc).map(|_| (0..nc).map(|_| Vec::new()).collect()).collect();
+
+        for higher in 0..nc {
+            for lower in 0..nc {
+                if higher == lower {
+                    continue;
+                }
+                for (form_idx, form) in tableau.forms.iter().enumerate() {
+                    let winner_idx = match form.candidates.iter().position(|c| c.frequency > 0) {
+                        Some(i) => i,
+                        None => continue,
+                    };
+                    let winner = &form.candidates[winner_idx];
+
+                    for (cand_idx, rival) in form.candidates.iter().enumerate() {
+                        if cand_idx == winner_idx {
+                            continue;
+                        }
+                        // Check: rival violates `higher` more than winner,
+                        //        winner violates `lower` more than rival
+                        if rival.violations[higher] <= winner.violations[higher] {
+                            continue;
+                        }
+                        if rival.violations[lower] >= winner.violations[lower] {
+                            continue;
+                        }
+                        // Check all other constraints are identical
+                        let is_minimal = (0..nc).all(|c| {
+                            c == higher || c == lower
+                                || winner.violations[c] == rival.violations[c]
+                        });
+                        if is_minimal && evidence[higher][lower].len() < 5 {
+                            evidence[higher][lower].push(MinimalPairEvidence {
+                                form_idx,
+                                rival_idx: cand_idx,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        evidence
+    }
+
+    /// Format a derivation line for text output:
+    /// `/input/ --> [winner], not *[loser]`
+    fn fmt_text_derivation(out: &mut String, tableau: &Tableau, form_idx: usize, rival_idx: usize) {
+        let form = &tableau.forms[form_idx];
+        let winner = form.candidates.iter().find(|c| c.frequency > 0);
+        let rival = &form.candidates[rival_idx];
+        if let Some(winner) = winner {
+            out.push_str(&format!(
+                "/{}/  -->  [{}], not *[{}]\n",
+                form.input, winner.form, rival.form
+            ));
+        }
+    }
+
+    /// Format a derivation line for HTML output.
+    fn fmt_html_derivation(out: &mut String, tableau: &Tableau, form_idx: usize, rival_idx: usize) {
+        let form = &tableau.forms[form_idx];
+        let winner = form.candidates.iter().find(|c| c.frequency > 0);
+        let rival = &form.candidates[rival_idx];
+        if let Some(winner) = winner {
+            out.push_str(&format!(
+                "/{}/  &rarr;  [{}], not *[{}]",
+                html_escape(&form.input),
+                html_escape(&winner.form),
+                html_escape(&rival.form),
+            ));
+        }
+    }
+
+    /// Format a 2-constraint mini-tableau for a contradiction in HTML.
+    ///
+    /// Shows only the two constraints involved, with the winner and rival.
+    /// `higher` is assigned stratum 1, `lower` stratum 2 (matching VB6 FakeStrata).
+    fn fmt_html_contradiction_mini_tableau(
+        &self,
+        out: &mut String,
+        tableau: &Tableau,
+        form_idx: usize,
+        rival_idx: usize,
+        higher: usize,
+        lower: usize,
+    ) {
+        let form = &tableau.forms[form_idx];
+        let winner_idx = match form.candidates.iter().position(|c| c.frequency > 0) {
+            Some(i) => i,
+            None => return,
+        };
+        let winner = &form.candidates[winner_idx];
+        let rival = &form.candidates[rival_idx];
+        let constraints = [higher, lower];
+
+        out.push_str("<table>\n  <tr>\n");
+        out.push_str(&format!("    <th>{}</th>\n", html_escape(&form.input)));
+        for &c_idx in &constraints {
+            out.push_str(&format!("    <th>{}</th>\n", html_escape(&tableau.constraints[c_idx].abbrev())));
+        }
+        out.push_str("  </tr>\n");
+
+        // Winner row
+        out.push_str("  <tr>\n");
+        out.push_str(&format!("    <td>&#x261E;&nbsp;{}</td>\n", html_escape(&winner.form)));
+        for (i, &c_idx) in constraints.iter().enumerate() {
+            let is_last = i + 1 == constraints.len();
+            let has_border = !is_last; // stratum break between the two
+            let class = html_cell_class(false, is_last, has_border);
+            let content = format_html_viol(winner.violations[c_idx], 0, false);
+            out.push_str(&format!("    <td class=\"{class}\">{content}</td>\n"));
+        }
+        out.push_str("  </tr>\n");
+
+        // Rival row
+        out.push_str("  <tr>\n");
+        out.push_str(&format!("    <td>&nbsp;&nbsp;&nbsp;{}</td>\n", html_escape(&rival.form)));
+        let winner_higher_viols = winner.violations[higher];
+        for (i, &c_idx) in constraints.iter().enumerate() {
+            let is_last = i + 1 == constraints.len();
+            let has_border = !is_last;
+            let is_fatal = rival.violations[c_idx] > winner.violations[c_idx];
+            let class = html_cell_class(is_fatal, is_last, has_border);
+            let content = format_html_viol(
+                rival.violations[c_idx],
+                if c_idx == higher { winner_higher_viols } else { 0 },
+                is_fatal,
+            );
+            out.push_str(&format!("    <td class=\"{class}\">{content}</td>\n"));
+        }
+        out.push_str("  </tr>\n</table>\n");
+    }
+
+    /// Format diagnostic tableaux for text output.
+    ///
+    /// Shows a filtered tableau containing only candidates that survive to the
+    /// final (problematic) stratum, with only the constraints from that stratum
+    /// that distinguish winners from losers. Matches VB6 `PrepareDiagnosticTableaux`.
+    fn fmt_text_diagnostic_tableaux(
+        &self,
+        out: &mut String,
+        section: &mut usize,
+        tableau: &Tableau,
+    ) {
+        let diag = self.compute_diagnostic_filter(tableau);
+        if diag.is_empty() {
+            return;
+        }
+
+        *section += 1;
+        out.push_str(&format!("\n\n{}. Diagnostic Tableaux\n\n", section));
+        out.push_str("The following tables are provided for diagnosis. They omit all constraints \
+            that were ranked before the algorithm crashed, and all data that are explained \
+            by rankable constraints. They also exclude all constraints that prefer neither \
+            winners nor losers in the remaining data.\n\n");
+
+        for entry in &diag {
+            let form = &tableau.forms[entry.form_idx];
+            let winner = &form.candidates[entry.winner_idx];
+
+            // Header with constraint abbreviations
+            let first_col_width = std::iter::once(winner.form.len())
+                .chain(entry.rival_indices.iter().map(|&ri| form.candidates[ri].form.len()))
+                .max()
+                .unwrap_or(0)
+                + 4; // padding for ">" prefix and spacing
+
+            out.push_str(&format!("{:width$}", form.input, width = first_col_width));
+            for &c_idx in &entry.constraint_indices {
+                out.push_str(&format!("  {}", tableau.constraints[c_idx].abbrev()));
+            }
+            out.push('\n');
+
+            // Winner row
+            out.push_str(&format!(">{:<width$}", winner.form, width = first_col_width - 1));
+            for &c_idx in &entry.constraint_indices {
+                let v = winner.violations[c_idx];
+                let col_w = tableau.constraints[c_idx].abbrev().len().max(2);
+                if v == 0 {
+                    out.push_str(&format!("  {:>width$}", "", width = col_w));
+                } else {
+                    out.push_str(&format!("  {:>width$}", v, width = col_w));
+                }
+            }
+            out.push('\n');
+
+            // Rival rows
+            for &rival_idx in &entry.rival_indices {
+                let rival = &form.candidates[rival_idx];
+                out.push_str(&format!(" {:<width$}", rival.form, width = first_col_width - 1));
+                for &c_idx in &entry.constraint_indices {
+                    let v = rival.violations[c_idx];
+                    let col_w = tableau.constraints[c_idx].abbrev().len().max(2);
+                    if v == 0 {
+                        out.push_str(&format!("  {:>width$}", "", width = col_w));
+                    } else {
+                        out.push_str(&format!("  {:>width$}", v, width = col_w));
+                    }
+                }
+                out.push('\n');
+            }
+            out.push('\n');
+        }
+    }
+
+    /// Format diagnostic tableaux for HTML output.
+    fn fmt_html_diagnostic_tableaux(
+        &self,
+        out: &mut String,
+        section: &mut usize,
+        tableau: &Tableau,
+    ) {
+        let diag = self.compute_diagnostic_filter(tableau);
+        if diag.is_empty() {
+            return;
+        }
+
+        *section += 1;
+        out.push_str(&format!("<h2>{}. Diagnostic Tableaux</h2>\n", section));
+        out.push_str(
+            "<p>The following tables are provided for diagnosis. They omit all constraints \
+             that were ranked before the algorithm crashed, and all data that are explained \
+             by rankable constraints. They also exclude all constraints that prefer neither \
+             winners nor losers in the remaining data.</p>\n",
+        );
+
+        // Group into a single table
+        out.push_str("<table>\n  <tr>\n    <th></th>\n");
+        // Use constraints from the first entry (all entries share the same constraint set)
+        if let Some(first) = diag.first() {
+            for &c_idx in &first.constraint_indices {
+                out.push_str(&format!(
+                    "    <th>{}</th>\n",
+                    html_escape(&tableau.constraints[c_idx].abbrev())
+                ));
+            }
+        }
+        out.push_str("  </tr>\n");
+
+        for entry in &diag {
+            let form = &tableau.forms[entry.form_idx];
+            let winner = &form.candidates[entry.winner_idx];
+
+            // Winner row
+            out.push_str("  <tr>\n");
+            out.push_str(&format!(
+                "    <td>/{}/  &#x261E;&nbsp;{}</td>\n",
+                html_escape(&form.input),
+                html_escape(&winner.form),
+            ));
+            for (i, &c_idx) in entry.constraint_indices.iter().enumerate() {
+                let is_last = i + 1 == entry.constraint_indices.len();
+                let content = format_html_viol(winner.violations[c_idx], 0, false);
+                out.push_str(&format!(
+                    "    <td class=\"{}\">{}</td>\n",
+                    html_cell_class(false, is_last, false),
+                    content,
+                ));
+            }
+            out.push_str("  </tr>\n");
+
+            // Rival rows
+            for &rival_idx in &entry.rival_indices {
+                let rival = &form.candidates[rival_idx];
+                out.push_str("  <tr>\n");
+                out.push_str(&format!(
+                    "    <td>&nbsp;&nbsp;&nbsp;{}</td>\n",
+                    html_escape(&rival.form),
+                ));
+                for (i, &c_idx) in entry.constraint_indices.iter().enumerate() {
+                    let is_last = i + 1 == entry.constraint_indices.len();
+                    let is_fatal = rival.violations[c_idx] > winner.violations[c_idx];
+                    let content = format_html_viol(
+                        rival.violations[c_idx],
+                        winner.violations[c_idx],
+                        is_fatal,
+                    );
+                    out.push_str(&format!(
+                        "    <td class=\"{}\">{}</td>\n",
+                        html_cell_class(false, is_last, false),
+                        content,
+                    ));
+                }
+                out.push_str("  </tr>\n");
+            }
+        }
+        out.push_str("</table>\n");
+    }
+
+    /// Compute the filtered set of forms, rivals, and constraints for diagnostic tableaux.
+    ///
+    /// Mirrors VB6 `PrepareDiagnosticTableaux` filtering logic:
+    /// 1. Exclude rivals eliminated by constraints ranked before the final stratum.
+    /// 2. Exclude rivals not preferred by any constraint in the final stratum.
+    /// 3. Include only forms that have surviving rivals.
+    /// 4. Include only constraints in the final stratum that distinguish winners from losers.
+    fn compute_diagnostic_filter(&self, tableau: &Tableau) -> Vec<DiagnosticEntry> {
+        let nc = tableau.constraints.len();
+        let last_stratum = self.num_strata;
+
+        // Step 1: For each form/rival, check if any ranked constraint (stratum < last)
+        // eliminates the rival (rival violates it more than winner).
+        let mut rival_ok: Vec<Vec<bool>> = tableau.forms.iter().map(|form| {
+            let winner_idx = form.candidates.iter().position(|c| c.frequency > 0);
+            form.candidates.iter().enumerate().map(|(cand_idx, rival)| {
+                let Some(wi) = winner_idx else { return false };
+                if cand_idx == wi { return false; } // Not a rival
+                // Check: no ranked constraint eliminates this rival
+                !(0..nc).any(|c| {
+                    self.constraint_strata[c] < last_stratum
+                        && self.constraint_strata[c] > 0
+                        && rival.violations[c] > form.candidates[wi].violations[c]
+                })
+            }).collect()
+        }).collect();
+
+        // Step 2: Among surviving rivals, keep only those preferred by at least one
+        // constraint in the final stratum.
+        for (form_idx, form) in tableau.forms.iter().enumerate() {
+            let winner_idx = match form.candidates.iter().position(|c| c.frequency > 0) {
+                Some(i) => i,
+                None => continue,
+            };
+            let winner = &form.candidates[winner_idx];
+            for (cand_idx, rival) in form.candidates.iter().enumerate() {
+                if !rival_ok[form_idx][cand_idx] {
+                    continue;
+                }
+                let preferred_by_any = (0..nc).any(|c| {
+                    self.constraint_strata[c] == last_stratum
+                        && winner.violations[c] > rival.violations[c]
+                });
+                if !preferred_by_any {
+                    rival_ok[form_idx][cand_idx] = false;
+                }
+            }
+        }
+
+        // Step 3: Determine which forms have surviving rivals.
+        let form_ok: Vec<bool> = rival_ok.iter().map(|rivals| rivals.iter().any(|&ok| ok)).collect();
+
+        // Step 4: Determine which constraints in the final stratum distinguish any
+        // winner/rival pair among the relevant data.
+        let mut constraint_ok = vec![false; nc];
+        for (form_idx, form) in tableau.forms.iter().enumerate() {
+            if !form_ok[form_idx] {
+                continue;
+            }
+            let winner_idx = match form.candidates.iter().position(|c| c.frequency > 0) {
+                Some(i) => i,
+                None => continue,
+            };
+            let winner = &form.candidates[winner_idx];
+            for (cand_idx, rival) in form.candidates.iter().enumerate() {
+                if !rival_ok[form_idx][cand_idx] {
+                    continue;
+                }
+                for (c, ok) in constraint_ok.iter_mut().enumerate() {
+                    if self.constraint_strata[c] == last_stratum
+                        && winner.violations[c] != rival.violations[c]
+                    {
+                        *ok = true;
+                    }
+                }
+            }
+        }
+
+        let constraint_indices: Vec<usize> = (0..nc).filter(|&c| constraint_ok[c]).collect();
+
+        // Build entries
+        let mut entries = Vec::new();
+        for (form_idx, form) in tableau.forms.iter().enumerate() {
+            if !form_ok[form_idx] {
+                continue;
+            }
+            let winner_idx = match form.candidates.iter().position(|c| c.frequency > 0) {
+                Some(i) => i,
+                None => continue,
+            };
+            let rival_indices: Vec<usize> = (0..form.candidates.len())
+                .filter(|&ci| rival_ok[form_idx][ci])
+                .collect();
+            entries.push(DiagnosticEntry {
+                form_idx,
+                winner_idx,
+                rival_indices,
+                constraint_indices: constraint_indices.clone(),
+            });
+        }
+        entries
+    }
+
+    /// Top-level text diagnostics: try minimal pairs first, fall back to diagnostic tableaux.
+    fn fmt_text_diagnostics(
+        &self,
+        out: &mut String,
+        section: &mut usize,
+        tableau: &Tableau,
+    ) {
+        if !self.fmt_text_contradictions(out, section, tableau) {
+            self.fmt_text_diagnostic_tableaux(out, section, tableau);
+        }
+    }
+
+    /// Top-level HTML diagnostics: try minimal pairs first, fall back to diagnostic tableaux.
+    fn fmt_html_diagnostics(
+        &self,
+        out: &mut String,
+        section: &mut usize,
+        tableau: &Tableau,
+    ) {
+        if !self.fmt_html_contradictions(out, section, tableau) {
+            self.fmt_html_diagnostic_tableaux(out, section, tableau);
+        }
+    }
 }
 
 impl Tableau {
@@ -1755,6 +2319,55 @@ mod tests {
         // Max and Dep should be in stratum 2
         assert_eq!(result.get_stratum(2).unwrap(), 2, "Max should be in stratum 2");
         assert_eq!(result.get_stratum(3).unwrap(), 2, "Dep should be in stratum 2");
+    }
+
+    /// Build a contradictory tableau where C1 >> C2 and C2 >> C1 are both required.
+    ///
+    /// Two forms create a contradiction:
+    /// - Form 1: winner has 0 C1-viols, 1 C2-viol; rival has 1 C1-viol, 0 C2-viols → needs C1 >> C2
+    /// - Form 2: winner has 1 C1-viol, 0 C2-viols; rival has 0 C1-viols, 1 C2-viol → needs C2 >> C1
+    fn contradictory_tableau() -> &'static str {
+        // Row 1: constraint names (3 leading tabs for input/candidate/frequency columns)
+        // Data rows: input\tcandidate\tfrequency\tviols...
+        // Empty input = same form as previous row
+        "\t\t\tC1\tC2\n\
+         input1\twinnerA\t1\t0\t1\n\
+         \trivalA\t0\t1\t0\n\
+         input2\twinnerB\t1\t1\t0\n\
+         \trivalB\t0\t0\t1"
+    }
+
+    #[test]
+    fn test_diagnostics_finds_contradictions() {
+        let tableau = Tableau::parse(contradictory_tableau()).expect("Failed to parse");
+        let result = tableau.run_rcd();
+        assert!(!result.success, "RCD should fail on contradictory data");
+
+        // Text diagnostics should contain "Contradiction Located"
+        let text = result.format_output_with_options(
+            &tableau, "test.txt", "RCD", &[], false, true,
+        );
+        assert!(text.contains("Contradiction Located"), "Text output should contain contradiction header");
+        assert!(text.contains("C1 >> C2"), "Should report C1 >> C2 ranking requirement");
+        assert!(text.contains("C2 >> C1"), "Should report C2 >> C1 ranking requirement");
+
+        // HTML diagnostics should also contain contradiction info
+        let html = result.format_html_output_full(
+            &tableau, "test.txt", "RCD", crate::AxisMode::default(), &[], true,
+        );
+        assert!(html.contains("Contradiction Located"), "HTML output should contain contradiction header");
+    }
+
+    #[test]
+    fn test_diagnostics_disabled_no_output() {
+        let tableau = Tableau::parse(contradictory_tableau()).expect("Failed to parse");
+        let result = tableau.run_rcd();
+        assert!(!result.success);
+
+        let text = result.format_output_with_options(
+            &tableau, "test.txt", "RCD", &[], false, false,
+        );
+        assert!(!text.contains("Contradiction Located"), "Diagnostics should not appear when disabled");
     }
 
 }

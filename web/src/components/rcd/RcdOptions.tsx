@@ -18,7 +18,7 @@ function RcdOptions({
   showApriori,
   setShowApriori,
 }: RcdOptionsProps) {
-  const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux } = params
+  const { algorithm, includeFred, useMib, showDetails, includeMiniTableaux, diagnostics } = params
   const supportsApriori = algorithm === 'rcd' || algorithm === 'lfcd'
 
   return (
@@ -76,6 +76,18 @@ function RcdOptions({
             </label>
           </>
         )}
+      </div>
+
+      <div className="nhg-options">
+        <div className="nhg-options-label">Diagnostics</div>
+        <label className="nhg-checkbox">
+          <input
+            type="checkbox"
+            checked={diagnostics}
+            onChange={(e) => setParams({ diagnostics: e.target.checked })}
+          />
+          Diagnostics if ranking fails
+        </label>
       </div>
 
       {supportsApriori && (

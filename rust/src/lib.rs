@@ -232,6 +232,7 @@ pub struct FredOptions {
     pub use_mib: bool,
     pub show_details: bool,
     pub include_mini_tableaux: bool,
+    pub diagnostics: bool,
 }
 
 impl Default for FredOptions {
@@ -247,6 +248,7 @@ impl FredOptions {
             use_mib: false,
             show_details: false, // Default off for shorter output; VB6 defaulted to on
             include_mini_tableaux: true,
+            diagnostics: false,
         }
     }
 }
@@ -354,7 +356,7 @@ pub fn format_rcd_output(
         tableau.run_rcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, fred_opts);
-    Ok(result.format_output_with_options(&tableau, filename, "Recursive Constraint Demotion", &apriori, true))
+    Ok(result.format_output_with_options(&tableau, filename, "Recursive Constraint Demotion", &apriori, true, fred_opts.diagnostics))
 }
 
 /// Run FRed (Fusional Reduction Algorithm) on a tableau.
@@ -452,7 +454,7 @@ pub fn format_rcd_html_output(
         tableau.run_rcd_with_apriori(&apriori)
     };
     result.apply_fred_options(&tableau, fred_opts);
-    Ok(result.format_html_output_full(&tableau, filename, "Recursive Constraint Demotion", axis_mode, &apriori))
+    Ok(result.format_html_output_full(&tableau, filename, "Recursive Constraint Demotion", axis_mode, &apriori, fred_opts.diagnostics))
 }
 
 /// Format BCD results as an HTML document for download.
@@ -467,7 +469,7 @@ pub fn format_bcd_html_output(
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
     result.apply_fred_options(&tableau, fred_opts);
-    Ok(result.format_html_output_with_options(&tableau, filename, "Biased Constraint Demotion", axis_mode))
+    Ok(result.format_html_output_with_options(&tableau, filename, "Biased Constraint Demotion", axis_mode, fred_opts.diagnostics))
 }
 
 /// Format LFCD results as an HTML document for download.
@@ -494,6 +496,7 @@ pub fn format_lfcd_html_output(
         "Low Faithfulness Constraint Demotion",
         axis_mode,
         &apriori,
+        fred_opts.diagnostics,
     ))
 }
 
@@ -508,7 +511,7 @@ pub fn format_bcd_output(
     let tableau = Tableau::parse(text)?;
     let mut result = tableau.run_bcd(specific);
     result.apply_fred_options(&tableau, fred_opts);
-    Ok(result.format_output_with_algorithm(&tableau, filename, "Biased Constraint Demotion"))
+    Ok(result.format_output_with_algorithm(&tableau, filename, "Biased Constraint Demotion", fred_opts.diagnostics))
 }
 
 /// Run Low Faithfulness Constraint Demotion on a parsed tableau.
@@ -547,6 +550,7 @@ pub fn format_lfcd_output(
         "Low Faithfulness Constraint Demotion",
         &apriori,
         false, // LFCD omits the A Priori Rankings section (VB6 behaviour)
+        fred_opts.diagnostics,
     ))
 }
 

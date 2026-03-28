@@ -160,6 +160,7 @@ export interface RcdDefaults {
   useMib: boolean
   showDetails: boolean
   includeMiniTableaux: boolean
+  diagnostics: boolean
 }
 
 let _rcd: RcdDefaults | null = null
@@ -172,6 +173,7 @@ export function rcdDefaults(): RcdDefaults {
       useMib: d.use_mib,
       showDetails: d.show_details,
       includeMiniTableaux: d.include_mini_tableaux,
+      diagnostics: d.diagnostics,
     }
     d.free()
   }
