@@ -7,7 +7,7 @@
 
 ## UX
 
-- [RCD: consider defaulting "Show details" to off](tasks/rcd-show-details-default.md)
+- ~~RCD: default "Show details" to off~~
 
 ## Features
 
