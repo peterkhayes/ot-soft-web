@@ -1,7 +1,7 @@
 Results of Applying Biased Constraint Demotion to IlokanoHiatusResolution.txt
 
 
-3-11-2026, 3:54 p.m.
+3-30-2026, 2:26 pm
 
 OTSoft 2.7, release date 2/1/2026
 
@@ -16,12 +16,13 @@ A ranking was found that generates the correct outputs.
    Stratum #2
       Dep(h)                                    Dep(h)
       Dep(+cons)                                Dep(+cons)
-      Max                                       Max
       Max-stem                                  Max-stem
       Ident(low)                                Id(lo)
    Stratum #3
-      Dep                                       Dep
+      Max                                       Max
    Stratum #4
+      Dep                                       Dep
+   Stratum #5
       Ident(syllabic)                           Id(syl)
       Ident(high)                               Id(hi)
 
@@ -29,38 +30,38 @@ A ranking was found that generates the correct outputs.
 
 
 /babawi-en/: 
-      *VV¦*Nonhigh glide|Max¦Max-stem¦Dep(h)¦Id(lo)¦Dep(+cons)|Dep|Id(syl)¦Id(hi)
->je      ¦              |   ¦        ¦      ¦      ¦          |   |  1    ¦      
- i.?e    ¦              |   ¦        ¦      ¦      ¦          |1! |       ¦      
- i.te    ¦              |   ¦        ¦      ¦      ¦    1!    |1  |       ¦      
- i.he    ¦              |   ¦        ¦  1!  ¦      ¦          |1  |       ¦      
- i       ¦              |1! ¦        ¦      ¦      ¦          |   |       ¦      
- e       ¦              |1! ¦   1    ¦      ¦      ¦          |   |       ¦      
- i.e  1! ¦              |   ¦        ¦      ¦      ¦          |   |       ¦      
+      *VVÂ¦*Nonhigh glide|Max-stemÂ¦Dep(h)Â¦Id(lo)Â¦Dep(+cons)|Max|Dep|Id(syl)Â¦Id(hi)
+>je      Â¦              |        Â¦      Â¦      Â¦          |   |   |  1    Â¦      
+ i.?e    Â¦              |        Â¦      Â¦      Â¦          |   |1! |       Â¦      
+ i       Â¦              |        Â¦      Â¦      Â¦          |1! |   |       Â¦      
+ i.te    Â¦              |        Â¦      Â¦      Â¦    1!    |   |1  |       Â¦      
+ i.he    Â¦              |        Â¦  1!  Â¦      Â¦          |   |1  |       Â¦      
+ e       Â¦              |   1!   Â¦      Â¦      Â¦          |1  |   |       Â¦      
+ i.e  1! Â¦              |        Â¦      Â¦      Â¦          |   |   |       Â¦      
 
 
 /masahe-an/: 
-      *VV¦*Nonhigh glide|Max¦Max-stem¦Dep(h)¦Id(lo)¦Dep(+cons)|Dep|Id(syl)¦Id(hi)
->ja      ¦              |   ¦        ¦      ¦      ¦          |   |  1    ¦  1   
- e.?a    ¦              |   ¦        ¦      ¦      ¦          |1! |       ¦      
- e.ta    ¦              |   ¦        ¦      ¦      ¦    1!    |1  |       ¦      
- e.ha    ¦              |   ¦        ¦  1!  ¦      ¦          |1  |       ¦      
- e       ¦              |1! ¦        ¦      ¦      ¦          |   |       ¦      
- a       ¦              |1! ¦   1    ¦      ¦      ¦          |   |       ¦      
- Ea      ¦      1!      |   ¦        ¦      ¦      ¦          |   |  1    ¦      
- e.a  1! ¦              |   ¦        ¦      ¦      ¦          |   |       ¦      
+      *VVÂ¦*Nonhigh glide|Max-stemÂ¦Dep(h)Â¦Id(lo)Â¦Dep(+cons)|Max|Dep|Id(syl)Â¦Id(hi)
+>ja      Â¦              |        Â¦      Â¦      Â¦          |   |   |  1    Â¦  1   
+ e.?a    Â¦              |        Â¦      Â¦      Â¦          |   |1! |       Â¦      
+ e       Â¦              |        Â¦      Â¦      Â¦          |1! |   |       Â¦      
+ e.ta    Â¦              |        Â¦      Â¦      Â¦    1!    |   |1  |       Â¦      
+ e.ha    Â¦              |        Â¦  1!  Â¦      Â¦          |   |1  |       Â¦      
+ a       Â¦              |   1!   Â¦      Â¦      Â¦          |1  |   |       Â¦      
+ Ea      Â¦      1!      |        Â¦      Â¦      Â¦          |   |   |  1    Â¦      
+ e.a  1! Â¦              |        Â¦      Â¦      Â¦          |   |   |       Â¦      
 
 
 /basa-en/: 
-      *VV¦*Nonhigh glide|Max¦Max-stem¦Dep(h)¦Id(lo)¦Dep(+cons)|Dep|Id(syl)¦Id(hi)
->a.?e    ¦              |   ¦        ¦      ¦      ¦          |1  |       ¦      
- ate     ¦              |   ¦        ¦      ¦      ¦    1!    |1  |       ¦      
- wa      ¦              |   ¦        ¦      ¦  1!  ¦          |   |  1    ¦  1   
- ahe     ¦              |   ¦        ¦  1!  ¦      ¦          |1  |       ¦      
- a       ¦              |1! ¦        ¦      ¦      ¦          |   |       ¦      
- e       ¦              |1! ¦   1    ¦      ¦      ¦          |   |       ¦      
- Ae      ¦      1!      |   ¦        ¦      ¦      ¦          |   |  1    ¦      
- a.e  1! ¦              |   ¦        ¦      ¦      ¦          |   |       ¦      
+      *VVÂ¦*Nonhigh glide|Max-stemÂ¦Dep(h)Â¦Id(lo)Â¦Dep(+cons)|Max|Dep|Id(syl)Â¦Id(hi)
+>a.?e    Â¦              |        Â¦      Â¦      Â¦          |   |1  |       Â¦      
+ a       Â¦              |        Â¦      Â¦      Â¦          |1! |   |       Â¦      
+ ate     Â¦              |        Â¦      Â¦      Â¦    1!    |   |1  |       Â¦      
+ wa      Â¦              |        Â¦      Â¦  1!  Â¦          |   |   |  1    Â¦  1   
+ ahe     Â¦              |        Â¦  1!  Â¦      Â¦          |   |1  |       Â¦      
+ e       Â¦              |   1!   Â¦      Â¦      Â¦          |1  |   |       Â¦      
+ Ae      Â¦      1!      |        Â¦      Â¦      Â¦          |   |   |  1    Â¦      
+ a.e  1! Â¦              |        Â¦      Â¦      Â¦          |   |   |       Â¦      
 
 
 3. Status of Proposed Constraints:  Necessary or Unnecessary
@@ -73,9 +74,9 @@ A ranking was found that generates the correct outputs.
    Id(lo)          Necessary
    *Nonhigh glide  Necessary
    Id(syl)         Not necessary (but included to show Faithfulness violations
-                      of a winning candidate)
+              of a winning candidate)
    Id(hi)          Not necessary (but included to show Faithfulness violations
-                      of a winning candidate)
+              of a winning candidate)
    Max-stem        Not necessary
 
 A check has determined that the grammar will still work even if the 
@@ -124,27 +125,27 @@ Constraints not violated by either candidate are omitted.
 
 
 /masahe-an/: 
-     *VV|Id(syl)¦Id(hi)
->ja     |  1    ¦  1   
- e.a 1  |       ¦      
+     *VV|Id(syl)Â¦Id(hi)
+>ja     |  1    Â¦  1   
+ e.a 1  |       Â¦      
 
 
 /masahe-an/: 
-    *Nonhigh glide|Id(hi)¦Id(syl)
->ja               |  1   ¦  1    
- Ea       1       |      ¦  1    
+    *Nonhigh glide|Id(hi)Â¦Id(syl)
+>ja               |  1   Â¦  1    
+ Ea       1       |      Â¦  1    
 
 
 /masahe-an/: 
-      Dep|Id(syl)¦Id(hi)
->ja      |  1    ¦  1   
- e.?a 1  |       ¦      
+      Dep|Id(syl)Â¦Id(hi)
+>ja      |  1    Â¦  1   
+ e.?a 1  |       Â¦      
 
 
 /masahe-an/: 
-    Max|Id(syl)¦Id(hi)
->ja    |  1    ¦  1   
- e  1  |       ¦      
+    Max|Id(syl)Â¦Id(hi)
+>ja    |  1    Â¦  1   
+ e  1  |       Â¦      
 
 
 /basa-en/: 

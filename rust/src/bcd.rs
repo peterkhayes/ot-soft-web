@@ -582,4 +582,36 @@ mod tests {
         assert_eq!(result.get_stratum(3).unwrap(), 2, "Dep should be in stratum 2");
     }
 
+    #[test]
+    fn test_ilokano_bcd_specific_subsets() {
+        // Specific BCD should detect Max-stem ⊆ Max and delay Max to a later stratum.
+        // VB6's "Favor Specificity" menu item is hidden (Visible=0), so there is no
+        // valid VB6 golden file to compare against — this test validates Rust's behavior
+        // directly against the algorithm specification.
+        let text = std::fs::read_to_string("../examples/IlokanoHiatusResolution.txt")
+            .expect("Failed to load IlokanoHiatusResolution.txt");
+        let tableau = Tableau::parse(&text).unwrap();
+
+        let max_idx = tableau.constraints.iter().position(|c| c.abbrev() == "Max").unwrap();
+        let max_stem_idx = tableau.constraints.iter().position(|c| c.abbrev() == "Max-stem").unwrap();
+
+        // Max-stem's violations should be a subset of Max's violations
+        let subsets = super::locate_violation_subsets(&tableau);
+        assert!(subsets[max_stem_idx][max_idx], "Max-stem should be a subset of Max");
+        assert!(!subsets[max_idx][max_stem_idx], "Max should NOT be a subset of Max-stem");
+
+        let result_plain = tableau.run_bcd(false);
+        let result_specific = tableau.run_bcd(true);
+
+        // In plain BCD, Max and Max-stem land in the same stratum
+        assert_eq!(result_plain.get_stratum(max_idx), result_plain.get_stratum(max_stem_idx));
+
+        // In specific BCD, Max-stem ranks earlier (more specific) and Max is delayed
+        let max_stratum = result_specific.get_stratum(max_idx).unwrap();
+        let max_stem_stratum = result_specific.get_stratum(max_stem_idx).unwrap();
+        assert!(max_stratum > max_stem_stratum,
+            "Specific BCD should rank Max (stratum {}) after Max-stem (stratum {})",
+            max_stratum, max_stem_stratum);
+    }
+
 }

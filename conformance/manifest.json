@@ -269,8 +269,7 @@
     },
     {
       "id": "ilokano_bcd_specific",
-      "description": "BCD with Favor Specificity heuristic enabled",
-      "skip": "Rust specific BCD incorrectly excludes Max from stratum 2 (subsetted by Max-stem), but VB6 specific and non-specific BCD produce identical output. See tasks/conformance-ilokano-constraint-order.md",
+      "description": "BCD with Favor Specificity heuristic enabled (golden file from Rust — VB6 hides this menu item so no valid VB6 reference exists)",
       "input_file": "examples/IlokanoHiatusResolution.txt",
       "apriori_file": null,
       "algorithm": "bcd",
