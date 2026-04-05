@@ -6,7 +6,7 @@ Core data structures, parsing, and algorithms compiled to WebAssembly. No presen
 
 ```
 src/
-  lib.rs        WASM exports — public API surface for JavaScript
+  lib.rs        WASM exports, stateful logger (ot_log! macro + thread-local buffer)
   tableau.rs    Data structures and tab-delimited file parsing
   apriori.rs    A priori rankings (partial orderings fed into RCD/LFCD)
   rcd.rs        Recursive Constraint Demotion

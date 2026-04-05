@@ -253,23 +253,56 @@ impl FredOptions {
     }
 }
 
-/// Log a message to the browser console (WASM) or stderr (native).
+// ── Stateful logger ─────────────────────────────────────────────────────────
+//
+// Every `ot_log!` call writes to the browser console (WASM) or stderr (native)
+// AND appends to a thread-local buffer. Callers manage the buffer lifecycle via
+// `clear_log()` / `get_log()`.
+
+use std::cell::RefCell;
+
+thread_local! {
+    static LOG_BUFFER: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
+fn log_buffer_push(msg: String) {
+    LOG_BUFFER.with(|buf| buf.borrow_mut().push(msg));
+}
+
+/// Clear the log buffer. Call before an algorithm run to start fresh.
+#[wasm_bindgen]
+pub fn clear_log() {
+    LOG_BUFFER.with(|buf| buf.borrow_mut().clear());
+}
+
+/// Retrieve the captured log as a newline-separated string.
+#[wasm_bindgen]
+pub fn get_log() -> String {
+    LOG_BUFFER.with(|buf| buf.borrow().join("\n"))
+}
+
+/// Log a message to the browser console (WASM) or stderr (native),
+/// and capture it in the log buffer for later retrieval via `get_log()`.
 #[macro_export]
 macro_rules! ot_log {
     ($($arg:tt)*) => {
-        #[cfg(target_arch = "wasm32")]
         {
-            use wasm_bindgen::prelude::*;
-            #[wasm_bindgen]
-            extern "C" {
-                #[wasm_bindgen(js_namespace = console)]
-                fn log(s: &str);
+            let msg = format!($($arg)*);
+            $crate::log_buffer_push(msg.clone());
+            #[cfg(target_arch = "wasm32")]
+            {
+                use wasm_bindgen::prelude::*;
+                #[wasm_bindgen]
+                extern "C" {
+                    #[wasm_bindgen(js_namespace = console)]
+                    fn log(s: &str);
+                }
+                log(&msg);
             }
-            log(&format!($($arg)*));
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            eprintln!($($arg)*);
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                eprintln!("{}", msg);
+            }
         }
     };
 }
@@ -796,4 +829,19 @@ pub fn fred_hasse_dot(text: &str, apriori_text: &str, use_mib: bool) -> Result<S
     let valhalla: Vec<&str> = fred_result.valhalla.iter().map(|s| s.as_str()).collect();
     let abbrevs: Vec<&str> = fred_result.constraint_abbrevs.iter().map(|s| s.as_str()).collect();
     Ok(hasse::fred_hasse_dot(&valhalla, &abbrevs))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log_buffer_capture_and_clear() {
+        clear_log();
+        ot_log!("hello {}", 42);
+        ot_log!("world");
+        assert_eq!(get_log(), "hello 42\nworld");
+        clear_log();
+        assert_eq!(get_log(), "");
+    }
 }

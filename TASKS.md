@@ -10,7 +10,7 @@
 - [Excel file parsing (.xlsx)](tasks/excel-parsing.md)
 - [Praat export](tasks/praat-export.md)
 - [R export](tasks/r-export.md)
-- [HowIRanked log file](tasks/how-i-ranked.md)
+
 
 ## Testing
 

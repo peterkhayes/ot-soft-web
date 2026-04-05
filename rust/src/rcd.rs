@@ -1985,6 +1985,62 @@ impl Tableau {
         }
     }
 
+    /// Log a "Results so far" summary matching VB6's PrintResultsOfRankingSoFar.
+    pub(crate) fn log_results_so_far(&self, strata: &[usize], current_stratum: usize) {
+        crate::ot_log!("");
+        crate::ot_log!("Results so far:");
+        // Already-ranked strata
+        for s in 1..current_stratum {
+            let mut first = true;
+            for (c_idx, &c_stratum) in strata.iter().enumerate() {
+                if c_stratum == s {
+                    if first {
+                        crate::ot_log!("  Stratum {} (already ranked):  {}", s, self.constraints[c_idx].abbrev());
+                        first = false;
+                    } else {
+                        crate::ot_log!("                               {}", self.constraints[c_idx].abbrev());
+                    }
+                }
+            }
+        }
+        // Newly ranked
+        let mut first = true;
+        for (c_idx, &c_stratum) in strata.iter().enumerate() {
+            if c_stratum == current_stratum {
+                if first {
+                    crate::ot_log!("  Stratum {} (newly ranked):    {}", current_stratum, self.constraints[c_idx].abbrev());
+                    first = false;
+                } else {
+                    crate::ot_log!("                               {}", self.constraints[c_idx].abbrev());
+                }
+            }
+        }
+        // Unranked markedness
+        crate::ot_log!("  Markedness constraints still unranked:");
+        let unranked_mark: Vec<_> = self.constraints.iter().enumerate()
+            .filter(|(i, c)| strata[*i] == 0 && !c.is_faithfulness())
+            .collect();
+        if unranked_mark.is_empty() {
+            crate::ot_log!("    (none)");
+        } else {
+            for (_, c) in &unranked_mark {
+                crate::ot_log!("    {}", c.abbrev());
+            }
+        }
+        // Unranked faithfulness
+        crate::ot_log!("  Faithfulness constraints still unranked:");
+        let unranked_faith: Vec<_> = self.constraints.iter().enumerate()
+            .filter(|(i, c)| strata[*i] == 0 && c.is_faithfulness())
+            .collect();
+        if unranked_faith.is_empty() {
+            crate::ot_log!("    (none)");
+        } else {
+            for (_, c) in &unranked_faith {
+                crate::ot_log!("    {}", c.abbrev());
+            }
+        }
+    }
+
     /// Internal RCD implementation
     fn run_rcd_internal(&self, compute_extra_analyses: bool, apriori: &[Vec<bool>]) -> RCDResult {
         let num_constraints = self.constraints.len();
@@ -2007,11 +2063,14 @@ impl Tableau {
             }
         }
 
+        crate::ot_log!("****** Application of Constraint Demotion ******");
         crate::ot_log!("Starting RCD with {} pairs", informative_pairs.len());
 
         // RCD main loop
         loop {
             current_stratum += 1;
+            crate::ot_log!("");
+            crate::ot_log!("****** Now doing Stratum #{} ******", current_stratum);
 
             // Find constraints that are "demotable" (prefer a loser in any informative pair)
             let mut demotable = vec![false; num_constraints];
@@ -2021,33 +2080,42 @@ impl Tableau {
                 let loser = &self.forms[form_idx].candidates[loser_idx];
 
                 for c_idx in 0..num_constraints {
-                    // Skip constraints already ranked
-                    if constraint_strata[c_idx] != 0 {
+                    if constraint_strata[c_idx] != 0 || demotable[c_idx] {
                         continue;
                     }
 
-                    let winner_viols = winner.violations[c_idx];
-                    let loser_viols = loser.violations[c_idx];
-
-                    // Constraint prefers loser if loser has fewer violations
-                    if loser_viols < winner_viols {
+                    if loser.violations[c_idx] < winner.violations[c_idx] {
                         demotable[c_idx] = true;
+                        crate::ot_log!("  {} is excluded from stratum; prefers loser *[{}] for /{}/ over winner [{}].",
+                            self.constraints[c_idx].abbrev(),
+                            loser.form, self.forms[form_idx].input, winner.form);
                     }
                 }
             }
 
+            if !demotable.iter().enumerate().any(|(i, &d)| d && constraint_strata[i] == 0) {
+                crate::ot_log!("  Search found no unranked constraints that prefer losers.");
+            }
+
             // ENFORCE A PRIORI RANKINGS
-            // Any constraint that is a priori dominated by an unranked constraint
-            // cannot join the current stratum.
             if !apriori.is_empty() {
+                let mut found_apriori = false;
                 for outer in 0..num_constraints {
                     if constraint_strata[outer] == 0 {
                         for inner in 0..num_constraints {
+                            if apriori[outer][inner] && !demotable[inner] {
+                                crate::ot_log!("  {} is excluded from stratum; dominated a priori by {}.",
+                                    self.constraints[inner].abbrev(), self.constraints[outer].abbrev());
+                                found_apriori = true;
+                            }
                             if apriori[outer][inner] {
                                 demotable[inner] = true;
                             }
                         }
                     }
+                }
+                if !found_apriori {
+                    crate::ot_log!("  Search found no constraints that must be demoted due to an a priori ranking.");
                 }
             }
 
@@ -2057,9 +2125,12 @@ impl Tableau {
                 if constraint_strata[c_idx] == 0 && !demotable[c_idx] {
                     constraint_strata[c_idx] = current_stratum;
                     added_any = true;
+                    crate::ot_log!("  {} favors no losers, joins stratum #{}.",
+                        self.constraints[c_idx].abbrev(), current_stratum);
                 }
             }
 
+            self.log_results_so_far(&constraint_strata, current_stratum);
             crate::ot_log!("After stratum {}: {} pairs remaining",
                 current_stratum, informative_pairs.len());
 
@@ -2068,6 +2139,8 @@ impl Tableau {
 
             // If all constraints ranked, we're done (success even if pairs remain - those are ties)
             if all_ranked {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking is complete and yields successful grammar.");
                 crate::ot_log!("RCD SUCCEEDED: all constraints ranked in {} strata ({} pairs unresolved - ties)",
                     current_stratum, informative_pairs.len());
 
@@ -2092,6 +2165,8 @@ impl Tableau {
 
             // If no constraints added but some still unranked, algorithm failed
             if !added_any {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking has failed. This constraint set cannot derive only winners.");
                 crate::ot_log!("RCD FAILED: no constraints added to stratum {}", current_stratum);
                 return RCDResult {
                     constraint_strata,
@@ -2131,14 +2206,19 @@ impl Tableau {
 
                 // Unranked constraints go in final stratum
                 if !all_ranked {
-                    for s in constraint_strata.iter_mut() {
+                    current_stratum += 1;
+                    for (c_idx, s) in constraint_strata.iter_mut().enumerate() {
                         if *s == 0 {
-                            *s = current_stratum + 1;
+                            *s = current_stratum;
+                            crate::ot_log!("  {} joins stratum #{} (no remaining pairs).",
+                                self.constraints[c_idx].abbrev(), current_stratum);
                         }
                     }
-                    current_stratum += 1;
+                    self.log_results_so_far(&constraint_strata, current_stratum);
                 }
 
+                crate::ot_log!("");
+                crate::ot_log!("Ranking is complete and yields successful grammar.");
                 crate::ot_log!("RCD SUCCEEDED with {} strata", current_stratum);
 
                 // Create initial result
@@ -2319,6 +2399,31 @@ mod tests {
         // Max and Dep should be in stratum 2
         assert_eq!(result.get_stratum(2).unwrap(), 2, "Max should be in stratum 2");
         assert_eq!(result.get_stratum(3).unwrap(), 2, "Dep should be in stratum 2");
+    }
+
+    #[test]
+    fn test_rcd_log_capture() {
+        crate::clear_log();
+        let text = load_tiny_example();
+        let tableau = Tableau::parse(&text).unwrap();
+        let _result = tableau.run_rcd();
+        let log = crate::get_log();
+        // Header
+        assert!(log.contains("Application of Constraint Demotion"), "should have algorithm header");
+        // Stratum headers
+        assert!(log.contains("Stratum #1"), "should log stratum 1");
+        assert!(log.contains("Stratum #2"), "should log stratum 2");
+        // Demotable constraints with evidence
+        assert!(log.contains("Max is excluded from stratum"), "should log Max demotion");
+        assert!(log.contains("Dep is excluded from stratum"), "should log Dep demotion");
+        // Constraints joining
+        assert!(log.contains("*NoOns favors no losers, joins stratum #1"), "should log *NoOns joining");
+        assert!(log.contains("*Coda favors no losers, joins stratum #1"), "should log *Coda joining");
+        // Results summary
+        assert!(log.contains("Results so far:"), "should have results summary");
+        assert!(log.contains("(newly ranked)"), "should show newly ranked");
+        // Success
+        assert!(log.contains("Ranking is complete and yields successful grammar."), "should log success");
     }
 
     /// Build a contradictory tableau where C1 >> C2 and C2 >> C1 are both required.

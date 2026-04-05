@@ -276,7 +276,8 @@ fn rank_bcd_stratum(
     let nc = strata.len();
     let mut tie_flag = false;
 
-    // Try to rank markedness constraints first (faithfulness delay)
+    // --- Faithfulness Delay ---
+    crate::ot_log!("Faithfulness Delay:");
     let mut rankable_marked = false;
     let mut faith_is_active = false;
 
@@ -286,29 +287,49 @@ fn rank_bcd_stratum(
                 faith_is_active = true;
             } else if !is_faithfulness[c_idx] {
                 rankable_marked = true;
+                crate::ot_log!("  Markedness constraint {} prefers no losers, joins stratum #{}.",
+                    tableau.constraints[c_idx].abbrev(), current_stratum);
                 strata[c_idx] = current_stratum;
             }
         }
     }
 
     if rankable_marked {
+        crate::ot_log!("  Faithfulness constraints are excluded from stratum.");
         return tie_flag;
     }
 
+    crate::ot_log!("  No rankable markedness constraints are available for this stratum.");
+
     // No markedness could be ranked — must deal with faithfulness
+
+    // --- Avoid The Inactive ---
+    crate::ot_log!("Avoid The Inactive:");
     if !faith_is_active {
+        crate::ot_log!("  No active Faithfulness constraints are available for this stratum.");
         // No active faithfulness — rank all remaining non-demotable (terminal case)
         for c_idx in 0..nc {
             if strata[c_idx] == 0 && !demotable[c_idx] {
+                crate::ot_log!("  Faithfulness constraint {} joins stratum #{} by default.",
+                    tableau.constraints[c_idx].abbrev(), current_stratum);
                 strata[c_idx] = current_stratum;
             }
         }
         return tie_flag;
     }
 
-    // Favor specificity (if specific BCD)
+    crate::ot_log!("  Active, as-yet-unranked Faithfulness constraints available for this stratum:");
+    for c_idx in 0..nc {
+        if strata[c_idx] == 0 && is_faithfulness[c_idx] && !demotable[c_idx] && active[c_idx] {
+            crate::ot_log!("    {}", tableau.constraints[c_idx].abbrev());
+        }
+    }
+
+    // --- Favor Specificity (if specific BCD) ---
     let mut subsetted = vec![false; nc];
     if specific_bcd {
+        crate::ot_log!("Favor Specificity:");
+        let mut any_subsetted = false;
         for c_idx in 0..nc {
             if strata[c_idx] != 0 || !is_faithfulness[c_idx] {
                 continue;
@@ -319,9 +340,15 @@ fn rank_bcd_stratum(
                 }
                 if violation_subsets[inner][c_idx] {
                     subsetted[c_idx] = true;
+                    any_subsetted = true;
+                    crate::ot_log!("  {} cannot be installed in this stratum, because {} is more specific.",
+                        tableau.constraints[c_idx].abbrev(), tableau.constraints[inner].abbrev());
                     break;
                 }
             }
+        }
+        if !any_subsetted {
+            crate::ot_log!("  (no cases found)");
         }
     }
 
@@ -339,13 +366,17 @@ fn rank_bcd_stratum(
     if rankable_faith.is_empty() {
         for c_idx in 0..nc {
             if strata[c_idx] == 0 && !demotable[c_idx] {
+                crate::ot_log!("  Faithfulness constraint {} joins stratum #{} by default.",
+                    tableau.constraints[c_idx].abbrev(), current_stratum);
                 strata[c_idx] = current_stratum;
             }
         }
         return tie_flag;
     }
 
-    // Find minimal faithfulness subset via exhaustive search
+    // --- Smallest Effective Faithfulness Sets ---
+    crate::ot_log!("Smallest Effective Faithfulness Sets");
+    crate::ot_log!("  Evaluating subsets of increasing size:");
     let ctx = BcdContext {
         tableau,
         is_faithfulness,
@@ -360,6 +391,7 @@ fn rank_bcd_stratum(
         tie_flag: false,
     };
     for subset_size in 1..=rankable_faith.len() {
+        crate::ot_log!("  Subset size = {}", subset_size);
         search.current_subset.clear();
         evaluate_faith_subsets(&rankable_faith, subset_size, 0, &mut search, &ctx);
         if search.best_mark_count > 0 {
@@ -369,12 +401,18 @@ fn rank_bcd_stratum(
     tie_flag = search.tie_flag;
 
     if search.best_mark_count == 0 {
+        crate::ot_log!("  No subset released any markedness constraints.");
         for &c_idx in &rankable_faith {
             strata[c_idx] = current_stratum;
         }
     } else {
         for &c_idx in &search.best_subset {
+            crate::ot_log!("  Faithfulness constraint {} joins stratum #{} as member of best subset.",
+                tableau.constraints[c_idx].abbrev(), current_stratum);
             strata[c_idx] = current_stratum;
+        }
+        if tie_flag {
+            crate::ot_log!("  Note: This is an arbitrary choice, arising from the tie noted above.");
         }
     }
 
@@ -443,6 +481,10 @@ impl Tableau {
                 .sum()
         };
 
+        crate::ot_log!("****** Application of Biased Constraint Demotion ******");
+        if specific_bcd {
+            crate::ot_log!("Version of BCD used: modified, gives priority to more specific Faithfulness constraints");
+        }
         crate::ot_log!("Starting BCD with {} pairs", count_pairs(&still_informative));
 
         loop {
@@ -451,12 +493,17 @@ impl Tableau {
                 upper_tie_flag = true;
             }
 
+            crate::ot_log!("");
+            crate::ot_log!("****** Now doing Stratum #{} ******", current_stratum);
+
             let (demotable, active) = mark_demotable_and_active(self, &strata, &still_informative);
 
             tie_flag = rank_bcd_stratum(
                 self, &mut strata, current_stratum, &demotable, &active,
                 &is_faithfulness, &violation_subsets, specific_bcd, &still_informative,
             );
+
+            self.log_results_so_far(&strata, current_stratum);
 
             // Check termination
             let unranked_remain = strata.contains(&0);
@@ -466,6 +513,8 @@ impl Tableau {
                 current_stratum, count_pairs(&still_informative));
 
             if !unranked_remain {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking is complete and yields successful grammar.");
                 crate::ot_log!("BCD SUCCEEDED with {} strata", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, true);
                 result.set_tie_warning(upper_tie_flag || tie_flag);
@@ -474,6 +523,8 @@ impl Tableau {
             }
 
             if !a_constraint_was_ranked {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking has failed. This constraint set cannot derive only winners.");
                 crate::ot_log!("BCD FAILED: no constraints added to stratum {}", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum - 1, false);
                 result.set_tie_warning(upper_tie_flag || tie_flag);
@@ -483,6 +534,8 @@ impl Tableau {
             update_informativeness(self, &strata, current_stratum, &mut still_informative);
 
             if current_stratum > nc {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking has failed. This constraint set cannot derive only winners.");
                 crate::ot_log!("BCD FAILED: safety limit reached at stratum {}", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, false);
                 result.set_tie_warning(upper_tie_flag || tie_flag);
@@ -580,6 +633,29 @@ mod tests {
         assert_eq!(result.get_stratum(1).unwrap(), 1, "*Coda should be in stratum 1");
         assert_eq!(result.get_stratum(2).unwrap(), 2, "Max should be in stratum 2");
         assert_eq!(result.get_stratum(3).unwrap(), 2, "Dep should be in stratum 2");
+    }
+
+    #[test]
+    fn test_bcd_log_capture() {
+        crate::clear_log();
+        let tiny = load_tiny_example();
+        let tableau = Tableau::parse(&tiny).unwrap();
+        let _result = tableau.run_bcd(false);
+        let log = crate::get_log();
+
+        // Header
+        assert!(log.contains("Application of Biased Constraint Demotion"), "Should have BCD header");
+        // Stratum processing
+        assert!(log.contains("Now doing Stratum #1"), "Should log stratum 1");
+        assert!(log.contains("Now doing Stratum #2"), "Should log stratum 2");
+        // Faithfulness delay
+        assert!(log.contains("Faithfulness Delay:"), "Should have faithfulness delay section");
+        assert!(log.contains("Markedness constraint"), "Should log markedness ranking");
+        assert!(log.contains("Faithfulness constraints are excluded"), "Should note faith exclusion");
+        // Results summary
+        assert!(log.contains("Results so far:"), "Should have results summary");
+        // Success
+        assert!(log.contains("SUCCEEDED"), "Should log success");
     }
 
     #[test]

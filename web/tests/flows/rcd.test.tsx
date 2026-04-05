@@ -206,6 +206,25 @@ test('RCD: download sorted input file', async () => {
   expect(lines[9]).toMatch(/^\tat\t/)
 })
 
+test('RCD: download log file', async () => {
+  const { downloads } = renderApp()
+  await loadExample()
+
+  await page.getByText('Classical OT', { exact: true }).click()
+  await page.getByText('Run RCD Algorithm').click()
+  await expect
+    .element(page.getByText('A ranking was found that generates the correct outputs'))
+    .toBeVisible()
+
+  await expect.element(page.getByText('Download Log')).toBeVisible()
+  await page.getByText('Download Log').click()
+
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0].filename).toBe('TinyIllustrativeFileHowIRanked.txt')
+  expect(downloads[0].content).toContain('Starting RCD')
+  expect(downloads[0].content).toContain('SUCCEEDED')
+})
+
 test('RCD: a priori rankings file upload', async () => {
   renderApp()
   await loadExample()

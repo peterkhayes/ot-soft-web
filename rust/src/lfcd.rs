@@ -38,6 +38,8 @@ fn mark_loser_preferring(
     still_informative: &[Vec<bool>],
     demotable: &mut [bool],
 ) {
+    crate::ot_log!("Avoid Preference For Losers:");
+    let mut found_one = false;
     for (form_idx, form) in tableau.forms.iter().enumerate() {
         let winner = match form.candidates.iter().find(|c| c.frequency > 0) {
             Some(w) => w,
@@ -49,27 +51,55 @@ fn mark_loser_preferring(
             }
             for (c_idx, &stratum) in strata.iter().enumerate() {
                 if stratum == 0 && winner.violations[c_idx] > rival.violations[c_idx] {
+                    // Log only the first evidence for each constraint
+                    if !demotable[c_idx] {
+                        crate::ot_log!("  {} is excluded from stratum; prefers loser *[{}] for /{}/.  ",
+                            tableau.constraints[c_idx].abbrev(),
+                            rival.form,
+                            form.input);
+                        found_one = true;
+                    }
                     demotable[c_idx] = true;
                 }
             }
         }
     }
+    if !found_one {
+        crate::ot_log!("  Search found no unranked constraints that prefer losers.");
+    }
 }
 
 /// Demote constraints that are a priori dominated by an unranked constraint.
-fn enforce_apriori_demotions(apriori: &[Vec<bool>], strata: &[usize], demotable: &mut [bool]) {
+fn enforce_apriori_demotions(
+    tableau: &Tableau,
+    apriori: &[Vec<bool>],
+    strata: &[usize],
+    demotable: &mut [bool],
+) {
+    crate::ot_log!("Enforce a priori rankings:");
     if apriori.is_empty() {
+        crate::ot_log!("  Search found no constraints that must be demoted due to an a priori ranking.");
         return;
     }
     let nc = strata.len();
+    let mut found_one = false;
     for outer in 0..nc {
         if strata[outer] == 0 {
             for inner in 0..nc {
+                if apriori[outer][inner] && !demotable[inner] {
+                    crate::ot_log!("  {} is excluded from stratum.", tableau.constraints[inner].abbrev());
+                    crate::ot_log!("    It is dominated a priori by {}, which has yet to be ranked.",
+                        tableau.constraints[outer].abbrev());
+                    found_one = true;
+                }
                 if apriori[outer][inner] {
                     demotable[inner] = true;
                 }
             }
         }
+    }
+    if !found_one {
+        crate::ot_log!("  Search found no constraints that must be demoted due to an a priori ranking.");
     }
 }
 
@@ -84,22 +114,32 @@ fn apply_faithfulness_heuristics(
 ) {
     let nc = strata.len();
 
-    // Favor Markedness: if any non-demotable Markedness exists, shut out all Faithfulness
+    // --- Favor Markedness ---
+    crate::ot_log!("Favor Markedness:");
     let there_is_rankable_markedness = (0..nc).any(|c_idx| {
         strata[c_idx] == 0 && !demotable[c_idx] && !is_faithfulness[c_idx]
     });
 
     if there_is_rankable_markedness {
         for c_idx in 0..nc {
+            if strata[c_idx] == 0 && !demotable[c_idx] && !is_faithfulness[c_idx] {
+                crate::ot_log!("  {} is a Markedness constraint that favors no losers, joins new stratum.",
+                    tableau.constraints[c_idx].abbrev());
+            }
+        }
+        for c_idx in 0..nc {
             if is_faithfulness[c_idx] {
                 demotable[c_idx] = true;
             }
         }
+        crate::ot_log!("  Faithfulness constraints are excluded from stratum.");
         return;
     }
+    crate::ot_log!("  There are no rankable Markedness constraints.");
 
-    // Favor Activeness: mark Faithfulness constraints as active if they prefer
-    // the winner for at least one still-informative, non-superset pair.
+    // --- Favor Activeness ---
+    crate::ot_log!("");
+    crate::ot_log!("Favor Activeness:");
     let mut active = vec![false; nc];
     let mut at_least_one_faith_active = false;
 
@@ -122,6 +162,8 @@ fn apply_faithfulness_heuristics(
                 if rival.violations[c_idx] > winner.violations[c_idx] {
                     active[c_idx] = true;
                     at_least_one_faith_active = true;
+                    crate::ot_log!("  {} is shown to be active by ruling out *[{}] for /{}/.  ",
+                        tableau.constraints[c_idx].abbrev(), rival.form, form.input);
                     break 'find_active_pair;
                 }
             }
@@ -129,17 +171,34 @@ fn apply_faithfulness_heuristics(
     }
 
     if !at_least_one_faith_active {
+        crate::ot_log!("  Only remaining rankable constraints are inactive Faithfulness constraints.");
+        crate::ot_log!("  All of them join the current stratum:");
+        for c_idx in 0..nc {
+            if strata[c_idx] == 0 && is_faithfulness[c_idx] && !demotable[c_idx] {
+                crate::ot_log!("    {}", tableau.constraints[c_idx].abbrev());
+            }
+        }
         return;
     }
 
     // Demote inactive Faithfulness (since active ones are available)
+    let mut all_active = true;
     for c_idx in 0..nc {
         if strata[c_idx] == 0 && is_faithfulness[c_idx] && !demotable[c_idx] && !active[c_idx] {
+            crate::ot_log!("  {} is excluded from stratum because it is inactive.",
+                tableau.constraints[c_idx].abbrev());
             demotable[c_idx] = true;
+            all_active = false;
         }
     }
+    if all_active {
+        crate::ot_log!("  All unranked Faithfulness constraints are active.");
+    }
 
-    // Favor Specificity: demote a constraint if a more specific one exists
+    // --- Favor Specificity ---
+    crate::ot_log!("");
+    crate::ot_log!("Favor Specificity:");
+    let mut found_specificity = false;
     for c_idx in 0..nc {
         if strata[c_idx] != 0 || demotable[c_idx] || !active[c_idx] || !is_faithfulness[c_idx] {
             continue;
@@ -149,13 +208,19 @@ fn apply_faithfulness_heuristics(
                 continue;
             }
             if violation_subsets[inner][c_idx] {
+                crate::ot_log!("  {} is excluded from stratum because {} is more specific.",
+                    tableau.constraints[c_idx].abbrev(), tableau.constraints[inner].abbrev());
                 demotable[c_idx] = true;
+                found_specificity = true;
                 break;
             }
         }
     }
+    if !found_specificity {
+        crate::ot_log!("  (no cases found)");
+    }
 
-    // Favor Autonomy: prefer constraints with fewest helpers
+    // --- Favor Autonomy ---
     apply_favor_autonomy(
         tableau, strata, still_informative, is_faithfulness, violation_subsets, demotable,
     );
@@ -171,6 +236,8 @@ fn apply_favor_autonomy(
     violation_subsets: &[Vec<bool>],
     demotable: &mut [bool],
 ) {
+    crate::ot_log!("");
+    crate::ot_log!("Favor Autonomy:");
     let nc = strata.len();
     let mut num_helpers = vec![usize::MAX; nc];
 
@@ -196,6 +263,7 @@ fn apply_favor_autonomy(
                 }
 
                 let mut local_helpers = 0usize;
+                let mut helper_names = Vec::new();
                 for inner in 0..nc {
                     if inner == c_idx {
                         continue;
@@ -205,12 +273,20 @@ fn apply_favor_autonomy(
                             violation_subsets[c_idx][inner] && is_faithfulness[inner];
                         if !is_superset_faith {
                             local_helpers += 1;
+                            helper_names.push(tableau.constraints[inner].abbrev().to_string());
                         }
                     }
                 }
 
                 if local_helpers < num_helpers[c_idx] {
                     num_helpers[c_idx] = local_helpers;
+                    let plural = if local_helpers == 1 { "" } else { "s" };
+                    crate::ot_log!("  {} is assigned {} helper{}, based on /{}/ -/-> *[{}].",
+                        tableau.constraints[c_idx].abbrev(), local_helpers, plural,
+                        form.input, rival.form);
+                    for h in &helper_names {
+                        crate::ot_log!("    {}", h);
+                    }
                 }
             }
         }
@@ -222,9 +298,25 @@ fn apply_favor_autonomy(
         .min()
         .unwrap_or(usize::MAX);
 
+    if lowest_helpers < usize::MAX {
+        crate::ot_log!("");
+        crate::ot_log!("  Lowest number of helpers:  {}", lowest_helpers);
+    } else {
+        crate::ot_log!("");
+        crate::ot_log!("  (none found; no non-superset Faithfulness constraint favors a winner)");
+    }
+
     for c_idx in 0..nc {
-        if strata[c_idx] == 0 && !demotable[c_idx] && num_helpers[c_idx] > lowest_helpers {
-            demotable[c_idx] = true;
+        if strata[c_idx] == 0 && !demotable[c_idx] {
+            if num_helpers[c_idx] <= lowest_helpers {
+                crate::ot_log!("  Constraint {} joins the current stratum, having {} helpers.",
+                    tableau.constraints[c_idx].abbrev(), num_helpers[c_idx]);
+            } else {
+                let plural = if num_helpers[c_idx] == 1 { "helper" } else { "helpers" };
+                crate::ot_log!("  Constraint {} is excluded from stratum because it has {} {}.",
+                    tableau.constraints[c_idx].abbrev(), num_helpers[c_idx], plural);
+                demotable[c_idx] = true;
+            }
         }
     }
 }
@@ -291,19 +383,25 @@ impl Tableau {
                 .sum()
         };
 
+        crate::ot_log!("****** Application of Low Faithfulness Constraint Demotion ******");
         crate::ot_log!("Starting LFCD with {} pairs", count_pairs(&still_informative));
 
         loop {
             current_stratum += 1;
             if current_stratum > nc + 1 {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking has failed. This constraint set is unable to derive only winners.");
                 crate::ot_log!("LFCD FAILED: safety limit reached at stratum {}", current_stratum);
                 return RCDResult::new(strata, current_stratum - 1, false);
             }
 
+            crate::ot_log!("");
+            crate::ot_log!("****** Now doing Stratum #{} ******", current_stratum);
+
             let mut demotable = vec![false; nc];
 
             mark_loser_preferring(self, &strata, &still_informative, &mut demotable);
-            enforce_apriori_demotions(apriori, &strata, &mut demotable);
+            enforce_apriori_demotions(self, apriori, &strata, &mut demotable);
             apply_faithfulness_heuristics(
                 self, &strata, &still_informative, &is_faithfulness,
                 &violation_subsets, &mut demotable,
@@ -323,15 +421,20 @@ impl Tableau {
                 }
             }
 
+            self.log_results_so_far(&strata, current_stratum);
             crate::ot_log!("After stratum {}: {} pairs remaining",
                 current_stratum, count_pairs(&still_informative));
 
             if !some_are_demotable {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking is complete and yields successful grammar.");
                 crate::ot_log!("LFCD SUCCEEDED with {} strata", current_stratum);
                 let mut result = RCDResult::new(strata, current_stratum, true);
                 result.compute_extra_analyses(self, apriori, false);
                 return result;
             } else if !some_are_non_demotable {
+                crate::ot_log!("");
+                crate::ot_log!("Ranking has failed. This constraint set is unable to derive only winners.");
                 crate::ot_log!("LFCD FAILED: all remaining constraints are demotable at stratum {}", current_stratum);
                 for s in strata.iter_mut() {
                     if *s == 0 {
@@ -353,6 +456,29 @@ mod tests {
     fn load_tiny_example() -> String {
         std::fs::read_to_string("../examples/TinyIllustrativeFile.txt")
             .expect("Failed to load examples/TinyIllustrativeFile.txt")
+    }
+
+    #[test]
+    fn test_lfcd_log_capture() {
+        crate::clear_log();
+        let tiny = load_tiny_example();
+        let tableau = Tableau::parse(&tiny).unwrap();
+        let _result = tableau.run_lfcd();
+        let log = crate::get_log();
+
+        // Header
+        assert!(log.contains("Application of Low Faithfulness Constraint Demotion"), "Should have LFCD header");
+        // Stratum processing
+        assert!(log.contains("Now doing Stratum #1"), "Should log stratum 1");
+        // Heuristic sections
+        assert!(log.contains("Avoid Preference For Losers:"), "Should have loser-preferring section");
+        assert!(log.contains("Favor Markedness:"), "Should have markedness section");
+        assert!(log.contains("is a Markedness constraint"), "Should log markedness ranking");
+        assert!(log.contains("Faithfulness constraints are excluded"), "Should note faith exclusion");
+        // Results summary
+        assert!(log.contains("Results so far:"), "Should have results summary");
+        // Success
+        assert!(log.contains("SUCCEEDED"), "Should log success");
     }
 
     #[test]

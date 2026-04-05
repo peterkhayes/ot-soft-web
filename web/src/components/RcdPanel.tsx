@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { Tableau } from '../../pkg/ot_soft.js'
 import {
   AxisMode,
+  clear_log,
   format_bcd_html_output,
   format_bcd_output,
   format_lfcd_html_output,
@@ -12,6 +13,7 @@ import {
   format_sorted_input_file,
   fred_hasse_dot,
   FredOptions,
+  get_log,
   run_bcd,
   run_lfcd,
   run_rcd,
@@ -54,12 +56,14 @@ function RcdPanel({
     setTimeout(() => {
       try {
         const apriori = supportsApriori ? aprioriText : ''
+        clear_log()
         const result =
           algorithm === 'rcd'
             ? run_rcd(tableauText, apriori)
             : algorithm === 'lfcd'
               ? run_lfcd(tableauText, apriori)
               : run_bcd(tableauText, algorithm === 'bcd-specific')
+        const log = get_log()
 
         const numStrata = result.num_strata()
         const constraintCount = tableau.constraint_count()
@@ -94,6 +98,7 @@ function RcdPanel({
           strata,
           tieWarning: result.tie_warning(),
           hasseDot,
+          log,
         })
       } catch (err) {
         console.error('Algorithm error:', err)
@@ -173,6 +178,12 @@ function RcdPanel({
     }
   }
 
+  function handleDownloadLog() {
+    if (rcdResult && !('error' in rcdResult) && rcdResult.log) {
+      download(rcdResult.log, makeOutputFilename(inputFilename, 'HowIRanked'))
+    }
+  }
+
   function handleDownloadSortedInput() {
     try {
       const apriori = supportsApriori ? aprioriText : ''
@@ -244,6 +255,7 @@ function RcdPanel({
             <DownloadButton onClick={handleDownloadSortedInput}>
               Download Sorted Input
             </DownloadButton>
+            <DownloadButton onClick={handleDownloadLog}>Download Log</DownloadButton>
           </>
         )}
         <button

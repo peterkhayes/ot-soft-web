@@ -10,6 +10,7 @@ export interface RcdResultState {
   strata: StratumData[]
   tieWarning: boolean
   hasseDot?: string
+  log?: string
 }
 
 export type RcdState = ResultState<RcdResultState>
