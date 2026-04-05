@@ -47,6 +47,20 @@ export async function loadFile(filePath: string) {
   await expect.element(page.getByText('Tableau Analysis')).toBeVisible()
 }
 
+/** Open the Download menu in the action bar and click a specific item. */
+export async function clickDownload(label: string) {
+  const actionBar = page.getByTestId('action-bar')
+  await actionBar.getByRole('button', { name: 'Download', exact: true }).click()
+  await page.getByRole('menuitem', { name: label }).click()
+}
+
+/** Open the Download menu in the Hasse diagram section and click a specific item. */
+export async function clickHasseDownload(label: string) {
+  const hasse = page.getByTestId('hasse-diagram')
+  await hasse.getByRole('button', { name: 'Download' }).click()
+  await page.getByRole('menuitem', { name: label }).click()
+}
+
 /** Strip the date/time stamp from formatter output so snapshots are stable. */
 export function normalizeOutput(content: string): string {
   return content.replace(/\d+-\d+-\d+, \d+:\d+ (am|pm)/gi, '<TIMESTAMP>')

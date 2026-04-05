@@ -1,7 +1,7 @@
 import { page } from '@vitest/browser/context'
 import { expect, test } from 'vitest'
 
-import { loadExample, normalizeOutput, renderApp } from '../helpers'
+import { clickDownload, loadExample, normalizeOutput, renderApp } from '../helpers'
 
 test('Factorial Typology: FTSum download', async () => {
   const { downloads } = renderApp()
@@ -14,8 +14,7 @@ test('Factorial Typology: FTSum download', async () => {
   await page.getByText('Run Factorial Typology').click()
   await expect.element(page.getByText(/\d+ output patterns? found/)).toBeVisible()
 
-  await expect.element(page.getByText('Download FTSum')).toBeVisible()
-  await page.getByText('Download FTSum').click()
+  await clickDownload('Download FTSum')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileFTSum.txt')
@@ -40,8 +39,7 @@ test('Factorial Typology: CompactSum download', async () => {
   await page.getByText('Run Factorial Typology').click()
   await expect.element(page.getByText(/\d+ output patterns? found/)).toBeVisible()
 
-  await expect.element(page.getByText('Download CompactSum')).toBeVisible()
-  await page.getByText('Download CompactSum').click()
+  await clickDownload('Download CompactSum')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileCompactSum.txt')
@@ -67,9 +65,8 @@ test('Factorial Typology: load example, run, see results, download', async () =>
   await expect.element(page.getByText('Output Patterns', { exact: true })).toBeVisible()
   await expect.element(page.getByText('List of Winners', { exact: true })).toBeVisible()
 
-  // Download button appears and works (only FT has run, so there is exactly one)
-  await expect.element(page.getByText('Download Results')).toBeVisible()
-  await page.getByText('Download Results').click()
+  // Download menu appears and works
+  await clickDownload('Download Results')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileFactorialTypology.txt')

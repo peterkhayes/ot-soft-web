@@ -486,6 +486,51 @@ button:hover::before {
     transform: translateY(2px);
 }
 
+.download-menu {
+    position: relative;
+}
+
+.download-menu-chevron {
+    width: 14px;
+    height: 14px;
+    margin-left: -2px;
+}
+
+.download-menu-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 10;
+    margin-top: var(--space-2xs);
+    min-width: 100%;
+    width: max-content;
+    background: var(--cream);
+    border: 1px solid var(--taupe);
+    border-radius: 2px;
+    box-shadow: var(--shadow-medium);
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-2xs) 0;
+}
+
+.download-menu-item {
+    all: unset;
+    display: block;
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.9rem;
+    color: var(--charcoal);
+    cursor: pointer;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+.download-menu-item:hover,
+.download-menu-item:focus-visible {
+    background: var(--forest);
+    color: var(--cream);
+    outline: none;
+}
+
 .reset-button {
     background: var(--taupe);
     color: var(--charcoal);

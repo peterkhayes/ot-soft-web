@@ -13,7 +13,7 @@ import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { makeOutputFilename } from '../utils.ts'
 import { ftDefaults } from '../wasmDefaults.ts'
-import DownloadButton from './DownloadButton.tsx'
+import DownloadMenu from './DownloadMenu.tsx'
 import FtOptionsComponent from './ft/FtOptions.tsx'
 import FtResults from './ft/FtResults.tsx'
 import type { FtParams, FtResultData, FtState, FtTOrderEntry, FtWinnersRow } from './ft/types.ts'
@@ -198,19 +198,21 @@ function FactorialTypologyPanel({
         setShowApriori={setShowApriori}
       />
 
-      <div className="action-bar">
+      <div className="action-bar" data-testid="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run Factorial Typology" />
 
         {successResult && (
-          <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
-        )}
-
-        {successResult && includeFtsum && (
-          <DownloadButton onClick={handleDownloadFtsum}>Download FTSum</DownloadButton>
-        )}
-
-        {successResult && includeCompactSum && (
-          <DownloadButton onClick={handleDownloadCompactSum}>Download CompactSum</DownloadButton>
+          <DownloadMenu
+            items={[
+              { label: 'Download Results', onClick: handleDownload },
+              ...(includeFtsum
+                ? [{ label: 'Download FTSum', onClick: handleDownloadFtsum }]
+                : []),
+              ...(includeCompactSum
+                ? [{ label: 'Download CompactSum', onClick: handleDownloadCompactSum }]
+                : []),
+            ]}
+          />
         )}
       </div>
 

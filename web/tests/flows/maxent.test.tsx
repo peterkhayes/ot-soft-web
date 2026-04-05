@@ -1,7 +1,7 @@
 import { page } from '@vitest/browser/context'
 import { expect, test } from 'vitest'
 
-import { loadExample, normalizeOutput, renderApp } from '../helpers'
+import { clickDownload, loadExample, normalizeOutput, renderApp } from '../helpers'
 
 test('MaxEnt: load example, run, see results, download', async () => {
   const { downloads } = renderApp()
@@ -15,9 +15,8 @@ test('MaxEnt: load example, run, see results, download', async () => {
   await expect.element(page.getByText('Log probability of data:')).toBeVisible()
   await expect.element(page.getByRole('heading', { name: 'Predicted Probabilities' })).toBeVisible()
 
-  // Download button appears and works
-  await expect.element(page.getByText('Download Results')).toBeVisible()
-  await page.getByText('Download Results').click()
+  // Download menu appears and works
+  await clickDownload('Download Results')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileMaxEntOutput.txt')
@@ -116,9 +115,7 @@ test('MaxEnt: generate history of weights and download', async () => {
   // Wait for results
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
 
-  // Download History button should appear
-  await expect.element(page.getByText('Download History')).toBeVisible()
-  await page.getByText('Download History').click()
+  await clickDownload('Download History')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileHistoryOfWeights.txt')
@@ -149,9 +146,7 @@ test('MaxEnt: generate history of output probabilities and download', async () =
   // Wait for results
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
 
-  // Download Output Probability History button should appear
-  await expect.element(page.getByText('Download Output Probability History')).toBeVisible()
-  await page.getByText('Download Output Probability History').click()
+  await clickDownload('Download Output Probability History')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileHistoryOfOutputProbabilities.txt')

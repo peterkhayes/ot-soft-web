@@ -7,7 +7,7 @@ import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { nhgDefaults } from '../wasmDefaults.ts'
-import DownloadButton from './DownloadButton.tsx'
+import DownloadMenu from './DownloadMenu.tsx'
 import NhgNoiseOptions from './nhg/NhgNoiseOptions.tsx'
 import NhgParameterInputs from './nhg/NhgParameterInputs.tsx'
 import NhgResults from './nhg/NhgResults.tsx'
@@ -162,16 +162,20 @@ function NhgPanel({ tableau, tableauText, inputFilename }: NhgPanelProps) {
         setScheduleError={setScheduleError}
       />
 
-      <div className="action-bar">
+      <div className="action-bar" data-testid="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run Noisy HG" />
         {result && !result.error && (
-          <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
-        )}
-        {successResult?.history && (
-          <DownloadButton onClick={handleDownloadHistory}>Download History</DownloadButton>
-        )}
-        {successResult?.fullHistory && (
-          <DownloadButton onClick={handleDownloadFullHistory}>Download Full History</DownloadButton>
+          <DownloadMenu
+            items={[
+              { label: 'Download Results', onClick: handleDownload },
+              ...(successResult?.history
+                ? [{ label: 'Download History', onClick: handleDownloadHistory }]
+                : []),
+              ...(successResult?.fullHistory
+                ? [{ label: 'Download Full History', onClick: handleDownloadFullHistory }]
+                : []),
+            ]}
+          />
         )}
         <button
           className="reset-button"

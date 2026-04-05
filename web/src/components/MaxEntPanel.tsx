@@ -7,7 +7,7 @@ import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { maxentDefaults } from '../wasmDefaults.ts'
-import DownloadButton from './DownloadButton.tsx'
+import DownloadMenu, { type DownloadMenuItem } from './DownloadMenu.tsx'
 import MaxEntOptionsComponent from './maxent/MaxEntOptions.tsx'
 import MaxEntParameterInputs from './maxent/MaxEntParameterInputs.tsx'
 import MaxEntResults from './maxent/MaxEntResults.tsx'
@@ -174,18 +174,25 @@ function MaxEntPanel({ tableau, tableauText, inputFilename }: MaxEntPanelProps) 
       <MaxEntParameterInputs params={params} setParams={setParams} />
       <MaxEntOptionsComponent params={params} setParams={setParams} />
 
-      <div className="action-bar">
+      <div className="action-bar" data-testid="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run MaxEnt" />
         {result && !result.error && (
-          <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
-        )}
-        {successResult?.history && (
-          <DownloadButton onClick={handleDownloadHistory}>Download History</DownloadButton>
-        )}
-        {successResult?.outputProbHistory && (
-          <DownloadButton onClick={handleDownloadOutputProbHistory}>
-            Download Output Probability History
-          </DownloadButton>
+          <DownloadMenu
+            items={[
+              { label: 'Download Results', onClick: handleDownload },
+              ...(successResult?.history
+                ? [{ label: 'Download History', onClick: handleDownloadHistory }]
+                : []),
+              ...(successResult?.outputProbHistory
+                ? [
+                    {
+                      label: 'Download Output Probability History',
+                      onClick: handleDownloadOutputProbHistory,
+                    } satisfies DownloadMenuItem,
+                  ]
+                : []),
+            ]}
+          />
         )}
         <button
           className="reset-button"

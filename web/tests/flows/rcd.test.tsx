@@ -1,7 +1,7 @@
 import { page } from '@vitest/browser/context'
 import { expect, test } from 'vitest'
 
-import { loadExample, normalizeOutput, renderApp } from '../helpers'
+import { clickDownload, loadExample, normalizeOutput, renderApp } from '../helpers'
 
 /** Build a valid a priori rankings file for a given set of constraint abbreviations with no rankings set. */
 function emptyAprioriFile(abbrevs: string[]): string {
@@ -23,9 +23,8 @@ test('RCD: load example, run, see results, download', async () => {
     .toBeVisible()
   await expect.element(page.getByText('Stratum 1')).toBeVisible()
 
-  // Download button appears and works
-  await expect.element(page.getByText('Download Results')).toBeVisible()
-  await page.getByText('Download Results').click()
+  // Download menu appears and works
+  await clickDownload('Download Results')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileOutput.txt')
@@ -145,7 +144,7 @@ test('RCD: download HTML tableaux', async () => {
     .element(page.getByText('A ranking was found that generates the correct outputs'))
     .toBeVisible()
 
-  await page.getByText('Download HTML').click()
+  await clickDownload('Download HTML')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileOutput.html')
@@ -184,9 +183,7 @@ test('RCD: download sorted input file', async () => {
     .element(page.getByText('A ranking was found that generates the correct outputs'))
     .toBeVisible()
 
-  // Sorted input download button appears after results
-  await expect.element(page.getByText('Download Sorted Input')).toBeVisible()
-  await page.getByText('Download Sorted Input').click()
+  await clickDownload('Download Sorted Input')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileSorted.txt')
@@ -216,8 +213,7 @@ test('RCD: download log file', async () => {
     .element(page.getByText('A ranking was found that generates the correct outputs'))
     .toBeVisible()
 
-  await expect.element(page.getByText('Download Log')).toBeVisible()
-  await page.getByText('Download Log').click()
+  await clickDownload('Download Log')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileHowIRanked.txt')

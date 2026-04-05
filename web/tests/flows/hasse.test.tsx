@@ -1,7 +1,7 @@
 import { page } from '@vitest/browser/context'
 import { expect, test } from 'vitest'
 
-import { loadExample, renderApp } from '../helpers'
+import { clickHasseDownload, loadExample, renderApp } from '../helpers'
 
 test('Hasse diagram: appears after running RCD with FRed enabled', async () => {
   renderApp()
@@ -17,12 +17,6 @@ test('Hasse diagram: appears after running RCD with FRed enabled', async () => {
 
   // Hasse diagram section is shown
   await expect.element(page.getByText('Hasse Diagram')).toBeVisible()
-
-  // Export buttons are enabled once the SVG has rendered
-  const svgBtn = page.getByRole('button', { name: /SVG/i })
-  const pngBtn = page.getByRole('button', { name: /PNG/i })
-  await expect.element(svgBtn).toBeEnabled()
-  await expect.element(pngBtn).toBeEnabled()
 })
 
 test('Hasse diagram: SVG download contains correct content', async () => {
@@ -31,9 +25,9 @@ test('Hasse diagram: SVG download contains correct content', async () => {
 
   await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
-  await expect.element(page.getByRole('button', { name: /SVG/i })).toBeEnabled()
+  await expect.element(page.getByText('Hasse Diagram')).toBeVisible()
 
-  await page.getByRole('button', { name: /SVG/i }).click()
+  await clickHasseDownload('Download SVG')
 
   expect(blobDownloads).toHaveLength(1)
   expect(blobDownloads[0].filename).toBe('TinyIllustrativeFileHasse.svg')
@@ -52,9 +46,9 @@ test('Hasse diagram: PNG download produces a PNG blob', async () => {
 
   await page.getByText('Classical OT', { exact: true }).click()
   await page.getByText('Run RCD Algorithm').click()
-  await expect.element(page.getByRole('button', { name: /PNG/i })).toBeEnabled()
+  await expect.element(page.getByText('Hasse Diagram')).toBeVisible()
 
-  await page.getByRole('button', { name: /PNG/i }).click()
+  await clickHasseDownload('Download PNG')
 
   // PNG rendering is async (canvas.toBlob), so wait for the download to appear
   await expect.poll(() => blobDownloads).toHaveLength(1)

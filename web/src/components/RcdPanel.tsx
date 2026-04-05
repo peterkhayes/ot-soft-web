@@ -22,7 +22,7 @@ import { useDownload } from '../contexts/downloadContext.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { rcdDefaults } from '../wasmDefaults.ts'
-import DownloadButton from './DownloadButton.tsx'
+import DownloadMenu from './DownloadMenu.tsx'
 import RcdOptions from './rcd/RcdOptions.tsx'
 import RcdResults from './rcd/RcdResults.tsx'
 import { ALGORITHM_LABELS, type RcdParams, type RcdState } from './rcd/types.ts'
@@ -212,7 +212,7 @@ function RcdPanel({
         setShowApriori={setShowApriori}
       />
 
-      <div className="action-bar">
+      <div className="action-bar" data-testid="action-bar">
         <button
           className={`primary-button${isLoading ? ' primary-button--loading' : ''}`}
           onClick={handleRun}
@@ -249,14 +249,14 @@ function RcdPanel({
           Run {ALGORITHM_LABELS[algorithm]} Algorithm
         </button>
         {rcdResult && !rcdResult.error && (
-          <>
-            <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
-            <DownloadButton onClick={handleDownloadHtml}>Download HTML</DownloadButton>
-            <DownloadButton onClick={handleDownloadSortedInput}>
-              Download Sorted Input
-            </DownloadButton>
-            <DownloadButton onClick={handleDownloadLog}>Download Log</DownloadButton>
-          </>
+          <DownloadMenu
+            items={[
+              { label: 'Download Results', onClick: handleDownload },
+              { label: 'Download HTML', onClick: handleDownloadHtml },
+              { label: 'Download Sorted Input', onClick: handleDownloadSortedInput },
+              { label: 'Download Log', onClick: handleDownloadLog },
+            ]}
+          />
         )}
         <button
           className="reset-button"

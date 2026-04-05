@@ -1,7 +1,7 @@
 import { page } from '@vitest/browser/context'
 import { expect, test } from 'vitest'
 
-import { loadExample, renderApp } from '../helpers'
+import { clickDownload, loadExample, renderApp } from '../helpers'
 
 test('NHG: load example, run, see results, download', { timeout: 30000 }, async () => {
   const { downloads } = renderApp()
@@ -20,9 +20,8 @@ test('NHG: load example, run, see results, download', { timeout: 30000 }, async 
     .element(page.getByRole('heading', { name: 'Matchup to Input Frequencies' }))
     .toBeVisible()
 
-  // Download button appears
-  await expect.element(page.getByText('Download Results')).toBeVisible()
-  await page.getByText('Download Results').click()
+  // Download menu appears
+  await clickDownload('Download Results')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileNHGOutput.txt')
@@ -86,9 +85,7 @@ test('NHG: generate full history and download', { timeout: 30000 }, async () => 
   // Wait for results
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
 
-  // Download Full History button should appear
-  await expect.element(page.getByText('Download Full History')).toBeVisible()
-  await page.getByText('Download Full History').click()
+  await clickDownload('Download Full History')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileFullHistory.txt')
@@ -114,9 +111,7 @@ test('NHG: generate history and download', { timeout: 30000 }, async () => {
   // Wait for results
   await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
 
-  // Download History button should appear
-  await expect.element(page.getByText('Download History')).toBeVisible()
-  await page.getByText('Download History').click()
+  await clickDownload('Download History')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileHistory.txt')

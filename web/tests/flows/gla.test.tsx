@@ -1,7 +1,7 @@
 import { page } from '@vitest/browser/context'
 import { expect, test, vi } from 'vitest'
 
-import { loadExample, renderApp } from '../helpers'
+import { clickDownload, loadExample, renderApp } from '../helpers'
 
 test(
   'GLA (Stochastic OT): load example, run, see results, download',
@@ -25,9 +25,8 @@ test(
       .element(page.getByRole('heading', { name: 'Matchup to Input Frequencies' }))
       .toBeVisible()
 
-    // Download button appears
-    await expect.element(page.getByText('Download Results')).toBeVisible()
-    await page.getByText('Download Results').click()
+    // Download menu appears
+    await clickDownload('Download Results')
 
     expect(downloads).toHaveLength(1)
     expect(downloads[0].filename).toBe('TinyIllustrativeFileGLA-StochasticOTOutput.txt')
@@ -45,9 +44,9 @@ test('GLA (Stochastic OT): Hasse diagram appears after run', { timeout: 30000 },
   // Hasse diagram section appears
   await expect.element(page.getByText('Hasse Diagram')).toBeVisible()
 
-  // Export buttons are enabled once the SVG has rendered
-  await expect.element(page.getByRole('button', { name: /SVG/i })).toBeEnabled()
-  await expect.element(page.getByRole('button', { name: /PNG/i })).toBeEnabled()
+  // Download menu is available in the Hasse section
+  const hasse = page.getByTestId('hasse-diagram')
+  await expect.element(hasse.getByRole('button', { name: 'Download' })).toBeVisible()
 })
 
 test(
@@ -197,9 +196,7 @@ test('GLA: generate full history and download', { timeout: 30000 }, async () => 
     .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
     .toBeVisible()
 
-  // Download Full History button should appear
-  await expect.element(page.getByText('Download Full History')).toBeVisible()
-  await page.getByText('Download Full History').click()
+  await clickDownload('Download Full History')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileFullHistory.txt')
@@ -267,9 +264,7 @@ test('GLA: generate history and download', { timeout: 30000 }, async () => {
     .element(page.getByRole('heading', { name: 'Constraint Ranking Values' }))
     .toBeVisible()
 
-  // Download History button should appear
-  await expect.element(page.getByText('Download History')).toBeVisible()
-  await page.getByText('Download History').click()
+  await clickDownload('Download History')
 
   expect(downloads).toHaveLength(1)
   expect(downloads[0].filename).toBe('TinyIllustrativeFileHistory.txt')
@@ -298,9 +293,7 @@ test(
     // Wait for results
     await expect.element(page.getByRole('heading', { name: 'Constraint Weights' })).toBeVisible()
 
-    // Download button should appear
-    await expect.element(page.getByText('Download Candidate Probability History')).toBeVisible()
-    await page.getByText('Download Candidate Probability History').click()
+    await clickDownload('Download Candidate Probability History')
 
     expect(downloads).toHaveLength(1)
     expect(downloads[0].filename).toBe('TinyIllustrativeFileHistoryOfCandidateProbabilities.txt')

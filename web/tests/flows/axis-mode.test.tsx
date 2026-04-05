@@ -1,7 +1,7 @@
 import { page } from '@vitest/browser/context'
 import { expect, test } from 'vitest'
 
-import { loadExample, normalizeOutput, renderApp } from '../helpers'
+import { clickDownload, loadExample, normalizeOutput, renderApp } from '../helpers'
 
 test('Axis mode: default is "Switch all" with transposed layout', async () => {
   renderApp()
@@ -42,7 +42,7 @@ test('Axis mode: HTML download uses selected axis mode', async () => {
     .element(page.getByText('A ranking was found that generates the correct outputs'))
     .toBeVisible()
 
-  await page.getByText('Download HTML').click()
+  await clickDownload('Download HTML')
 
   expect(downloads).toHaveLength(1)
   const html = normalizeOutput(downloads[0].content)

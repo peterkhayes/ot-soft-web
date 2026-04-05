@@ -14,7 +14,7 @@ import { useChunkedRunner } from '../hooks/useChunkedRunner.ts'
 import { useLocalStorage } from '../hooks/useLocalStorage.ts'
 import { isAtDefaults, makeOutputFilename } from '../utils.ts'
 import { glaDefaults } from '../wasmDefaults.ts'
-import DownloadButton from './DownloadButton.tsx'
+import DownloadMenu from './DownloadMenu.tsx'
 import GlaAprioriOptions from './gla/GlaAprioriOptions.tsx'
 import GlaFrameworkOptions from './gla/GlaFrameworkOptions.tsx'
 import GlaOptionsGrid from './gla/GlaOptionsGrid.tsx'
@@ -227,21 +227,28 @@ function GlaPanel({ tableau, tableauText, inputFilename }: GlaPanelProps) {
       />
       {!maxentMode && <GlaAprioriOptions params={params} setParams={setParams} />}
 
-      <div className="action-bar">
+      <div className="action-bar" data-testid="action-bar">
         <RunButton isLoading={isLoading} onClick={handleRun} label="Run GLA" />
         {result && !result.error && (
-          <DownloadButton onClick={handleDownload}>Download Results</DownloadButton>
-        )}
-        {successResult?.history && (
-          <DownloadButton onClick={handleDownloadHistory}>Download History</DownloadButton>
-        )}
-        {successResult?.fullHistory && (
-          <DownloadButton onClick={handleDownloadFullHistory}>Download Full History</DownloadButton>
-        )}
-        {successResult?.candidateProbHistory && (
-          <DownloadButton onClick={handleDownloadCandidateProbHistory}>
-            Download Candidate Probability History
-          </DownloadButton>
+          <DownloadMenu
+            items={[
+              { label: 'Download Results', onClick: handleDownload },
+              ...(successResult?.history
+                ? [{ label: 'Download History', onClick: handleDownloadHistory }]
+                : []),
+              ...(successResult?.fullHistory
+                ? [{ label: 'Download Full History', onClick: handleDownloadFullHistory }]
+                : []),
+              ...(successResult?.candidateProbHistory
+                ? [
+                    {
+                      label: 'Download Candidate Probability History',
+                      onClick: handleDownloadCandidateProbHistory,
+                    },
+                  ]
+                : []),
+            ]}
+          />
         )}
         <button
           className={`download-button${isLoadingMultiple ? ' primary-button--loading' : ''}`}
