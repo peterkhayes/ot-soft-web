@@ -59,6 +59,7 @@ web/
 │       │   ├── types.ts         # Shared types (FtResultData, FtParams)
 │       │   ├── FtOptions.tsx    # Output options, a priori rankings
 │       │   └── FtResults.tsx    # Patterns table, winners, t-order
+│       ├── DownloadMenu.tsx     # WAI-ARIA menu button for download actions (used by all panels + Hasse)
 │       └── HasseDiagram.tsx     # Hasse diagram viewer (lazy-loads @viz-js/viz, SVG + PNG export)
 ├── tests/
 │   ├── setup.ts            # Suite-wide beforeEach (localStorage.clear)
